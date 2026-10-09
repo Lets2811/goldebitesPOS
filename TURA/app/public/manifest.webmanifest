@@ -1,0 +1,19 @@
+{
+  "name": "TURA — Asistente del POS",
+  "short_name": "TURA",
+  "description": "Tecnología Unificada de Respuesta y Asistencia: el asistente de tu POS.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0B0D10",
+  "theme_color": "#0B0D10",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

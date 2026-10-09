@@ -1,4 +1,3 @@
-import { createReadStream } from 'node:fs';
 import { randomUUID } from 'node:crypto';
 import { extname } from 'node:path';
 import {
@@ -16,7 +15,12 @@ import {
   UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { ApiBearerAuth, ApiConsumes, ApiOperation, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiConsumes,
+  ApiOperation,
+  ApiTags,
+} from '@nestjs/swagger';
 import { diskStorage } from 'multer';
 import type { Response } from 'express';
 import { CurrentBusiness } from '../../../common/decorators/current-business.decorator';
@@ -24,6 +28,10 @@ import { CurrentUser } from '../../../common/decorators/current-user.decorator';
 import { Permissions } from '../../../common/decorators/permissions.decorator';
 import { RawResponse } from '../../../common/decorators/raw-response.decorator';
 import { EntityNotFoundException } from '../../../common/exceptions';
+import {
+  storedFileExists,
+  streamStoredFile,
+} from '../../../common/utils/stream-file.util';
 import { SetBusinessStatusDto } from '../dto/set-business-status.dto';
 import { UpdateBusinessDto } from '../dto/update-business.dto';
 import { BusinessesService } from '../services/businesses.service';
@@ -93,7 +101,9 @@ export class BusinessesController {
       fileFilter: (_req, file, cb) => {
         if (!ALLOWED_LOGO_MIME_TYPES.includes(file.mimetype)) {
           cb(
-            new BadRequestException('Solo se permiten imágenes JPG, PNG o WEBP.'),
+            new BadRequestException(
+              'Solo se permiten imágenes JPG, PNG o WEBP.',
+            ),
             false,
           );
           return;
@@ -108,7 +118,9 @@ export class BusinessesController {
     @UploadedFile() file: Express.Multer.File,
   ) {
     if (!file) {
-      throw new BadRequestException('Debes adjuntar una imagen (JPG, PNG o WEBP).');
+      throw new BadRequestException(
+        'Debes adjuntar una imagen (JPG, PNG o WEBP).',
+      );
     }
     await this.businessesService.setLogo(
       businessId,
@@ -124,11 +136,13 @@ export class BusinessesController {
   @ApiOperation({ summary: "Stream the current business's logo" })
   async getLogo(@CurrentBusiness() businessId: string, @Res() res: Response) {
     const logo = await this.businessesService.getLogo(businessId);
-    if (!logo) {
+    if (!logo || !(await storedFileExists(logo.logoPath))) {
       throw new EntityNotFoundException('Business logo', businessId);
     }
-    res.set({ 'Content-Type': logo.mimeType, 'Cache-Control': 'private, max-age=300' });
-    createReadStream(logo.logoPath).pipe(res);
+    streamStoredFile(res, logo.logoPath, {
+      'Content-Type': logo.mimeType,
+      'Cache-Control': 'private, max-age=300',
+    });
   }
 
   @Delete('me/logo')

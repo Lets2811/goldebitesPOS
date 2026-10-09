@@ -16,6 +16,7 @@ import { useSnackbar } from 'notistack';
 import PageHeader from '../../../components/common/PageHeader';
 import StatusChip from '../../../components/common/StatusChip';
 import { Can } from '../../../modules/auth/components/can';
+import { HasFeature } from '../../../modules/auth/components/has-feature';
 import { useCurrentBusiness } from '../../../modules/businesses/hooks/use-current-business';
 import { useUpdateBusiness } from '../../../modules/businesses/hooks/use-update-business';
 import { useBusinessLogo } from '../../../modules/businesses/hooks/use-business-logo';
@@ -24,6 +25,7 @@ import { useDeleteBusinessLogo } from '../../../modules/businesses/hooks/use-del
 import { useUpdateTaxRate } from '../../../modules/settings/hooks/use-update-tax-rate';
 import { useBranches } from '../../../modules/branches/hooks/use-branches';
 import BranchTableCountField from '../components/BranchTableCountField';
+import TuraLinksSection from '../components/TuraLinksSection';
 import { useProductCategories } from '../../../modules/product-categories/hooks/use-product-categories';
 import { useCreateProductCategory } from '../../../modules/product-categories/hooks/use-create-product-category';
 import { normalizeApiError } from '../../../lib/api/api-error';
@@ -221,20 +223,34 @@ export default function SettingsPage() {
 
       <Accordion>
         <AccordionSummary expandIcon={<ChevronDown size={18} />}>
-          <Typography sx={{ fontWeight: 700 }}>Sedes</Typography>
+          <Typography sx={{ fontWeight: 700 }}>{branches.length > 1 ? 'Sedes: mesas y NFC' : 'Mesas y NFC'}</Typography>
         </AccordionSummary>
         <AccordionDetails>
           <Stack spacing={1}>
+            {/* Which branches exist is the platform's to manage (they are a contracted add-on); here only what running one needs. */}
+            {branches.length > 1 && (
+              <Typography variant="caption" color="text.secondary">
+                Las sedes de tu negocio las administra el proveedor del POS. Aquí configuras las mesas y las etiquetas NFC
+                de cada una.
+              </Typography>
+            )}
             {branches.map((branch) => (
               <Stack key={branch.id} direction="row" sx={{ alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 1 }}>
-                <Box>
-                  <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                    {branch.name}
+                {/* A single branch is just "the business": naming it would only raise the question of what a branch is. */}
+                {branches.length > 1 ? (
+                  <Box>
+                    <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                      {branch.name}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      {[branch.address, branch.city, branch.phone].filter(Boolean).join(' · ') || 'Sin datos de contacto'}
+                    </Typography>
+                  </Box>
+                ) : (
+                  <Typography variant="body2" color="text.secondary">
+                    Mesas del negocio
                   </Typography>
-                  <Typography variant="caption" color="text.secondary">
-                    {[branch.address, branch.city, branch.phone].filter(Boolean).join(' · ') || 'Sin datos de contacto'}
-                  </Typography>
-                </Box>
+                )}
                 <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center' }}>
                   <Can permission="branches.manage">
                     <BranchTableCountField branch={branch} />
@@ -247,10 +263,12 @@ export default function SettingsPage() {
                       Administrar mesas y NFC
                     </Button>
                   </Can>
-                  <StatusChip
-                    label={branch.isActive ? 'Activa' : 'Inactiva'}
-                    tone={branch.isActive ? 'success' : 'neutral'}
-                  />
+                  {branches.length > 1 && (
+                    <StatusChip
+                      label={branch.isActive ? 'Activa' : 'Inactiva'}
+                      tone={branch.isActive ? 'success' : 'neutral'}
+                    />
+                  )}
                 </Stack>
               </Stack>
             ))}
@@ -400,6 +418,13 @@ export default function SettingsPage() {
           </Stack>
         </AccordionDetails>
       </Accordion>
+
+      {/* TURA is a paid module: the section only exists for businesses a platform admin has given it to. */}
+      <HasFeature feature="tura">
+        <Can permission="settings.manage">
+          <TuraLinksSection />
+        </Can>
+      </HasFeature>
 
       <Accordion>
         <AccordionSummary expandIcon={<ChevronDown size={18} />}>

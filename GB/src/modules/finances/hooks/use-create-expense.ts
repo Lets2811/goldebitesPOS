@@ -10,6 +10,7 @@ export function useCreateExpense() {
     mutationFn: (payload: CreateExpensePayload) => expensesApi.createExpense(payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: expenseKeys.all });
+      queryClient.invalidateQueries({ queryKey: ['funds'] });
     },
   });
 }

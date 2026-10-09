@@ -85,7 +85,28 @@ export const MODULE_PERMISSIONS: Record<ModuleKey, string | string[]> = {
   roles: 'roles.manage',
 };
 
-export const NAV_ENTRIES: NavEntry[] = [
+/**
+ * Módulos apagados por ahora mientras se rediseña el POS: no aparecen en el
+ * menú y sus rutas no existen (llevan a "página no encontrada"). Es solo de
+ * la interfaz: sus pantallas, su API y sus datos siguen intactos, y otras
+ * pantallas siguen usando esa API (Pedidos busca clientes, el Centro de
+ * operaciones lee ventas de analítica). Para volver a encender uno, basta con
+ * quitarlo de esta lista.
+ */
+const DISABLED_MODULES: ReadonlySet<ModuleKey> = new Set([
+  'customers',
+  'loyalty',
+  'analytics',
+  'marketing',
+  'documents',
+  'documentScans',
+]);
+
+export function isModuleDisabled(module: ModuleKey): boolean {
+  return DISABLED_MODULES.has(module);
+}
+
+const ALL_NAV_ENTRIES: NavEntry[] = [
   {
     kind: 'item',
     module: 'dashboard',
@@ -130,7 +151,7 @@ export const NAV_ENTRIES: NavEntry[] = [
       {
         kind: 'item',
         module: 'purchases',
-        label: 'Compras',
+        label: 'Compras y gastos',
         path: MODULE_PATHS.purchases,
         icon: ShoppingCart,
       },
@@ -202,7 +223,7 @@ export const NAV_ENTRIES: NavEntry[] = [
       {
         kind: 'item',
         module: 'maintenance',
-        label: 'Mantenimiento',
+        label: 'Equipos',
         path: MODULE_PATHS.maintenance,
         icon: Wrench,
       },
@@ -231,6 +252,15 @@ export const NAV_ENTRIES: NavEntry[] = [
   },
 ];
 
-export const MODULE_LABELS: Record<string, string> = NAV_ENTRIES.flatMap((entry) =>
+/** El menú sin los módulos apagados; un grupo que se queda sin opciones tampoco aparece. */
+export const NAV_ENTRIES: NavEntry[] = ALL_NAV_ENTRIES.flatMap((entry): NavEntry[] => {
+  if (entry.kind === 'item') {
+    return isModuleDisabled(entry.module) ? [] : [entry];
+  }
+  const items = entry.items.filter((item) => !isModuleDisabled(item.module));
+  return items.length > 0 ? [{ ...entry, items }] : [];
+});
+
+export const MODULE_LABELS: Record<string, string> = ALL_NAV_ENTRIES.flatMap((entry) =>
   entry.kind === 'group' ? entry.items : [entry],
 ).reduce((acc, item) => ({ ...acc, [item.module]: item.label }), {} as Record<string, string>);

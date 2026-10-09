@@ -1,4 +1,5 @@
 import {
+  BusinessRuleException,
   ConflictException,
   EntityNotFoundException,
 } from '../../../common/exceptions';
@@ -13,6 +14,8 @@ describe('BranchesService', () => {
     update: jest.Mock;
     setActive: jest.Mock;
     setPaymentPolicy: jest.Mock;
+    findActiveIds: jest.Mock;
+    delete: jest.Mock;
     existsByName: jest.Mock;
   };
   let auditService: { record: jest.Mock };
@@ -45,6 +48,8 @@ describe('BranchesService', () => {
       update: jest.fn(),
       setActive: jest.fn(),
       setPaymentPolicy: jest.fn(),
+      findActiveIds: jest.fn().mockResolvedValue(['branch-1', 'branch-2']),
+      delete: jest.fn().mockResolvedValue(true),
       existsByName: jest.fn(),
     };
     auditService = { record: jest.fn() };
@@ -105,6 +110,90 @@ describe('BranchesService', () => {
     });
   });
 
+  describe('findOnlyActiveBranchId', () => {
+    it('returns the branch of a business that has exactly one active', async () => {
+      branchesRepository.findActiveIds.mockResolvedValue(['branch-1']);
+
+      expect(await service.findOnlyActiveBranchId(businessId)).toBe('branch-1');
+    });
+
+    it('returns null for a business with several active branches, or none', async () => {
+      branchesRepository.findActiveIds.mockResolvedValue([
+        'branch-1',
+        'branch-2',
+      ]);
+      expect(await service.findOnlyActiveBranchId(businessId)).toBeNull();
+
+      branchesRepository.findActiveIds.mockResolvedValue([]);
+      expect(await service.findOnlyActiveBranchId(businessId)).toBeNull();
+    });
+  });
+
+  describe('keeping one active branch', () => {
+    it('refuses to deactivate the last active branch', async () => {
+      branchesRepository.findById.mockResolvedValue(makeBranchRow());
+      branchesRepository.findActiveIds.mockResolvedValue(['branch-1']);
+
+      await expect(
+        service.setActive(businessId, 'branch-1', false),
+      ).rejects.toThrow(BusinessRuleException);
+      expect(branchesRepository.setActive).not.toHaveBeenCalled();
+    });
+
+    it('deactivates a branch when another stays active', async () => {
+      branchesRepository.findById.mockResolvedValue(makeBranchRow());
+      branchesRepository.setActive.mockResolvedValue(
+        makeBranchRow({ is_active: false }),
+      );
+
+      const branch = await service.setActive(businessId, 'branch-1', false);
+
+      expect(branch.isActive).toBe(false);
+    });
+
+    it('refuses to delete the last active branch', async () => {
+      branchesRepository.findById.mockResolvedValue(makeBranchRow());
+      branchesRepository.findActiveIds.mockResolvedValue(['branch-1']);
+
+      await expect(service.remove(businessId, 'branch-1')).rejects.toThrow(
+        BusinessRuleException,
+      );
+      expect(branchesRepository.delete).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('remove', () => {
+    it('deletes an unused branch and records it', async () => {
+      branchesRepository.findById.mockResolvedValue(
+        makeBranchRow({ id: 'branch-2', name: 'Sede Norte' }),
+      );
+
+      await service.remove(businessId, 'branch-2', 'actor-1');
+
+      expect(branchesRepository.delete).toHaveBeenCalledWith(
+        'branch-2',
+        businessId,
+      );
+      expect(auditService.record).toHaveBeenCalledWith(
+        expect.objectContaining({ action: 'DELETE', entityId: 'branch-2' }),
+      );
+    });
+
+    it('explains that a branch with records has to be deactivated instead', async () => {
+      branchesRepository.findById.mockResolvedValue(
+        makeBranchRow({ id: 'branch-2' }),
+      );
+      branchesRepository.delete.mockRejectedValue(
+        Object.assign(new Error('fk'), { code: '23503' }),
+      );
+
+      await expect(service.remove(businessId, 'branch-2')).rejects.toThrow(
+        ConflictException,
+      );
+      expect(auditService.record).not.toHaveBeenCalled();
+    });
+  });
+
   describe('setPaymentPolicy', () => {
     it('updates the policy and records the old/new values in the audit trail', async () => {
       branchesRepository.findById.mockResolvedValue(
@@ -141,7 +230,11 @@ describe('BranchesService', () => {
       branchesRepository.findById.mockResolvedValue(null);
 
       await expect(
-        service.setPaymentPolicy(businessId, 'branch-1', PaymentPolicy.PREPAY_REQUIRED),
+        service.setPaymentPolicy(
+          businessId,
+          'branch-1',
+          PaymentPolicy.PREPAY_REQUIRED,
+        ),
       ).rejects.toThrow(EntityNotFoundException);
     });
   });

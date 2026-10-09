@@ -4,6 +4,7 @@ import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
 import { AppConfig } from '../../config/app.config';
 import { AuditModule } from '../audit/audit.module';
+import { BranchesModule } from '../branches/branches.module';
 import { BusinessFeaturesModule } from '../business-features/business-features.module';
 import { PlatformFeatureFlagsModule } from '../platform-feature-flags/platform-feature-flags.module';
 import { RolesModule } from '../roles/roles.module';
@@ -25,6 +26,7 @@ import { JwtStrategy } from './strategies/jwt.strategy';
     RolesModule,
     BusinessFeaturesModule,
     PlatformFeatureFlagsModule,
+    BranchesModule,
     AuditModule,
     JwtModule.registerAsync({
       inject: [ConfigService],

@@ -7,7 +7,7 @@ import PlatformAdminRoute from './PlatformAdminRoute';
 import AuthProtectedRoute from '../modules/auth/components/protected-route';
 import ForbiddenPage from './ForbiddenPage';
 import NotFoundPage from './NotFoundPage';
-import { MODULE_PATHS, MODULE_PERMISSIONS } from './navConfig';
+import { MODULE_PATHS, MODULE_PERMISSIONS, isModuleDisabled } from './navConfig';
 import { KIOSK_PATHS, KIOSK_PERMISSIONS } from './kioskConfig';
 
 const LoginPage = lazy(() => import('../modules/auth/pages/LoginPage'));
@@ -177,26 +177,31 @@ export default function AppRoutes() {
               }
             />
           </Route>
-          <Route element={<ProtectedRoute permission={MODULE_PERMISSIONS.customers} module="customers" />}>
-            <Route
-              path={MODULE_PATHS.customers}
-              element={
-                <Loadable>
-                  <CustomersPage />
-                </Loadable>
-              }
-            />
-          </Route>
-          <Route element={<ProtectedRoute permission={MODULE_PERMISSIONS.loyalty} module="loyalty" />}>
-            <Route
-              path={MODULE_PATHS.loyalty}
-              element={
-                <Loadable>
-                  <LoyaltyPage />
-                </Loadable>
-              }
-            />
-          </Route>
+          {/* Los módulos apagados (ver DISABLED_MODULES en navConfig) no tienen ruta: caen en NotFoundPage. */}
+          {!isModuleDisabled('customers') && (
+            <Route element={<ProtectedRoute permission={MODULE_PERMISSIONS.customers} module="customers" />}>
+              <Route
+                path={MODULE_PATHS.customers}
+                element={
+                  <Loadable>
+                    <CustomersPage />
+                  </Loadable>
+                }
+              />
+            </Route>
+          )}
+          {!isModuleDisabled('loyalty') && (
+            <Route element={<ProtectedRoute permission={MODULE_PERMISSIONS.loyalty} module="loyalty" />}>
+              <Route
+                path={MODULE_PATHS.loyalty}
+                element={
+                  <Loadable>
+                    <LoyaltyPage />
+                  </Loadable>
+                }
+              />
+            </Route>
+          )}
           <Route element={<ProtectedRoute permission={MODULE_PERMISSIONS.finances} module="finances" />}>
             <Route
               path={MODULE_PATHS.finances}
@@ -267,46 +272,54 @@ export default function AppRoutes() {
               }
             />
           </Route>
-          <Route element={<ProtectedRoute permission={MODULE_PERMISSIONS.documents} module="documents" />}>
-            <Route
-              path={MODULE_PATHS.documents}
-              element={
-                <Loadable>
-                  <DocumentsPage />
-                </Loadable>
-              }
-            />
-          </Route>
-          <Route element={<ProtectedRoute permission={MODULE_PERMISSIONS.documentScans} module="documentScans" />}>
-            <Route
-              path={MODULE_PATHS.documentScans}
-              element={
-                <Loadable>
-                  <DocumentScansPage />
-                </Loadable>
-              }
-            />
-          </Route>
-          <Route element={<ProtectedRoute permission={MODULE_PERMISSIONS.marketing} module="marketing" />}>
-            <Route
-              path={MODULE_PATHS.marketing}
-              element={
-                <Loadable>
-                  <MarketingPage />
-                </Loadable>
-              }
-            />
-          </Route>
-          <Route element={<ProtectedRoute permission={MODULE_PERMISSIONS.analytics} module="analytics" />}>
-            <Route
-              path={MODULE_PATHS.analytics}
-              element={
-                <Loadable>
-                  <AnalyticsPage />
-                </Loadable>
-              }
-            />
-          </Route>
+          {!isModuleDisabled('documents') && (
+            <Route element={<ProtectedRoute permission={MODULE_PERMISSIONS.documents} module="documents" />}>
+              <Route
+                path={MODULE_PATHS.documents}
+                element={
+                  <Loadable>
+                    <DocumentsPage />
+                  </Loadable>
+                }
+              />
+            </Route>
+          )}
+          {!isModuleDisabled('documentScans') && (
+            <Route element={<ProtectedRoute permission={MODULE_PERMISSIONS.documentScans} module="documentScans" />}>
+              <Route
+                path={MODULE_PATHS.documentScans}
+                element={
+                  <Loadable>
+                    <DocumentScansPage />
+                  </Loadable>
+                }
+              />
+            </Route>
+          )}
+          {!isModuleDisabled('marketing') && (
+            <Route element={<ProtectedRoute permission={MODULE_PERMISSIONS.marketing} module="marketing" />}>
+              <Route
+                path={MODULE_PATHS.marketing}
+                element={
+                  <Loadable>
+                    <MarketingPage />
+                  </Loadable>
+                }
+              />
+            </Route>
+          )}
+          {!isModuleDisabled('analytics') && (
+            <Route element={<ProtectedRoute permission={MODULE_PERMISSIONS.analytics} module="analytics" />}>
+              <Route
+                path={MODULE_PATHS.analytics}
+                element={
+                  <Loadable>
+                    <AnalyticsPage />
+                  </Loadable>
+                }
+              />
+            </Route>
+          )}
           <Route element={<ProtectedRoute permission={MODULE_PERMISSIONS.settings} />}>
             <Route
               path={MODULE_PATHS.settings}

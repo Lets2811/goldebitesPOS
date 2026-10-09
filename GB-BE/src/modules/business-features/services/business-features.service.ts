@@ -2,6 +2,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import {
   ALL_FEATURE_KEYS,
   FEATURE_MODULES,
+  OPT_IN_FEATURE_KEYS,
   isKeyEnabled,
 } from '../../../common/constants/feature-modules.constants';
 import { EntityNotFoundException } from '../../../common/exceptions';
@@ -24,16 +25,12 @@ export class BusinessFeaturesService {
 
   /** All feature keys (modules and sub-features) enabled for a business, cascade already applied. */
   async getEnabledKeys(businessId: string): Promise<string[]> {
-    const disabled = new Set(
-      await this.businessFeaturesRepository.findDisabledKeys(businessId),
-    );
+    const disabled = await this.findOffKeys(businessId);
     return ALL_FEATURE_KEYS.filter((key) => isKeyEnabled(key, disabled));
   }
 
   async getEffectiveCatalog(businessId: string): Promise<FeatureStatus[]> {
-    const disabled = new Set(
-      await this.businessFeaturesRepository.findDisabledKeys(businessId),
-    );
+    const disabled = await this.findOffKeys(businessId);
     return FEATURE_MODULES.map((module) => {
       const moduleEnabled = isKeyEnabled(module.key, disabled);
       return {
@@ -64,5 +61,21 @@ export class BusinessFeaturesService {
       featureKey,
       enabled,
     );
+  }
+
+  /**
+   * Every key that is off for a business: the ones it has turned off, plus
+   * the opt-in ones (paid add-ons) it was never given.
+   */
+  private async findOffKeys(businessId: string): Promise<Set<string>> {
+    const [disabled, enabled] = await Promise.all([
+      this.businessFeaturesRepository.findDisabledKeys(businessId),
+      this.businessFeaturesRepository.findEnabledKeys(businessId),
+    ]);
+    const granted = new Set(enabled);
+    return new Set([
+      ...disabled,
+      ...OPT_IN_FEATURE_KEYS.filter((key) => !granted.has(key)),
+    ]);
   }
 }

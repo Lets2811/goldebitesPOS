@@ -28,6 +28,7 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
       isPlatformAdmin: payload.isPlatformAdmin,
       enabledFeatures: payload.enabledFeatures,
       mustChangePassword: payload.mustChangePassword,
+      turaLinkId: payload.turaLinkId,
     };
   }
 }

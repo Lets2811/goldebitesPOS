@@ -10,11 +10,11 @@ export class BusinessFeaturesRepository implements IBusinessFeaturesRepository {
   constructor(private readonly db: DatabaseService) {}
 
   async findDisabledKeys(businessId: string): Promise<string[]> {
-    const result = await this.db.query<DisabledFeatureRow>(
-      `SELECT feature_key FROM business_features WHERE business_id = $1 AND enabled = false`,
-      [businessId],
-    );
-    return result.rows.map((row) => row.feature_key);
+    return this.findKeys(businessId, false);
+  }
+
+  async findEnabledKeys(businessId: string): Promise<string[]> {
+    return this.findKeys(businessId, true);
   }
 
   async setEnabled(
@@ -28,5 +28,16 @@ export class BusinessFeaturesRepository implements IBusinessFeaturesRepository {
        ON CONFLICT (business_id, feature_key) DO UPDATE SET enabled = $3, updated_at = now()`,
       [businessId, featureKey, enabled],
     );
+  }
+
+  private async findKeys(
+    businessId: string,
+    enabled: boolean,
+  ): Promise<string[]> {
+    const result = await this.db.query<DisabledFeatureRow>(
+      `SELECT feature_key FROM business_features WHERE business_id = $1 AND enabled = $2`,
+      [businessId, enabled],
+    );
+    return result.rows.map((row) => row.feature_key);
   }
 }

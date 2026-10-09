@@ -1,5 +1,11 @@
 export type ExpenseCategory = 'COGS' | 'OPERATING' | 'PAYROLL' | 'MARKETING' | 'OTHER';
 
+/** De dónde salió el dinero del gasto. Refleja `ExpensePaymentSource` de GB-BE. */
+export type SelectableExpensePaymentSource = 'CASH_OPERATIONAL' | 'CASH_RESERVE' | 'BANK_ACCOUNT' | 'PERSONAL_MONEY';
+
+/** `UNSPECIFIED_HISTORICAL` solo existe en gastos anteriores a que la fuente fuera obligatoria; no se puede elegir. */
+export type ExpensePaymentSource = SelectableExpensePaymentSource | 'UNSPECIFIED_HISTORICAL';
+
 export interface Expense {
   id: string;
   businessId: string;
@@ -10,6 +16,8 @@ export interface Expense {
   responsible: string | null;
   amount: number;
   expenseDate: string;
+  paymentSource: ExpensePaymentSource;
+  payerName: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -22,9 +30,13 @@ export interface CreateExpensePayload {
   amount: number;
   expenseDate: string;
   branchId?: string;
+  paymentSource: SelectableExpensePaymentSource;
+  /** Quién puso el dinero; obligatorio cuando la fuente es `PERSONAL_MONEY`. */
+  payerName?: string;
 }
 
-export type UpdateExpensePayload = Partial<CreateExpensePayload>;
+/** La fuente no se cambia editando el gasto: el backend la corrige con una reclasificación auditada. */
+export type UpdateExpensePayload = Partial<Omit<CreateExpensePayload, 'paymentSource' | 'payerName'>>;
 
 export interface ExpenseFilters {
   page?: number;

@@ -1,4 +1,8 @@
-import { createReadStream } from 'node:fs';
+import { EntityNotFoundException } from '../../../common/exceptions';
+import {
+  storedFileExists,
+  streamStoredFile,
+} from '../../../common/utils/stream-file.util';
 import { randomUUID } from 'node:crypto';
 import { extname, join } from 'node:path';
 import {
@@ -135,11 +139,14 @@ export class DocumentScansController {
     @Res() res: Response,
   ) {
     const row = await this.documentScansService.getRowOrFail(businessId, id);
-    res.set({
+    const path = join(row.storage_path);
+    if (!(await storedFileExists(path))) {
+      throw new EntityNotFoundException('Document scan file', id);
+    }
+    streamStoredFile(res, path, {
       'Content-Type': row.mime_type,
       'Content-Disposition': `inline; filename="${encodeURIComponent(row.original_file_name)}"`,
     });
-    createReadStream(join(row.storage_path)).pipe(res);
   }
 
   @Patch(':id')

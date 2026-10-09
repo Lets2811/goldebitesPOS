@@ -11,6 +11,9 @@ import { alpha } from '@mui/material/styles';
 import { MODULE_PERMISSIONS, NAV_ENTRIES } from '../../routes/navConfig';
 import { usePermissions } from '../../modules/auth/hooks/use-permissions';
 import { useUiStore } from '../../store/uiStore';
+import { useAuthStore } from '../../modules/auth/store/auth.store';
+import { useBranches } from '../../modules/branches/hooks/use-branches';
+import { useBusinessLogo } from '../../modules/businesses/hooks/use-business-logo';
 import { useCurrentBusiness } from '../../modules/businesses/hooks/use-current-business';
 import { brand } from '../../theme/palette';
 import SidebarItem from './SidebarItem';
@@ -18,8 +21,27 @@ import SidebarItem from './SidebarItem';
 export const SIDEBAR_WIDTH_EXPANDED = 264;
 export const SIDEBAR_WIDTH_COLLAPSED = 76;
 
+/**
+ * Dónde está trabajando el usuario, para la etiqueta junto al nombre del
+ * negocio. Un negocio con una sola sede no tiene "sedes" que nombrar: es la
+ * principal. Con varias, es la sede del usuario, o todas si no tiene una
+ * asignada (quien administra el negocio completo).
+ */
+function useBranchLabel(): string | null {
+  const branchId = useAuthStore((s) => s.user?.branchId ?? null);
+  const { data } = useBranches({ isActive: true, limit: 50 });
+  const branches = data?.data;
+
+  if (!branches) return null;
+  if (branches.length <= 1) return 'Principal';
+  return branches.find((branch) => branch.id === branchId)?.name ?? 'Todas las sedes';
+}
+
 function BrandHeader({ collapsed }: { collapsed: boolean }) {
   const { data: business } = useCurrentBusiness();
+  const { data: logo } = useBusinessLogo();
+  const { isPlatformAdmin } = usePermissions();
+  const branchLabel = useBranchLabel();
 
   return (
     <Stack
@@ -37,18 +59,57 @@ function BrandHeader({ collapsed }: { collapsed: boolean }) {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          backgroundColor: alpha(brand.gold, 0.14),
+          overflow: 'hidden',
+          // El marco dorado es de la corona; un logo propio va sobre su propio fondo.
+          backgroundColor: logo ? 'transparent' : alpha(brand.gold, 0.14),
           color: brand.gold,
-          border: `1px solid ${alpha(brand.gold, 0.4)}`,
+          border: logo ? 'none' : `1px solid ${alpha(brand.gold, 0.4)}`,
         }}
       >
-        <Crown size={18} strokeWidth={2} />
+        {/* La corona es el logo por defecto: la reemplaza el que el negocio suba en Configuración. */}
+        {logo ? (
+          <Box
+            component="img"
+            src={logo}
+            alt={business?.name ? `Logo de ${business.name}` : 'Logo del negocio'}
+            sx={{ width: '100%', height: '100%', objectFit: 'contain' }}
+          />
+        ) : (
+          <Crown size={18} strokeWidth={2} />
+        )}
       </Box>
       {!collapsed && (
         <Box sx={{ minWidth: 0 }}>
-          <Typography variant="subtitle1" noWrap sx={{ fontWeight: 800, letterSpacing: 0.3 }}>
+          <Typography variant="subtitle1" noWrap sx={{ fontWeight: 800, letterSpacing: 0.3, lineHeight: 1.25 }}>
             {business?.name ?? '—'}
           </Typography>
+          {/* Debajo del nombre y no a su lado: un nombre largo de negocio o de sede no cabría en una sola línea. */}
+          {!isPlatformAdmin && branchLabel && (
+            <Tooltip title="Sede en la que estás trabajando" placement="right">
+              <Typography
+                component="span"
+                noWrap
+                sx={{
+                  display: 'inline-block',
+                  maxWidth: '100%',
+                  mt: 0.25,
+                  px: 0.75,
+                  py: 0.125,
+                  fontSize: '0.68rem',
+                  fontWeight: 700,
+                  letterSpacing: 0.4,
+                  textTransform: 'uppercase',
+                  verticalAlign: 'top',
+                  color: brand.gold,
+                  backgroundColor: alpha(brand.gold, 0.12),
+                  border: `1px solid ${alpha(brand.gold, 0.35)}`,
+                  borderRadius: 1,
+                }}
+              >
+                {branchLabel}
+              </Typography>
+            </Tooltip>
+          )}
         </Box>
       )}
     </Stack>

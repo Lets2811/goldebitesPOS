@@ -144,7 +144,7 @@ export default function AnalyticsPage() {
 
   return (
     <>
-      <PageHeader title="Analítica" subtitle="Reportes operativos y comerciales de Golden Bites." breadcrumbs={[{ label: 'Analítica' }]} />
+      <PageHeader title="Analítica" subtitle="Reportes operativos y comerciales del negocio." breadcrumbs={[{ label: 'Analítica' }]} />
 
       <Grid container spacing={2} sx={{ mb: 3 }}>
         <Grid size={{ xs: 12, sm: 6, md: 4 }}>

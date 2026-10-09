@@ -1,6 +1,12 @@
 export interface FeatureDefinition {
   key: string;
   label: string;
+  /**
+   * A paid add-on: off for every business until a platform admin turns it on
+   * for that one. Everything else in the catalog is the other way round, on
+   * until someone turns it off.
+   */
+  optIn?: boolean;
 }
 
 export interface FeatureModuleDefinition extends FeatureDefinition {
@@ -42,13 +48,20 @@ export const FEATURE_MODULES: FeatureModuleDefinition[] = [
   {
     key: 'cash-register',
     label: 'Caja',
-    subFeatures: [{ key: 'cash-register.rectification', label: 'Rectificación de caja' }],
+    subFeatures: [
+      { key: 'cash-register.rectification', label: 'Rectificación de caja' },
+    ],
   },
   { key: 'products', label: 'Productos y recetas' },
   {
     key: 'inventory',
     label: 'Inventario',
-    subFeatures: [{ key: 'inventory.specializedQueries', label: 'Consultas especializadas' }],
+    subFeatures: [
+      {
+        key: 'inventory.specializedQueries',
+        label: 'Consultas especializadas',
+      },
+    ],
   },
   { key: 'purchases', label: 'Compras' },
   { key: 'suppliers', label: 'Proveedores' },
@@ -66,12 +79,20 @@ export const FEATURE_MODULES: FeatureModuleDefinition[] = [
   { key: 'hr', label: 'Recursos Humanos' },
   { key: 'checklists', label: 'Checklists' },
   { key: 'waste', label: 'Mermas' },
-  { key: 'maintenance', label: 'Mantenimiento' },
+  { key: 'maintenance', label: 'Equipos' },
   { key: 'documents', label: 'Documentos' },
   { key: 'documentScans', label: 'Facturas y Recibos' },
   { key: 'marketing', label: 'Marketing' },
   { key: 'analytics', label: 'Analítica' },
+  // The assistant, a separate app that reads this business's data (see the
+  // tura-links module). Sold separately, so it starts off.
+  { key: 'tura', label: 'TURA (asistente)', optIn: true },
 ];
+
+/** The keys that are off for a business unless it has a row turning them on. */
+export const OPT_IN_FEATURE_KEYS: string[] = FEATURE_MODULES.filter(
+  (module) => module.optIn,
+).map((module) => module.key);
 
 export const FEATURE_MODULE_KEYS = FEATURE_MODULES.map((f) => f.key);
 
@@ -94,7 +115,10 @@ export function getParentModuleKey(featureKey: string): string | null {
  * toggles) and PlatformFeatureFlagsService (platform-wide kill switches), so
  * disabling a module always implicitly disables its sub-features in both.
  */
-export function isKeyEnabled(featureKey: string, disabledKeys: Set<string>): boolean {
+export function isKeyEnabled(
+  featureKey: string,
+  disabledKeys: Set<string>,
+): boolean {
   if (disabledKeys.has(featureKey)) return false;
   const parentKey = getParentModuleKey(featureKey);
   return !parentKey || !disabledKeys.has(parentKey);

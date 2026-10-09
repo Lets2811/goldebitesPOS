@@ -7,6 +7,7 @@ import { customerKeys } from '../modules/customers/api/customers.keys';
 import type { Customer } from '../modules/customers/types/customer.types';
 import { orderKeys } from '../modules/orders/api/orders.keys';
 import type { Order } from '../modules/orders/types/order.types';
+import { MODULE_PATHS, isModuleDisabled } from '../routes/navConfig';
 
 /**
  * Busca sobre lo que React Query ya tiene en caché (listas visitadas en esta
@@ -30,15 +31,20 @@ export function registerCoreSearchProviders(): void {
     })),
   );
 
-  registerSearchProvider(() =>
-    cachedListItems<Customer>(customerKeys.lists()).map((customer) => ({
-      id: `customer-${customer.id}`,
-      title: `${customer.firstName} ${customer.lastName ?? ''}`.trim(),
-      subtitle: customer.phone ?? customer.email ?? 'Cliente',
-      group: 'Clientes',
-      path: '/clientes',
-    })),
-  );
+  // Pedidos sigue cargando la lista de clientes, así que estarían en caché
+  // aunque su sección esté apagada: sin esto, la búsqueda llevaría a una
+  // página que no existe.
+  if (!isModuleDisabled('customers')) {
+    registerSearchProvider(() =>
+      cachedListItems<Customer>(customerKeys.lists()).map((customer) => ({
+        id: `customer-${customer.id}`,
+        title: `${customer.firstName} ${customer.lastName ?? ''}`.trim(),
+        subtitle: customer.phone ?? customer.email ?? 'Cliente',
+        group: 'Clientes',
+        path: MODULE_PATHS.customers,
+      })),
+    );
+  }
 
   registerSearchProvider(() =>
     cachedListItems<Order>(orderKeys.lists()).map((order) => ({

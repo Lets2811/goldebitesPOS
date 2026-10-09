@@ -1,39 +1,25 @@
-import {
-  Body,
-  Controller,
-  Get,
-  Param,
-  Patch,
-  Post,
-  Query,
-} from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Query } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { CurrentBusiness } from '../../../common/decorators/current-business.decorator';
 import { CurrentUser } from '../../../common/decorators/current-user.decorator';
 import { Permissions } from '../../../common/decorators/permissions.decorator';
 import { BranchQueryDto } from '../dto/branch-query.dto';
-import { CreateBranchDto } from '../dto/create-branch.dto';
 import { SetBranchPaymentPolicyDto } from '../dto/set-branch-payment-policy.dto';
-import { SetBranchStatusDto } from '../dto/set-branch-status.dto';
-import { UpdateBranchDto } from '../dto/update-branch.dto';
+import { SetBranchTableCountDto } from '../dto/set-branch-table-count.dto';
 import { BranchesService } from '../services/branches.service';
 
+/**
+ * A business's own view of its branches. It can read them and set what
+ * belongs to running one (how many tables, the payment policy), but which
+ * branches exist is not its to change: having more than one is an add-on,
+ * so branches are created, renamed, deactivated and deleted by the platform
+ * (see PlatformAdminController).
+ */
 @ApiTags('Branches')
 @ApiBearerAuth()
 @Controller('branches')
 export class BranchesController {
   constructor(private readonly branchesService: BranchesService) {}
-
-  @Post()
-  @Permissions('branches.manage')
-  @ApiOperation({ summary: 'Create a branch for the current business' })
-  create(
-    @CurrentBusiness() businessId: string,
-    @CurrentUser('userId') actorUserId: string,
-    @Body() dto: CreateBranchDto,
-  ) {
-    return this.branchesService.create({ businessId, ...dto }, actorUserId);
-  }
 
   @Get()
   @ApiOperation({ summary: 'List branches for the current business' })
@@ -58,36 +44,27 @@ export class BranchesController {
 
   @Patch(':id')
   @Permissions('branches.manage')
-  @ApiOperation({ summary: 'Update a branch' })
-  update(
+  @ApiOperation({ summary: 'Set how many tables a branch has' })
+  setTableCount(
     @CurrentBusiness() businessId: string,
     @CurrentUser('userId') actorUserId: string,
     @Param('id') id: string,
-    @Body() dto: UpdateBranchDto,
+    @Body() dto: SetBranchTableCountDto,
   ) {
-    return this.branchesService.update(businessId, id, dto, actorUserId);
-  }
-
-  @Patch(':id/status')
-  @Permissions('branches.manage')
-  @ApiOperation({ summary: 'Activate or deactivate a branch' })
-  setStatus(
-    @CurrentBusiness() businessId: string,
-    @CurrentUser('userId') actorUserId: string,
-    @Param('id') id: string,
-    @Body() dto: SetBranchStatusDto,
-  ) {
-    return this.branchesService.setActive(
+    return this.branchesService.setTableCount(
       businessId,
       id,
-      dto.isActive,
+      dto.tableCount,
       actorUserId,
     );
   }
 
   @Patch(':id/payment-policy')
   @Permissions('branches.manage')
-  @ApiOperation({ summary: 'Set whether orders at this branch require full payment before kitchen' })
+  @ApiOperation({
+    summary:
+      'Set whether orders at this branch require full payment before kitchen',
+  })
   setPaymentPolicy(
     @CurrentBusiness() businessId: string,
     @CurrentUser('userId') actorUserId: string,

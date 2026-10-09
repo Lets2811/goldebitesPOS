@@ -1,6 +1,8 @@
 import { apiClient } from '../../../lib/api/api-client';
 import type { ApiResponse } from '../../../lib/api/api-types';
+import type { Branch } from '../../branches/types/branch.types';
 import type {
+  BranchDetailsPayload,
   Business,
   BusinessUserSummary,
   CreatePlatformBusinessPayload,
@@ -42,6 +44,39 @@ export const platformAdminApi = {
       `/platform-admin/businesses/${businessId}/users/${userId}/reset-password`,
     );
     return data.data;
+  },
+
+  async getBranches(businessId: string): Promise<Branch[]> {
+    const { data } = await apiClient.get<ApiResponse<Branch[]>>(`/platform-admin/businesses/${businessId}/branches`);
+    return data.data;
+  },
+
+  async createBranch(businessId: string, payload: BranchDetailsPayload & { name: string }): Promise<Branch> {
+    const { data } = await apiClient.post<ApiResponse<Branch>>(
+      `/platform-admin/businesses/${businessId}/branches`,
+      payload,
+    );
+    return data.data;
+  },
+
+  async updateBranch(businessId: string, branchId: string, payload: BranchDetailsPayload): Promise<Branch> {
+    const { data } = await apiClient.patch<ApiResponse<Branch>>(
+      `/platform-admin/businesses/${businessId}/branches/${branchId}`,
+      payload,
+    );
+    return data.data;
+  },
+
+  async setBranchStatus(businessId: string, branchId: string, isActive: boolean): Promise<Branch> {
+    const { data } = await apiClient.patch<ApiResponse<Branch>>(
+      `/platform-admin/businesses/${businessId}/branches/${branchId}/status`,
+      { isActive },
+    );
+    return data.data;
+  },
+
+  async deleteBranch(businessId: string, branchId: string): Promise<void> {
+    await apiClient.delete(`/platform-admin/businesses/${businessId}/branches/${branchId}`);
   },
 
   async getFeatureFlags(): Promise<PlatformFeatureFlagStatus[]> {

@@ -61,6 +61,7 @@ import { SettingsModule } from './modules/settings/settings.module';
 import { SidesModule } from './modules/sides/sides.module';
 import { SuppliersModule } from './modules/suppliers/suppliers.module';
 import { TableNamesModule } from './modules/table-names/table-names.module';
+import { TuraLinksModule } from './modules/tura-links/tura-links.module';
 import { TabletKioskModule } from './modules/tablet-kiosk/tablet-kiosk.module';
 import { UsersModule } from './modules/users/users.module';
 import { WasteModule } from './modules/waste/waste.module';
@@ -93,6 +94,7 @@ import { WasteModule } from './modules/waste/waste.module';
     SidesModule,
     SuppliersModule,
     TableNamesModule,
+    TuraLinksModule,
     InventoryItemCategoriesModule,
     InventoryItemsModule,
     RecipesModule,

@@ -16,6 +16,7 @@ describe('AuthService', () => {
   let rolesService: { findOne: jest.Mock };
   let businessFeaturesService: { getEnabledKeys: jest.Mock };
   let platformFeatureFlagsService: { getEnabledKeys: jest.Mock };
+  let branchesService: { findOnlyActiveBranchId: jest.Mock };
   let jwtService: { sign: jest.Mock };
   let configService: { getOrThrow: jest.Mock };
   let transactionService: { execute: jest.Mock };
@@ -86,6 +87,9 @@ describe('AuthService', () => {
     platformFeatureFlagsService = {
       getEnabledKeys: jest.fn().mockResolvedValue([]),
     };
+    branchesService = {
+      findOnlyActiveBranchId: jest.fn().mockResolvedValue(null),
+    };
     jwtService = { sign: jest.fn().mockReturnValue('signed.jwt.token') };
     configService = { getOrThrow: jest.fn().mockReturnValue(appConfig) };
     transactionService = {
@@ -112,6 +116,7 @@ describe('AuthService', () => {
       rolesService as never,
       businessFeaturesService as never,
       platformFeatureFlagsService as never,
+      branchesService as never,
       jwtService as never,
       configService as never,
       transactionService as never,
@@ -152,7 +157,9 @@ describe('AuthService', () => {
         'inventory',
         'inventory.specializedQueries',
       ]);
-      platformFeatureFlagsService.getEnabledKeys.mockResolvedValue(['inventory']);
+      platformFeatureFlagsService.getEnabledKeys.mockResolvedValue([
+        'inventory',
+      ]);
 
       await service.login(
         { email: 'ada@goldenbites.local', password: 'correct-password' },
@@ -161,7 +168,52 @@ describe('AuthService', () => {
 
       const [payload] = jwtService.sign.mock.calls[0];
       expect(payload.enabledFeatures).toEqual(['inventory']);
-      expect(payload.enabledFeatures).not.toContain('inventory.specializedQueries');
+      expect(payload.enabledFeatures).not.toContain(
+        'inventory.specializedQueries',
+      );
+    });
+
+    it('places a user with no branch at the only branch of a single-site business', async () => {
+      usersService.findRawByEmailAcrossBusinesses.mockResolvedValue([
+        makeUserRow({ branch_id: null }),
+      ]);
+      usersService.verifyPassword.mockResolvedValue(true);
+      branchesService.findOnlyActiveBranchId.mockResolvedValue('only-branch');
+
+      const result = await service.login(
+        { email: 'ada@goldenbites.local', password: 'correct-password' },
+        {},
+      );
+
+      expect(result.user.branchId).toBe('only-branch');
+      expect(jwtService.sign).toHaveBeenCalledWith(
+        expect.objectContaining({ branchId: 'only-branch' }),
+        expect.anything(),
+      );
+    });
+
+    it("keeps a user's own branch, and leaves one with none unassigned at a business with several", async () => {
+      usersService.verifyPassword.mockResolvedValue(true);
+
+      usersService.findRawByEmailAcrossBusinesses.mockResolvedValue([
+        makeUserRow({ branch_id: 'own-branch' }),
+      ]);
+      const assigned = await service.login(
+        { email: 'ada@goldenbites.local', password: 'correct-password' },
+        {},
+      );
+      expect(assigned.user.branchId).toBe('own-branch');
+      expect(branchesService.findOnlyActiveBranchId).not.toHaveBeenCalled();
+
+      // findOnlyActiveBranchId answers null when the business has several.
+      usersService.findRawByEmailAcrossBusinesses.mockResolvedValue([
+        makeUserRow({ branch_id: null }),
+      ]);
+      const unassigned = await service.login(
+        { email: 'ada@goldenbites.local', password: 'correct-password' },
+        {},
+      );
+      expect(unassigned.user.branchId).toBeNull();
     });
 
     it('rejects when no user matches the email', async () => {

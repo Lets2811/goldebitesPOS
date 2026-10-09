@@ -14,6 +14,7 @@ import { AppConfig } from '../../../config/app.config';
 import { TransactionService } from '../../../database/transaction.service';
 import { AuditService } from '../../audit/services/audit.service';
 import { BusinessFeaturesService } from '../../business-features/services/business-features.service';
+import { BranchesService } from '../../branches/services/branches.service';
 import { PlatformFeatureFlagsService } from '../../platform-feature-flags/services/platform-feature-flags.service';
 import { RolesService } from '../../roles/services/roles.service';
 import { UserRow } from '../../users/domain/user.interface';
@@ -52,6 +53,7 @@ export class AuthService {
     private readonly rolesService: RolesService,
     private readonly businessFeaturesService: BusinessFeaturesService,
     private readonly platformFeatureFlagsService: PlatformFeatureFlagsService,
+    private readonly branchesService: BranchesService,
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
     private readonly transactionService: TransactionService,
@@ -300,7 +302,7 @@ export class AuthService {
     const payload: JwtPayload = {
       sub: user.id,
       businessId: user.business_id,
-      branchId: user.branch_id,
+      branchId: await this.resolveBranchId(user),
       roleId: user.role_id,
       roleName: role.name,
       permissions: role.permissions,
@@ -346,7 +348,7 @@ export class AuthService {
     return {
       id: user.id,
       businessId: user.business_id,
-      branchId: user.branch_id,
+      branchId: await this.resolveBranchId(user),
       roleId: user.role_id,
       roleName: role.name,
       firstName: user.first_name,
@@ -354,6 +356,19 @@ export class AuthService {
       email: user.email,
       mustChangePassword: user.must_change_password,
     };
+  }
+
+  /**
+   * The branch a user works at. Someone assigned to none, at a business with
+   * a single branch, works at that one: branches are an add-on, and a
+   * business without it should not have to assign its people to anything.
+   * At a business with several, an unassigned user stays unassigned.
+   */
+  private async resolveBranchId(user: UserRow): Promise<string | null> {
+    return (
+      user.branch_id ??
+      (await this.branchesService.findOnlyActiveBranchId(user.business_id))
+    );
   }
 
   private hashToken(token: string): string {

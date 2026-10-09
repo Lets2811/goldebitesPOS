@@ -10,6 +10,7 @@ export function useDeleteExpense() {
     mutationFn: (id: string) => expensesApi.deleteExpense(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: expenseKeys.all });
+      queryClient.invalidateQueries({ queryKey: ['funds'] });
     },
   });
 }

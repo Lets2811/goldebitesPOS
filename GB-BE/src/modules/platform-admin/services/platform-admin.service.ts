@@ -4,6 +4,11 @@ import { EntityNotFoundException } from '../../../common/exceptions';
 import { AuditService } from '../../audit/services/audit.service';
 import { Business } from '../../businesses/domain/business.interface';
 import { BusinessesService } from '../../businesses/services/businesses.service';
+import { Branch } from '../../branches/domain/branch.interface';
+import {
+  CreateBranchData,
+  UpdateBranchData,
+} from '../../branches/domain/branch.types';
 import { BranchesService } from '../../branches/services/branches.service';
 import {
   BusinessFeaturesService,
@@ -18,6 +23,8 @@ import { UsersService } from '../../users/services/users.service';
 import { CreatePlatformBusinessDto } from '../dto/create-platform-business.dto';
 
 const DEFAULT_BRANCH_NAME = 'Sede Principal';
+/** Far more branches than any business has; the list is shown whole. */
+const MAX_BRANCHES_LISTED = 200;
 
 export interface BusinessUserSummary {
   id: string;
@@ -128,6 +135,57 @@ export class PlatformAdminService {
     return { temporaryPassword };
   }
 
+  /** Every branch of a business, active or not. */
+  async getBranches(businessId: string): Promise<Branch[]> {
+    await this.businessesService.findById(businessId);
+    const { data } = await this.branchesService.findAll({
+      businessId,
+      page: 1,
+      limit: MAX_BRANCHES_LISTED,
+    });
+    return data;
+  }
+
+  async createBranch(
+    businessId: string,
+    data: Omit<CreateBranchData, 'businessId'>,
+    actorUserId: string,
+  ): Promise<Branch> {
+    await this.businessesService.findById(businessId);
+    return this.branchesService.create({ businessId, ...data }, actorUserId);
+  }
+
+  async updateBranch(
+    businessId: string,
+    branchId: string,
+    data: UpdateBranchData,
+    actorUserId: string,
+  ): Promise<Branch> {
+    return this.branchesService.update(businessId, branchId, data, actorUserId);
+  }
+
+  async setBranchStatus(
+    businessId: string,
+    branchId: string,
+    isActive: boolean,
+    actorUserId: string,
+  ): Promise<Branch> {
+    return this.branchesService.setActive(
+      businessId,
+      branchId,
+      isActive,
+      actorUserId,
+    );
+  }
+
+  async deleteBranch(
+    businessId: string,
+    branchId: string,
+    actorUserId: string,
+  ): Promise<void> {
+    await this.branchesService.remove(businessId, branchId, actorUserId);
+  }
+
   async getFeatures(businessId: string): Promise<FeatureStatus[]> {
     await this.businessesService.findById(businessId);
     return this.businessFeaturesService.getEffectiveCatalog(businessId);
@@ -176,7 +234,9 @@ export class PlatformAdminService {
       businessId: actorBusinessId,
       userId: actorUserId,
       entityType: 'platform_feature_flag',
-      action: enabled ? 'PLATFORM_ENABLE_GLOBAL_FEATURE' : 'PLATFORM_DISABLE_GLOBAL_FEATURE',
+      action: enabled
+        ? 'PLATFORM_ENABLE_GLOBAL_FEATURE'
+        : 'PLATFORM_DISABLE_GLOBAL_FEATURE',
       newValues: { featureKey, enabled },
     });
   }

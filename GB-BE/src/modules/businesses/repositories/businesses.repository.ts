@@ -60,10 +60,10 @@ export class BusinessesRepository implements IBusinessesRepository {
     const result = await this.db.query<BusinessRow>(
       `UPDATE businesses
        SET name = COALESCE($2, name),
-           legal_name = COALESCE($3, legal_name),
-           tax_id = COALESCE($4, tax_id),
-           email = COALESCE($5, email),
-           phone = COALESCE($6, phone),
+           legal_name = CASE WHEN $9 THEN $3 ELSE legal_name END,
+           tax_id = CASE WHEN $10 THEN $4 ELSE tax_id END,
+           email = CASE WHEN $11 THEN $5 ELSE email END,
+           phone = CASE WHEN $12 THEN $6 ELSE phone END,
            currency = COALESCE($7, currency),
            timezone = COALESCE($8, timezone)
        WHERE id = $1
@@ -77,6 +77,12 @@ export class BusinessesRepository implements IBusinessesRepository {
         data.phone ?? null,
         data.currency ?? null,
         data.timezone ?? null,
+        // The optional details can be cleared, so "not sent" and "sent empty"
+        // are told apart: only a field that was sent is written.
+        data.legalName !== undefined,
+        data.taxId !== undefined,
+        data.email !== undefined,
+        data.phone !== undefined,
       ],
       client,
     );

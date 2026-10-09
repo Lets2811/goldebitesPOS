@@ -182,7 +182,7 @@ export default function WaiterKioskPage() {
         }}
       >
         <Typography variant="subtitle1" sx={{ fontWeight: 800 }}>
-          {business.data?.name ?? 'Golden Bites'} · Mesero
+          {[business.data?.name, 'Mesero'].filter(Boolean).join(' · ')}
         </Typography>
         <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
           <Badge badgeContent={orders.length} color="primary">

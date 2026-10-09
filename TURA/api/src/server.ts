@@ -1,0 +1,177 @@
+import { timingSafeEqual } from 'node:crypto';
+import Anthropic from '@anthropic-ai/sdk';
+import cors from 'cors';
+import express, { type Response } from 'express';
+import { z } from 'zod';
+import { runTurn, TuraDeclinedError, type TuraEvent } from './agent/run-turn.js';
+import { runSimulatedTurn } from './agent/simulated-turn.js';
+import { authenticate, UnauthenticatedError } from './auth.js';
+import { config } from './config.js';
+import { PosApiError } from './pos/pos-client.js';
+import { newMeter, recordTurn, summarizeUsage, type TurnRecord } from './usage/usage-log.js';
+
+const chatRequestSchema = z.object({
+  mode: z.enum(['chat', 'voice']).default('chat'),
+  messages: z
+    .array(
+      z.object({
+        role: z.enum(['user', 'assistant']),
+        content: z.string().trim().min(1).max(4000),
+      }),
+    )
+    .min(1)
+    .max(40)
+    .refine((messages) => messages.at(-1)?.role === 'user', {
+      message: 'The last message must be from the user',
+    }),
+});
+
+/** Message shown to the user for a failure mid-answer; details stay in the server log. */
+function describeFailure(error: unknown): string {
+  if (error instanceof TuraDeclinedError) {
+    return 'No puedo ayudarte con esa solicitud.';
+  }
+  if (error instanceof Anthropic.AuthenticationError) {
+    return 'TURA no está configurada: falta la credencial del modelo en el servidor.';
+  }
+  if (error instanceof Anthropic.RateLimitError) {
+    return 'TURA está recibiendo muchas consultas. Intenta de nuevo en un momento.';
+  }
+  if (error instanceof PosApiError) {
+    return 'No pude conectarme con el POS. Intenta de nuevo en un momento.';
+  }
+  return 'Ocurrió un error al responder. Intenta de nuevo.';
+}
+
+function sendEvent(res: Response, event: TuraEvent | { type: 'error'; message: string }): void {
+  res.write(`data: ${JSON.stringify(event)}\n\n`);
+}
+
+const app = express();
+
+app.use(cors({ origin: config.corsOrigin.split(',') }));
+app.use(express.json({ limit: '200kb' }));
+
+app.get('/tura/health', (_req, res) => {
+  res.json({ status: 'ok', simulated: config.simulateAi });
+});
+
+/**
+ * One conversational turn. The client sends the text history (it owns the
+ * conversation; this service keeps no state) and receives the answer as a
+ * stream of server-sent events — see TuraEvent.
+ */
+app.post('/tura/chat', async (req, res) => {
+  const parsed = chatRequestSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ message: 'Solicitud inválida' });
+    return;
+  }
+
+  let session;
+  try {
+    session = await authenticate(req);
+  } catch (error) {
+    if (error instanceof UnauthenticatedError) {
+      res.status(401).json({ message: 'No autenticado' });
+    } else if (error instanceof PosApiError) {
+      // 401/403 from the POS are the caller's to act on (refresh the token,
+      // change the password); anything else means the POS is unavailable.
+      const status = error.status === 401 || error.status === 403 ? error.status : 502;
+      res.status(status).json({ message: error.message });
+    } else {
+      console.error('Authentication failed unexpectedly', error);
+      res.status(500).json({ message: 'Error interno' });
+    }
+    return;
+  }
+
+  res.writeHead(200, {
+    'Content-Type': 'text/event-stream',
+    'Cache-Control': 'no-cache, no-transform',
+    Connection: 'keep-alive',
+    // Tells nginx not to buffer the stream when this runs behind it.
+    'X-Accel-Buffering': 'no',
+  });
+
+  let clientGone = false;
+  res.on('close', () => {
+    clientGone = true;
+  });
+
+  const startedAt = Date.now();
+  const meter = newMeter();
+  let outcome: TurnRecord['outcome'] = 'ok';
+
+  try {
+    const emit = (event: TuraEvent) => sendEvent(res, event);
+    if (config.simulateAi) {
+      await runSimulatedTurn(session, parsed.data.messages, emit, () => clientGone);
+    } else {
+      await runTurn(session, parsed.data.messages, parsed.data.mode, meter, emit, () => clientGone);
+    }
+    if (clientGone) {
+      outcome = 'cancelled';
+    }
+  } catch (error) {
+    outcome = 'error';
+    console.error('Turn failed', error);
+    if (!clientGone) {
+      sendEvent(res, { type: 'error', message: describeFailure(error) });
+    }
+  } finally {
+    res.end();
+    // Failed and abandoned turns are logged too: they still cost what they used.
+    recordTurn({
+      at: new Date(startedAt).toISOString(),
+      mode: parsed.data.mode,
+      outcome,
+      firstTextMs: meter.firstTextAt === null ? null : meter.firstTextAt - startedAt,
+      totalMs: Date.now() - startedAt,
+      tools: meter.tools,
+      calls: meter.calls,
+    }).catch((error: unknown) => console.error('Could not record usage', error));
+  }
+});
+
+function isAdmin(header: string | undefined): boolean {
+  const presented = Buffer.from(header?.startsWith('Bearer ') ? header.slice(7).trim() : '');
+  const expected = Buffer.from(config.adminKey);
+  return (
+    expected.length > 0 && presented.length === expected.length && timingSafeEqual(presented, expected)
+  );
+}
+
+/**
+ * Usage and cost of the last `days` days, for the developer. Guarded by its own
+ * key (TURA_ADMIN_KEY) rather than a POS role: what TURA costs to run is not
+ * something the restaurant's staff should see.
+ */
+app.get('/tura/admin/usage', async (req, res) => {
+  if (!config.adminKey) {
+    res.status(404).json({ message: 'No disponible' });
+    return;
+  }
+  if (!isAdmin(req.headers.authorization)) {
+    res.status(401).json({ message: 'Clave de administración incorrecta' });
+    return;
+  }
+  const days = z.coerce.number().int().min(1).max(365).catch(30).parse(req.query.days);
+  try {
+    res.json(await summarizeUsage(days));
+  } catch (error) {
+    console.error('Could not read usage', error);
+    res.status(500).json({ message: 'No se pudo leer el registro de uso' });
+  }
+});
+
+app.listen(config.port, () => {
+  console.log(`TURA API running on http://localhost:${config.port}/tura`);
+  if (config.simulateAi) {
+    console.warn('TURA_SIMULATE_AI is on: answers are canned and Claude is not called');
+  } else if (!process.env.ANTHROPIC_API_KEY && !process.env.ANTHROPIC_AUTH_TOKEN) {
+    console.warn(
+      'ANTHROPIC_API_KEY is not set: /tura/chat will fail until it is added to .env',
+    );
+  }
+});

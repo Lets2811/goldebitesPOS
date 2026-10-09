@@ -89,16 +89,18 @@ export default function HrSettingsPage() {
             <Stack spacing={2}>
               <Box>
                 <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
-                  Normas por sede
+                  {(branches?.data ?? []).length > 1 ? 'Normas por sede' : 'Normas del negocio'}
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
-                  Cada empleado ve estas normas en "Mi Perfil", según la sede a la que esté asignado.
+                  {(branches?.data ?? []).length > 1
+                    ? 'Cada empleado ve estas normas en "Mi Perfil", según la sede a la que esté asignado.'
+                    : 'Cada empleado ve estas normas en "Mi Perfil".'}
                 </Typography>
               </Box>
 
               {branchesLoading ? (
                 <LoadingSkeleton variant="list" />
-              ) : (
+              ) : (branches?.data ?? []).length <= 1 ? null : (
                 <TextField
                   select
                   label="Sede"

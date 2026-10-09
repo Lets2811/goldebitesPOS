@@ -36,3 +36,11 @@ export interface BusinessUserSummary {
   roleName: string;
   status: string;
 }
+
+/** What the platform can set on a branch; which branches a business has is the platform's to manage. */
+export interface BranchDetailsPayload {
+  name?: string;
+  address?: string;
+  city?: string;
+  phone?: string;
+}

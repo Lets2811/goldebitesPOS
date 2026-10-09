@@ -10,10 +10,11 @@ export interface CreateBusinessData {
 
 export interface UpdateBusinessData {
   name?: string;
-  legalName?: string;
-  taxId?: string;
-  email?: string;
-  phone?: string;
+  /** For these four: null clears what is stored, undefined leaves it alone. */
+  legalName?: string | null;
+  taxId?: string | null;
+  email?: string | null;
+  phone?: string | null;
   currency?: string;
   timezone?: string;
 }

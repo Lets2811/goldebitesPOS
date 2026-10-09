@@ -8,6 +8,11 @@ export interface JwtPayload {
   isPlatformAdmin: boolean;
   enabledFeatures: string[];
   mustChangePassword: boolean;
+  /**
+   * Set on the tokens TURA (the assistant) gets through a user's link, and
+   * absent from the ones a user gets by signing in. See the tura-links module.
+   */
+  turaLinkId?: string;
 }
 
 export interface AuthTokens {

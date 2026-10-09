@@ -1,8 +1,11 @@
 {
   "name": "golden-bites-pos",
   "private": true,
-  "description": "Root-level tooling only — GB (frontend) and GB-BE (backend) are managed independently. See deploy/README.md.",
+  "description": "Root-level tooling only — GB (frontend), GB-BE (backend) and TURA are managed independently. See deploy/README.md.",
   "scripts": {
+    "POS": "node scripts/dev.mjs pos",
+    "pos": "node scripts/dev.mjs pos",
+    "tura": "node scripts/dev.mjs tura",
     "deploy": "bash deploy/deploy.sh"
   }
 }

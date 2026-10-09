@@ -1,8 +1,24 @@
-import { Body, Controller, Get, Param, Post, Put } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Param,
+  ParseUUIDPipe,
+  Patch,
+  Post,
+  Put,
+} from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { CurrentBusiness } from '../../../common/decorators/current-business.decorator';
 import { CurrentUser } from '../../../common/decorators/current-user.decorator';
+import { RawResponse } from '../../../common/decorators/raw-response.decorator';
 import { RequirePlatformAdmin } from '../../../common/decorators/require-platform-admin.decorator';
+import { CreateBranchDto } from '../../branches/dto/create-branch.dto';
+import { SetBranchStatusDto } from '../../branches/dto/set-branch-status.dto';
+import { UpdateBranchDto } from '../../branches/dto/update-branch.dto';
 import { CreatePlatformBusinessDto } from '../dto/create-platform-business.dto';
 import { SetFeatureDto } from '../dto/set-feature.dto';
 import { PlatformAdminService } from '../services/platform-admin.service';
@@ -60,6 +76,73 @@ export class PlatformAdminController {
     );
   }
 
+  // Branches: how many a business has is what it has contracted, so they
+  // are managed here and not by the business itself.
+
+  @Get('businesses/:id/branches')
+  @ApiOperation({ summary: "List a business's branches, active or not" })
+  getBranches(@Param('id', ParseUUIDPipe) businessId: string) {
+    return this.platformAdminService.getBranches(businessId);
+  }
+
+  @Post('businesses/:id/branches')
+  @ApiOperation({ summary: 'Add a branch to a business' })
+  createBranch(
+    @CurrentUser('userId') actorUserId: string,
+    @Param('id', ParseUUIDPipe) businessId: string,
+    @Body() dto: CreateBranchDto,
+  ) {
+    return this.platformAdminService.createBranch(businessId, dto, actorUserId);
+  }
+
+  @Patch('businesses/:id/branches/:branchId')
+  @ApiOperation({ summary: 'Rename a branch or change its contact details' })
+  updateBranch(
+    @CurrentUser('userId') actorUserId: string,
+    @Param('id', ParseUUIDPipe) businessId: string,
+    @Param('branchId', ParseUUIDPipe) branchId: string,
+    @Body() dto: UpdateBranchDto,
+  ) {
+    return this.platformAdminService.updateBranch(
+      businessId,
+      branchId,
+      dto,
+      actorUserId,
+    );
+  }
+
+  @Patch('businesses/:id/branches/:branchId/status')
+  @ApiOperation({ summary: 'Activate or deactivate a branch' })
+  setBranchStatus(
+    @CurrentUser('userId') actorUserId: string,
+    @Param('id', ParseUUIDPipe) businessId: string,
+    @Param('branchId', ParseUUIDPipe) branchId: string,
+    @Body() dto: SetBranchStatusDto,
+  ) {
+    return this.platformAdminService.setBranchStatus(
+      businessId,
+      branchId,
+      dto.isActive,
+      actorUserId,
+    );
+  }
+
+  @Delete('businesses/:id/branches/:branchId')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @RawResponse()
+  @ApiOperation({ summary: 'Delete a branch that was never used' })
+  async deleteBranch(
+    @CurrentUser('userId') actorUserId: string,
+    @Param('id', ParseUUIDPipe) businessId: string,
+    @Param('branchId', ParseUUIDPipe) branchId: string,
+  ) {
+    await this.platformAdminService.deleteBranch(
+      businessId,
+      branchId,
+      actorUserId,
+    );
+  }
+
   @Get('businesses/:id/features')
   @ApiOperation({ summary: "Get a business's effective feature catalog" })
   getFeatures(@Param('id') businessId: string) {
@@ -67,7 +150,9 @@ export class PlatformAdminController {
   }
 
   @Put('businesses/:id/features/:key')
-  @ApiOperation({ summary: 'Enable or disable a module or sub-feature for a business' })
+  @ApiOperation({
+    summary: 'Enable or disable a module or sub-feature for a business',
+  })
   setFeature(
     @CurrentUser('userId') actorUserId: string,
     @Param('id') businessId: string,
@@ -83,13 +168,18 @@ export class PlatformAdminController {
   }
 
   @Get('feature-flags')
-  @ApiOperation({ summary: 'Get the platform-wide feature flag catalog — applies to every business at once' })
+  @ApiOperation({
+    summary:
+      'Get the platform-wide feature flag catalog — applies to every business at once',
+  })
   getFeatureFlags() {
     return this.platformAdminService.getFeatureFlags();
   }
 
   @Put('feature-flags/:key')
-  @ApiOperation({ summary: 'Enable or disable a feature platform-wide, for every business' })
+  @ApiOperation({
+    summary: 'Enable or disable a feature platform-wide, for every business',
+  })
   setFeatureFlag(
     @CurrentUser('userId') actorUserId: string,
     @CurrentBusiness() businessId: string,

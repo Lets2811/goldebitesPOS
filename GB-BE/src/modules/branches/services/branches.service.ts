@@ -1,8 +1,10 @@
 import { Inject, Injectable } from '@nestjs/common';
 import {
+  BusinessRuleException,
   ConflictException,
   EntityNotFoundException,
 } from '../../../common/exceptions';
+import { isPgDatabaseError } from '../../../common/utils/pg-error-mapper';
 import { PaginatedResult } from '../../../common/pagination/paginated-result.interface';
 import { buildPaginationMeta } from '../../../common/pagination/pagination.util';
 import { AuditService } from '../../audit/services/audit.service';
@@ -15,6 +17,8 @@ import {
 import { BranchMapper } from '../mappers/branch.mapper';
 import { BRANCHES_REPOSITORY } from '../repositories/branches.repository.interface';
 import type { IBranchesRepository } from '../repositories/branches.repository.interface';
+
+const FOREIGN_KEY_VIOLATION = '23503';
 
 @Injectable()
 export class BranchesService {
@@ -100,6 +104,62 @@ export class BranchesService {
     return BranchMapper.toDomain(row);
   }
 
+  /**
+   * The branch everyone at a single-site business works at, or null for a
+   * business with several (or none) active. Having several branches is an
+   * add-on the platform sells; without it a business has just the one it was
+   * created with, and nobody needs to be assigned to it: this is the branch
+   * they are taken to be at.
+   */
+  async findOnlyActiveBranchId(businessId: string): Promise<string | null> {
+    const ids = await this.branchesRepository.findActiveIds(businessId, 2);
+    return ids.length === 1 ? ids[0] : null;
+  }
+
+  /** Sets how many tables a branch has: the one thing about a branch its own business manages. */
+  async setTableCount(
+    businessId: string,
+    id: string,
+    tableCount: number,
+    actorUserId?: string,
+  ): Promise<Branch> {
+    return this.update(businessId, id, { tableCount }, actorUserId);
+  }
+
+  /**
+   * Deletes a branch that was never used. One with orders, staff or stock is
+   * kept (deactivate it instead), and so is a business's last active branch.
+   */
+  async remove(
+    businessId: string,
+    id: string,
+    actorUserId?: string,
+  ): Promise<void> {
+    const branch = await this.getOwnedBranchOrFail(businessId, id);
+    if (branch.is_active) {
+      await this.assertNotLastActive(businessId, id);
+    }
+    try {
+      await this.branchesRepository.delete(id, businessId);
+    } catch (error) {
+      if (isPgDatabaseError(error) && error.code === FOREIGN_KEY_VIOLATION) {
+        throw new ConflictException(
+          'Esta sede tiene información registrada (pedidos, personal o inventario) y no se puede eliminar. Desactívala en su lugar.',
+          'BRANCH_IN_USE',
+        );
+      }
+      throw error;
+    }
+    await this.auditService.record({
+      businessId,
+      userId: actorUserId,
+      entityType: 'branch',
+      entityId: id,
+      action: 'DELETE',
+      oldValues: { name: branch.name },
+    });
+  }
+
   async setActive(
     businessId: string,
     id: string,
@@ -107,6 +167,9 @@ export class BranchesService {
     actorUserId?: string,
   ): Promise<Branch> {
     await this.getOwnedBranchOrFail(businessId, id);
+    if (!isActive) {
+      await this.assertNotLastActive(businessId, id);
+    }
     const row = await this.branchesRepository.setActive(
       id,
       businessId,
@@ -152,6 +215,20 @@ export class BranchesService {
       newValues: { paymentPolicy },
     });
     return BranchMapper.toDomain(row);
+  }
+
+  /** A business always keeps one active branch: everything it records happens at one. */
+  private async assertNotLastActive(
+    businessId: string,
+    id: string,
+  ): Promise<void> {
+    const ids = await this.branchesRepository.findActiveIds(businessId, 2);
+    if (ids.length === 1 && ids[0] === id) {
+      throw new BusinessRuleException(
+        'Un negocio necesita al menos una sede activa.',
+        'LAST_ACTIVE_BRANCH',
+      );
+    }
   }
 
   private async getOwnedBranchOrFail(

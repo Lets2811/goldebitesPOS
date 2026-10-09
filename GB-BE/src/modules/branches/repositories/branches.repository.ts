@@ -145,6 +145,29 @@ export class BranchesRepository implements IBranchesRepository {
     return result.rows[0] ?? null;
   }
 
+  async findActiveIds(businessId: string, limit: number): Promise<string[]> {
+    const result = await this.db.query<{ id: string }>(
+      `SELECT id FROM branches WHERE business_id = $1 AND is_active = true ORDER BY created_at, id LIMIT $2`,
+      [businessId, limit],
+    );
+    return result.rows.map((row) => row.id);
+  }
+
+  async delete(id: string, businessId: string): Promise<boolean> {
+    // Every branch has audit entries from the moment it is created, and they
+    // would keep it from ever being deleted. They stay, no longer pointing at
+    // the branch. It is one statement, so if anything else still refers to
+    // the branch the delete fails and the audit entries are left as they were.
+    const result = await this.db.query(
+      `WITH detached AS (
+         UPDATE audit_logs SET branch_id = NULL WHERE branch_id = $1 AND business_id = $2
+       )
+       DELETE FROM branches WHERE id = $1 AND business_id = $2`,
+      [id, businessId],
+    );
+    return result.rowCount > 0;
+  }
+
   async existsByName(
     businessId: string,
     name: string,

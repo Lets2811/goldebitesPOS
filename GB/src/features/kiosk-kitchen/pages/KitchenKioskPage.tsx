@@ -63,7 +63,7 @@ export default function KitchenKioskPage() {
         }}
       >
         <Typography variant="subtitle1" sx={{ fontWeight: 800 }}>
-          {business.data?.name ?? 'Golden Bites'} · Cocina
+          {[business.data?.name, 'Cocina'].filter(Boolean).join(' · ')}
         </Typography>
         <Button
           size="small"

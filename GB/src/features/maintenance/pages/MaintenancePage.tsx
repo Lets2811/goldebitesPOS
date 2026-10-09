@@ -103,9 +103,9 @@ export default function MaintenancePage() {
   return (
     <>
       <PageHeader
-        title="Mantenimiento"
+        title="Equipos"
         subtitle="Control de equipos, garantías e intervenciones técnicas."
-        breadcrumbs={[{ label: 'Mantenimiento' }]}
+        breadcrumbs={[{ label: 'Equipos' }]}
         actions={
           <Can permission="maintenance.manage">
             <Button

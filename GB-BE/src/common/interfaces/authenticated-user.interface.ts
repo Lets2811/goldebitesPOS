@@ -12,4 +12,6 @@ export interface AuthenticatedUser {
   isPlatformAdmin: boolean;
   enabledFeatures: string[];
   mustChangePassword: boolean;
+  /** Present when the caller is TURA acting for this user, not the user signed in. */
+  turaLinkId?: string;
 }

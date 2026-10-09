@@ -18,10 +18,7 @@ export interface BranchFilters {
   search?: string;
 }
 
+/** All a business can change about a branch; the rest is managed by the platform. */
 export interface UpdateBranchPayload {
-  name?: string;
-  address?: string;
-  city?: string;
-  phone?: string;
-  tableCount?: number;
+  tableCount: number;
 }

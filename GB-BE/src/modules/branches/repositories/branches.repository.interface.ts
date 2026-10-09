@@ -30,6 +30,13 @@ export interface IBranchesRepository {
     businessId: string,
     paymentPolicy: PaymentPolicy,
   ): Promise<BranchRow | null>;
+  /** Ids of a business's active branches, oldest first, at most `limit` of them. */
+  findActiveIds(businessId: string, limit: number): Promise<string[]>;
+  /**
+   * Deletes a branch nothing refers to. One that has orders, staff or stock
+   * cannot be deleted: the database refuses, and its error comes through.
+   */
+  delete(id: string, businessId: string): Promise<boolean>;
   existsByName(
     businessId: string,
     name: string,

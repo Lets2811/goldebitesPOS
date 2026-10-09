@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { useForm, Controller } from 'react-hook-form';
+import { useForm, useWatch, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import Stack from '@mui/material/Stack';
 import TextField from '@mui/material/TextField';
@@ -7,6 +7,11 @@ import MenuItem from '@mui/material/MenuItem';
 import FormDrawer from '../../../components/common/FormDrawer';
 import CurrencyField from '../../../components/common/CurrencyField';
 import { EXPENSE_CATEGORY_LABELS } from '../../../modules/finances/expense-category';
+import {
+  EXPENSE_PAYMENT_SOURCE_LABELS,
+  SELECTABLE_EXPENSE_PAYMENT_SOURCES,
+  isExpenseAmountLocked,
+} from '../../../modules/finances/expense-payment-source';
 import { expenseSchema, type ExpenseFormValues } from '../schemas/expenseSchema';
 import type { Expense } from '../../../modules/finances/types/expense.types';
 
@@ -26,6 +31,9 @@ const emptyValues: ExpenseFormValues = {
   responsible: '',
   amount: 0,
   expenseDate: new Date().toISOString().slice(0, 10),
+  // Sin fuente preseleccionada: cada una mueve dinero de un lugar distinto, así que se elige a propósito.
+  paymentSource: '' as ExpenseFormValues['paymentSource'],
+  payerName: '',
 };
 
 export default function ExpenseFormDrawer({
@@ -57,11 +65,18 @@ export default function ExpenseFormDrawer({
               responsible: initialExpense.responsible ?? '',
               amount: initialExpense.amount,
               expenseDate: initialExpense.expenseDate.slice(0, 10),
+              paymentSource: initialExpense.paymentSource,
+              payerName: initialExpense.payerName ?? '',
             }
           : { ...emptyValues, category: defaultCategory ?? emptyValues.category },
       );
     }
   }, [open, initialExpense, defaultCategory, reset]);
+
+  const paymentSource = useWatch({ control, name: 'paymentSource' });
+  // Al editar, la fuente ya movió el dinero: no se cambia desde aquí, ni el monto que movió.
+  const editing = Boolean(initialExpense);
+  const amountLocked = Boolean(initialExpense && isExpenseAmountLocked(initialExpense));
 
   const submit = handleSubmit((values) => onSubmit(values));
 
@@ -98,11 +113,58 @@ export default function ExpenseFormDrawer({
               {...field}
               label="Cantidad (COP)"
               fullWidth
+              disabled={amountLocked}
               error={Boolean(errors.amount)}
-              helperText={errors.amount?.message}
+              helperText={
+                errors.amount?.message ??
+                (amountLocked ? 'Para cambiar la cantidad, elimina el gasto y regístralo de nuevo.' : undefined)
+              }
             />
           )}
         />
+
+        <Controller
+          name="paymentSource"
+          control={control}
+          render={({ field }) => (
+            <TextField
+              {...field}
+              select
+              label="Pagado con"
+              fullWidth
+              disabled={editing}
+              error={Boolean(errors.paymentSource)}
+              helperText={errors.paymentSource?.message}
+            >
+              {SELECTABLE_EXPENSE_PAYMENT_SOURCES.map((source) => (
+                <MenuItem key={source} value={source}>
+                  {EXPENSE_PAYMENT_SOURCE_LABELS[source]}
+                </MenuItem>
+              ))}
+              {/* Solo para mostrar un gasto antiguo; no se puede elegir. */}
+              {paymentSource === 'UNSPECIFIED_HISTORICAL' && (
+                <MenuItem value="UNSPECIFIED_HISTORICAL">{EXPENSE_PAYMENT_SOURCE_LABELS.UNSPECIFIED_HISTORICAL}</MenuItem>
+              )}
+            </TextField>
+          )}
+        />
+
+        {paymentSource === 'PERSONAL_MONEY' && (
+          <Controller
+            name="payerName"
+            control={control}
+            render={({ field }) => (
+              <TextField
+                {...field}
+                label="Quién pagó"
+                fullWidth
+                disabled={editing}
+                error={Boolean(errors.payerName)}
+                helperText={errors.payerName?.message ?? (editing ? undefined : 'Queda registrado para devolverle el dinero.')}
+              />
+            )}
+          />
+        )}
 
         <Controller
           name="description"

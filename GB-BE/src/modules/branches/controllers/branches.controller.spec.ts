@@ -7,32 +7,19 @@ describe('BranchesController', () => {
   let service: jest.Mocked<
     Pick<
       BranchesService,
-      'create' | 'findAll' | 'findOne' | 'update' | 'setActive' | 'setPaymentPolicy'
+      'findAll' | 'findOne' | 'setTableCount' | 'setPaymentPolicy'
     >
   >;
   let controller: BranchesController;
 
   beforeEach(() => {
     service = {
-      create: jest.fn(),
       findAll: jest.fn(),
       findOne: jest.fn(),
-      update: jest.fn(),
-      setActive: jest.fn(),
+      setTableCount: jest.fn(),
       setPaymentPolicy: jest.fn(),
     };
     controller = new BranchesController(service as unknown as BranchesService);
-  });
-
-  it('create() scopes creation to the current business and actor', async () => {
-    service.create.mockResolvedValue({ id: 'branch-1' } as never);
-
-    await controller.create('business-1', 'actor-1', { name: 'Sede Norte' });
-
-    expect(service.create).toHaveBeenCalledWith(
-      { businessId: 'business-1', name: 'Sede Norte' },
-      'actor-1',
-    );
   });
 
   it('findAll() forwards pagination and filters', async () => {
@@ -63,34 +50,26 @@ describe('BranchesController', () => {
     expect(service.findOne).toHaveBeenCalledWith('business-1', 'branch-1');
   });
 
-  it('update() delegates with the actor id', async () => {
-    service.update.mockResolvedValue({ id: 'branch-1' } as never);
+  it('setTableCount() changes only the number of tables', async () => {
+    service.setTableCount.mockResolvedValue({ id: 'branch-1' } as never);
 
-    await controller.update('business-1', 'actor-1', 'branch-1', {
-      name: 'Renamed',
+    await controller.setTableCount('business-1', 'actor-1', 'branch-1', {
+      tableCount: 12,
     });
 
-    expect(service.update).toHaveBeenCalledWith(
+    expect(service.setTableCount).toHaveBeenCalledWith(
       'business-1',
       'branch-1',
-      { name: 'Renamed' },
+      12,
       'actor-1',
     );
   });
 
-  it('setStatus() toggles active state', async () => {
-    service.setActive.mockResolvedValue({ id: 'branch-1' } as never);
-
-    await controller.setStatus('business-1', 'actor-1', 'branch-1', {
-      isActive: false,
-    });
-
-    expect(service.setActive).toHaveBeenCalledWith(
-      'business-1',
-      'branch-1',
-      false,
-      'actor-1',
-    );
+  it('offers a business no way to create, rename or deactivate its branches', () => {
+    // Which branches exist is managed by the platform (PlatformAdminController).
+    expect(controller).not.toHaveProperty('create');
+    expect(controller).not.toHaveProperty('update');
+    expect(controller).not.toHaveProperty('setStatus');
   });
 
   it('setPaymentPolicy() delegates with the actor id', async () => {

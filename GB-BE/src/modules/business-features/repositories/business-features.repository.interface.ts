@@ -4,6 +4,8 @@ export interface DisabledFeatureRow {
 
 export interface IBusinessFeaturesRepository {
   findDisabledKeys(businessId: string): Promise<string[]>;
+  /** The keys a business has a row turning on; what opt-in features need to count as enabled. */
+  findEnabledKeys(businessId: string): Promise<string[]>;
   setEnabled(
     businessId: string,
     featureKey: string,

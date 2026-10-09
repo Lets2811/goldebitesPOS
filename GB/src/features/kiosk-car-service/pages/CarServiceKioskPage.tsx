@@ -239,7 +239,7 @@ export default function CarServiceKioskPage() {
           </Box>
           <Box>
             <Typography sx={{ fontWeight: 900, fontSize: '1.2rem', lineHeight: 1.1 }}>
-              {business.data?.name ?? 'Golden Bites'}
+              {business.data?.name ?? ''}
             </Typography>
             <Typography variant="caption" color="text.secondary" sx={{ letterSpacing: 1, textTransform: 'uppercase' }}>
               Car Service

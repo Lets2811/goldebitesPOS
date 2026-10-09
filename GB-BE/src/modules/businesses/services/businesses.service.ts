@@ -201,7 +201,9 @@ export class BusinessesService {
     id: string,
   ): Promise<{ logoPath: string; mimeType: string } | null> {
     const row = await this.businessesRepository.getLogo(id);
-    return row ? { logoPath: row.logo_path, mimeType: row.logo_mime_type } : null;
+    return row
+      ? { logoPath: row.logo_path, mimeType: row.logo_mime_type }
+      : null;
   }
 
   async clearLogo(id: string, actorUserId?: string): Promise<void> {

@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import Button from '@mui/material/Button';
 import type { ColumnDef } from '@tanstack/react-table';
-import { Plus, Settings2 } from 'lucide-react';
+import Stack from '@mui/material/Stack';
+import { Plus, Settings2, Store } from 'lucide-react';
 import { useSnackbar } from 'notistack';
 import PageHeader from '../../../components/common/PageHeader';
 import DataTable from '../../../components/common/DataTable';
@@ -14,12 +15,14 @@ import { normalizeApiError } from '../../../lib/api/api-error';
 import type { Business } from '../../../modules/platform-admin/types/platform-admin.types';
 import type { CreateBusinessFormValues } from '../schemas/createBusinessSchema';
 import CreateBusinessDialog from '../components/CreateBusinessDialog';
+import BusinessBranchesDrawer from '../components/BusinessBranchesDrawer';
 import BusinessFeaturesDrawer from '../components/BusinessFeaturesDrawer';
 
 export default function PlatformAdminPage() {
   const { enqueueSnackbar } = useSnackbar();
   const [createOpen, setCreateOpen] = useState(false);
   const [selectedBusiness, setSelectedBusiness] = useState<Business | null>(null);
+  const [branchesOf, setBranchesOf] = useState<Business | null>(null);
 
   const { data: businesses, isLoading, isError, refetch } = usePlatformBusinesses();
   const createBusiness = useCreatePlatformBusiness();
@@ -56,16 +59,28 @@ export default function PlatformAdminPage() {
       id: 'actions',
       header: '',
       cell: ({ row }) => (
-        <Button
-          size="small"
-          startIcon={<Settings2 size={14} />}
-          onClick={(e) => {
-            e.stopPropagation();
-            setSelectedBusiness(row.original);
-          }}
-        >
-          Módulos
-        </Button>
+        <Stack direction="row" spacing={0.5}>
+          <Button
+            size="small"
+            startIcon={<Settings2 size={14} />}
+            onClick={(e) => {
+              e.stopPropagation();
+              setSelectedBusiness(row.original);
+            }}
+          >
+            Módulos
+          </Button>
+          <Button
+            size="small"
+            startIcon={<Store size={14} />}
+            onClick={(e) => {
+              e.stopPropagation();
+              setBranchesOf(row.original);
+            }}
+          >
+            Sedes
+          </Button>
+        </Stack>
       ),
     },
   ];
@@ -74,7 +89,7 @@ export default function PlatformAdminPage() {
     <>
       <PageHeader
         title="Administración de plataforma"
-        subtitle="Empresas que usan Golden Bites POS y qué módulos tiene activos cada una."
+        subtitle="Empresas que usan Golden Bites POS, qué módulos tiene activos cada una y cuántas sedes."
         breadcrumbs={[{ label: 'Plataforma' }]}
         actions={
           <Button variant="contained" startIcon={<Plus size={16} />} onClick={() => setCreateOpen(true)}>
@@ -104,6 +119,7 @@ export default function PlatformAdminPage() {
       />
 
       <BusinessFeaturesDrawer business={selectedBusiness} onClose={() => setSelectedBusiness(null)} />
+      <BusinessBranchesDrawer business={branchesOf} onClose={() => setBranchesOf(null)} />
     </>
   );
 }

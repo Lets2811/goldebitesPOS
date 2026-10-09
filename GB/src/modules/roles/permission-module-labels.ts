@@ -19,7 +19,7 @@ export const PERMISSION_MODULE_LABELS: Record<string, string> = {
   analytics: 'Analítica',
   employees: 'Personal',
   checklists: 'Checklists',
-  maintenance: 'Mantenimiento',
+  maintenance: 'Equipos',
   loyalty: 'Fidelización',
   marketing: 'Marketing',
   documents: 'Documentos',

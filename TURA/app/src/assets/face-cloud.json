@@ -1,0 +1,29 @@
+{
+  "count": 26000,
+  "stride": 14,
+  "range": 2.5,
+  "eyes": [
+    [
+      -0.333,
+      0.2328,
+      0.8316
+    ],
+    [
+      0.333,
+      0.2328,
+      0.7608
+    ]
+  ],
+  "lids": [
+    0.1428,
+    0.0546
+  ],
+  "irisRadius": 0.0714,
+  "pupilRadius": 0.0277,
+  "mouth": [
+    0,
+    -0.336,
+    0.9444
+  ],
+  "attribution": "Head: \"Infinite, 3D Head Scan\" by Lee Perry-Smith (www.triplegangers.com), CC BY 3.0."
+}

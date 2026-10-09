@@ -1,0 +1,14 @@
+node_modules
+dist
+*.local
+
+# Environment variables
+.env
+.env.*
+!.env.example
+
+# Usage log written by TURA/api
+api/data
+
+# Preview written by app/scripts/bake-face.mjs --preview
+app/scripts/face-cloud-preview.bmp

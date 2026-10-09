@@ -9,6 +9,7 @@ import LoadingSkeleton from '../../../components/common/LoadingSkeleton';
 import ErrorState from '../../../components/common/ErrorState';
 import { formatCOP } from '../../../utils/format';
 import { useAuthStore } from '../../../modules/auth/store/auth.store';
+import { useCurrentBusiness } from '../../../modules/businesses/hooks/use-current-business';
 import { useDashboardSummary } from '../../../modules/dashboard/hooks/use-dashboard-summary';
 import { useSalesByDay } from '../../../modules/analytics/hooks/use-sales-by-day';
 import { useTopProducts } from '../../../modules/analytics/hooks/use-top-products';
@@ -30,6 +31,7 @@ function last7DaysRange(): { dateFrom: string; dateTo: string } {
 const WEEKDAY_FORMATTER = new Intl.DateTimeFormat('es-CO', { weekday: 'short', timeZone: 'America/Bogota' });
 
 export default function DashboardPage() {
+  const { data: business } = useCurrentBusiness();
   const navigate = useNavigate();
   const branchId = useAuthStore((s) => s.user?.branchId ?? undefined);
   const { dateFrom, dateTo } = useMemo(() => last7DaysRange(), []);
@@ -99,7 +101,7 @@ export default function DashboardPage() {
     <>
       <PageHeader
         title="Centro de operaciones"
-        subtitle="Resumen en vivo de la operación de Golden Bites."
+        subtitle={business?.name ? `Resumen en vivo de la operación de ${business.name}.` : 'Resumen en vivo de la operación.'}
         breadcrumbs={[{ label: 'Centro de operaciones' }]}
       />
 
