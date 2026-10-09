@@ -97,7 +97,25 @@ describe('NfcTagsRepository (integration)', () => {
     await repository.create({ businessId, branchId, tableNumber: '5', name: 'Mesa 5', token });
 
     const resolved = await repository.findActiveByToken(token);
-    expect(resolved).toEqual({ businessId, branchId, businessName: expect.any(String), tableNumber: '5' });
+    expect(resolved).toEqual({
+      businessId,
+      branchId,
+      businessName: expect.any(String),
+      tableNumber: '5',
+      selfServiceEnabled: true,
+    });
+  });
+
+  it('setSelfService() turns self-service off, and the public resolution reflects it', async () => {
+    const token = `tok-${randomUUID()}`;
+    const created = await repository.create({ businessId, branchId, tableNumber: '50', name: 'Mesa 50', token });
+    expect(created.self_service_enabled).toBe(true);
+
+    const updated = await repository.setSelfService(created.id, businessId, false);
+    expect(updated?.self_service_enabled).toBe(false);
+    expect((await repository.findActiveByToken(token))?.selfServiceEnabled).toBe(false);
+
+    expect(await repository.setSelfService(created.id, randomUUID(), true)).toBeNull();
   });
 
   it('findActiveByToken() returns null when the gallo itself is inactive', async () => {

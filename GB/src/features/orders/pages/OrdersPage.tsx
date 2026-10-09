@@ -39,6 +39,7 @@ import OrdersTable from '../components/OrdersTable';
 import OrdersKanban from '../components/OrdersKanban';
 import OrderDetailDrawer from '../components/OrderDetailDrawer';
 import NewOrderDrawer from '../components/NewOrderDrawer';
+import TableHelpAlerts from '../components/TableHelpAlerts';
 import type { NewOrderFormValues } from '../schemas/orderSchema';
 import { KIOSK_PATHS } from '../../../routes/kioskConfig';
 import { MODULE_PATHS } from '../../../routes/navConfig';
@@ -245,6 +246,8 @@ export default function OrdersPage() {
           </>
         }
       />
+
+      <TableHelpAlerts branchId={branchId} tableNames={tableNames} />
 
       <FilterBar
         onClear={() => {

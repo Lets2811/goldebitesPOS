@@ -14,6 +14,7 @@ export interface INfcTagsRepository {
   ): Promise<boolean>;
   update(id: string, businessId: string, data: UpdateNfcTagData): Promise<NfcTagRow | null>;
   setActive(id: string, businessId: string, isActive: boolean): Promise<NfcTagRow | null>;
+  setSelfService(id: string, businessId: string, enabled: boolean): Promise<NfcTagRow | null>;
   updateToken(id: string, businessId: string, token: string): Promise<NfcTagRow | null>;
   /**
    * Resolves an active gallo's context, but only when its branch AND business

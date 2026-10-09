@@ -10,6 +10,7 @@ describe('NfcTagsService', () => {
     existsForBranchTable: jest.Mock;
     update: jest.Mock;
     setActive: jest.Mock;
+    setSelfService: jest.Mock;
     updateToken: jest.Mock;
     findActiveByToken: jest.Mock;
   };
@@ -31,6 +32,7 @@ describe('NfcTagsService', () => {
       name: 'Mesa 1',
       token: 'raw-token-value',
       is_active: true,
+      self_service_enabled: true,
       created_at: new Date(),
       updated_at: new Date(),
       ...overrides,
@@ -45,6 +47,7 @@ describe('NfcTagsService', () => {
       existsForBranchTable: jest.fn().mockResolvedValue(false),
       update: jest.fn().mockResolvedValue(makeRow()),
       setActive: jest.fn().mockResolvedValue(makeRow({ is_active: false })),
+      setSelfService: jest.fn().mockResolvedValue(makeRow({ self_service_enabled: false })),
       updateToken: jest.fn().mockResolvedValue(makeRow({ token: 'new-token' })),
       findActiveByToken: jest.fn(),
     };
@@ -129,6 +132,31 @@ describe('NfcTagsService', () => {
       await service.setActive(businessId, 'tag-1', false, actorUserId);
       expect(nfcTagsRepository.setActive).toHaveBeenCalledWith('tag-1', businessId, false);
       expect(auditService.record).toHaveBeenCalledWith(expect.objectContaining({ action: 'DEACTIVATE' }));
+    });
+  });
+
+  describe('setSelfService', () => {
+    it('turns self-service off for the table and audits the change', async () => {
+      const result = await service.setSelfService(businessId, 'tag-1', false, actorUserId);
+
+      expect(nfcTagsRepository.setSelfService).toHaveBeenCalledWith('tag-1', businessId, false);
+      expect(result.selfServiceEnabled).toBe(false);
+      expect(auditService.record).toHaveBeenCalledWith(
+        expect.objectContaining({
+          entityId: 'tag-1',
+          oldValues: { selfServiceEnabled: true },
+          newValues: { selfServiceEnabled: false },
+        }),
+      );
+    });
+
+    it('rejects a gallo that belongs to another business', async () => {
+      nfcTagsRepository.findById.mockResolvedValue(null);
+
+      await expect(service.setSelfService(businessId, 'tag-1', false, actorUserId)).rejects.toThrow(
+        EntityNotFoundException,
+      );
+      expect(nfcTagsRepository.setSelfService).not.toHaveBeenCalled();
     });
   });
 

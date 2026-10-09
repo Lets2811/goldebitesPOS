@@ -5,7 +5,7 @@ import { NfcTagRow, PublicNfcResolution } from '../domain/nfc-tag.interface';
 import { CreateNfcTagData, UpdateNfcTagData } from '../domain/nfc-tag.types';
 import { INfcTagsRepository } from './nfc-tags.repository.interface';
 
-const SELECT_COLUMNS = `id, business_id, branch_id, table_number, name, token, is_active, created_at, updated_at`;
+const SELECT_COLUMNS = `id, business_id, branch_id, table_number, name, token, is_active, self_service_enabled, created_at, updated_at`;
 
 @Injectable()
 export class NfcTagsRepository implements INfcTagsRepository {
@@ -87,6 +87,14 @@ export class NfcTagsRepository implements INfcTagsRepository {
     return result.rows[0] ?? null;
   }
 
+  async setSelfService(id: string, businessId: string, enabled: boolean): Promise<NfcTagRow | null> {
+    const result = await this.db.query<NfcTagRow>(
+      `UPDATE nfc_tags SET self_service_enabled = $3 WHERE id = $1 AND business_id = $2 RETURNING ${SELECT_COLUMNS}`,
+      [id, businessId, enabled],
+    );
+    return result.rows[0] ?? null;
+  }
+
   async updateToken(id: string, businessId: string, token: string): Promise<NfcTagRow | null> {
     const result = await this.db.query<NfcTagRow>(
       `UPDATE nfc_tags SET token = $3 WHERE id = $1 AND business_id = $2 RETURNING ${SELECT_COLUMNS}`,
@@ -103,8 +111,9 @@ export class NfcTagsRepository implements INfcTagsRepository {
       branch_id: string;
       business_name: string;
       table_number: string;
+      self_service_enabled: boolean;
     }>(
-      `SELECT t.business_id, t.branch_id, bu.name AS business_name, t.table_number
+      `SELECT t.business_id, t.branch_id, bu.name AS business_name, t.table_number, t.self_service_enabled
        FROM nfc_tags t
        JOIN branches br ON br.id = t.branch_id AND br.is_active = true
        JOIN businesses bu ON bu.id = t.business_id AND bu.is_active = true
@@ -118,6 +127,7 @@ export class NfcTagsRepository implements INfcTagsRepository {
       branchId: row.branch_id,
       businessName: row.business_name,
       tableNumber: row.table_number,
+      selfServiceEnabled: row.self_service_enabled,
     };
   }
 }

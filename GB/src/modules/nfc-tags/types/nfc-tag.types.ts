@@ -6,6 +6,8 @@ export interface NfcTag {
   name: string;
   token: string;
   isActive: boolean;
+  /** true: el cliente envía su pedido desde el menú. false: lo toma el mesero. */
+  selfServiceEnabled: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -28,6 +30,8 @@ export interface PublicNfcResolution {
   branchId: string;
   businessName: string;
   tableNumber: string;
+  /** false: el menú es solo de consulta y el backend rechaza cualquier pedido. */
+  selfServiceEnabled: boolean;
   /** The table's custom display name, or null if it was never given one — fall back to "Mesa {tableNumber}". */
   tableName: string | null;
 }

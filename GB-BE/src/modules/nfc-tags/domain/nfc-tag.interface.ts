@@ -6,6 +6,8 @@ export interface NfcTag {
   name: string;
   token: string;
   isActive: boolean;
+  /** Whether customers can send their own order from this table's menu; when false a waiter takes it. */
+  selfServiceEnabled: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -18,6 +20,7 @@ export interface NfcTagRow {
   name: string;
   token: string;
   is_active: boolean;
+  self_service_enabled: boolean;
   created_at: Date;
   updated_at: Date;
 }
@@ -28,6 +31,8 @@ export interface PublicNfcResolution {
   branchId: string;
   businessName: string;
   tableNumber: string;
+  /** false: the menu is browse-only and submitting an order is refused. */
+  selfServiceEnabled: boolean;
   /** The table's custom display name (from table-names), or null if it was never given one — callers fall back to "Mesa {tableNumber}". */
   tableName: string | null;
 }

@@ -104,6 +104,30 @@ export class NfcTagsService {
     return NfcTagMapper.toDomain(row);
   }
 
+  async setSelfService(
+    businessId: string,
+    id: string,
+    enabled: boolean,
+    actorUserId?: string,
+  ): Promise<NfcTag> {
+    const existing = await this.getOwnedOrFail(businessId, id);
+    const row = await this.nfcTagsRepository.setSelfService(id, businessId, enabled);
+    if (!row) {
+      throw new EntityNotFoundException('NfcTag', id);
+    }
+    await this.auditService.record({
+      businessId,
+      branchId: row.branch_id,
+      userId: actorUserId,
+      entityType: 'nfc_tag',
+      entityId: id,
+      action: 'UPDATE',
+      oldValues: { selfServiceEnabled: existing.self_service_enabled },
+      newValues: { selfServiceEnabled: enabled },
+    });
+    return NfcTagMapper.toDomain(row);
+  }
+
   async regenerateToken(businessId: string, id: string, actorUserId?: string): Promise<NfcTag> {
     const existing = await this.getOwnedOrFail(businessId, id);
     const row = await this.nfcTagsRepository.updateToken(id, businessId, generateToken());

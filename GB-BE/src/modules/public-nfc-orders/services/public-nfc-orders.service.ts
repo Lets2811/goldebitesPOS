@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { ConflictException } from '../../../common/exceptions';
+import { BusinessRuleException, ConflictException } from '../../../common/exceptions';
 import { PublicNfcResolution } from '../../nfc-tags/domain/nfc-tag.interface';
 import { NfcTagsService } from '../../nfc-tags/services/nfc-tags.service';
 import { OrderType } from '../../orders/domain/order.interface';
@@ -27,6 +27,14 @@ export class PublicNfcOrdersService {
 
   async submit(token: string, dto: SubmitNfcOrderDto): Promise<PublicOrderView> {
     const resolution = await this.nfcTagsService.resolvePublic(token);
+    // The menu hides the button, but the rule lives here: a table without
+    // self-service cannot place an order no matter what the client sends.
+    if (!resolution.selfServiceEnabled) {
+      throw new BusinessRuleException(
+        'Self-service is disabled for this table — a waiter takes the order',
+        'SELF_SERVICE_DISABLED',
+      );
+    }
     const orderId = await this.claimAndExecute(resolution, dto, true);
     const order = await this.ordersService.findOne(resolution.businessId, orderId);
     return toPublicOrderView(order);

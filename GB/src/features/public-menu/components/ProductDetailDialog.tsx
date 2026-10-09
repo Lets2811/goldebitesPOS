@@ -21,15 +21,25 @@ interface ProductDetailDialogProps {
   sides: PublicMenuOption[];
   onAdd: (product: PublicMenuProduct, selection: CartSelection) => void;
   onClose: () => void;
+  /** Solo muestra el producto: sin personalización ni "Agregar al carrito" (mesa sin autoservicio). */
+  readOnly?: boolean;
 }
 
 /** Configures and adds one unit of a product to the cart. Each open/add cycle produces exactly one line — adding a second, differently-configured unit means reopening this dialog. */
-export default function ProductDetailDialog({ product, sauces, sides, onAdd, onClose }: ProductDetailDialogProps) {
+export default function ProductDetailDialog({ product, sauces, sides, onAdd, onClose, readOnly }: ProductDetailDialogProps) {
   return (
     <Dialog open={Boolean(product)} onClose={onClose} maxWidth="sm" fullWidth>
       {/* Keyed by product id so selection state starts fresh for each product, without an effect. */}
       {product && (
-        <ProductDetailContent key={product.id} product={product} sauces={sauces} sides={sides} onAdd={onAdd} onClose={onClose} />
+        <ProductDetailContent
+          key={product.id}
+          product={product}
+          sauces={sauces}
+          sides={sides}
+          onAdd={onAdd}
+          onClose={onClose}
+          readOnly={readOnly}
+        />
       )}
     </Dialog>
   );
@@ -41,9 +51,10 @@ interface ProductDetailContentProps {
   sides: PublicMenuOption[];
   onAdd: (product: PublicMenuProduct, selection: CartSelection) => void;
   onClose: () => void;
+  readOnly?: boolean;
 }
 
-function ProductDetailContent({ product, sauces, sides, onAdd, onClose }: ProductDetailContentProps) {
+function ProductDetailContent({ product, sauces, sides, onAdd, onClose, readOnly }: ProductDetailContentProps) {
   const [selectedSauceIds, setSelectedSauceIds] = useState<string[]>([]);
   const [selectedSideIds, setSelectedSideIds] = useState<string[]>([]);
   const [noSauces, setNoSauces] = useState(false);
@@ -80,7 +91,7 @@ function ProductDetailContent({ product, sauces, sides, onAdd, onClose }: Produc
   const sauceDecided = product.maxSauces === 0 || selectedSauceIds.length > 0 || noSauces;
   const sideDecided = product.maxSides === 0 || selectedSideIds.length > 0 || noSides;
   const canAdd = sauceDecided && sideDecided;
-  const hasCustomization = product.maxSauces > 0 || product.maxSides > 0;
+  const hasCustomization = !readOnly && (product.maxSauces > 0 || product.maxSides > 0);
 
   const handleAdd = () => {
     if (!canAdd) return;
@@ -231,17 +242,19 @@ function ProductDetailContent({ product, sauces, sides, onAdd, onClose }: Produc
 
       <DialogActions sx={{ px: 3, pb: 2.5, gap: 1 }}>
         <Button onClick={onClose} sx={{ fontWeight: 700 }}>
-          Cancelar
+          {readOnly ? 'Cerrar' : 'Cancelar'}
         </Button>
-        <Button
-          onClick={handleAdd}
-          variant="contained"
-          disabled={!canAdd}
-          startIcon={<ShoppingCart size={18} />}
-          sx={{ fontWeight: 700, flex: 1 }}
-        >
-          Agregar al carrito
-        </Button>
+        {!readOnly && (
+          <Button
+            onClick={handleAdd}
+            variant="contained"
+            disabled={!canAdd}
+            startIcon={<ShoppingCart size={18} />}
+            sx={{ fontWeight: 700, flex: 1 }}
+          >
+            Agregar al carrito
+          </Button>
+        )}
       </DialogActions>
     </>
   );

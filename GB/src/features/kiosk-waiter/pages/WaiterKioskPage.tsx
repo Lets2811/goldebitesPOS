@@ -9,7 +9,7 @@ import Divider from '@mui/material/Divider';
 import Drawer from '@mui/material/Drawer';
 import IconButton from '@mui/material/IconButton';
 import Tooltip from '@mui/material/Tooltip';
-import { ArrowLeft, ClipboardList, LogOut, MapPin, Plus, X } from 'lucide-react';
+import { ArrowLeft, BookOpen, ClipboardList, LogOut, MapPin, Plus, X } from 'lucide-react';
 import { useSnackbar } from 'notistack';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../../modules/auth/store/auth.store';
@@ -32,8 +32,11 @@ import CartPanel from '../components/CartPanel';
 import WaiterOrderList from '../components/WaiterOrderList';
 import WaiterOrderDetailDrawer from '../components/WaiterOrderDetailDrawer';
 import ActiveTablesGrid from '../components/ActiveTablesGrid';
+import TableHelpAlerts from '../../orders/components/TableHelpAlerts';
+import PublicMenuBrowser from '../../public-menu/components/PublicMenuBrowser';
 
-type Screen = 'menu' | 'order' | 'tables';
+/** 'showMenu' es la carta tal como la ve el cliente, para mostrársela en la tablet; 'menu' es el inicio del mesero. */
+type Screen = 'menu' | 'order' | 'tables' | 'showMenu';
 
 export default function WaiterKioskPage() {
   const { enqueueSnackbar, closeSnackbar } = useSnackbar();
@@ -213,8 +216,23 @@ export default function WaiterKioskPage() {
         </Stack>
       </Stack>
 
+      {/* Las mesas que piden ayuda se ven y suenan en cualquier pantalla del mesero. */}
+      <TableHelpAlerts branchId={branchId} tableNames={tableNames} sx={{ px: 2, pt: 1.5 }} />
+
       {screen === 'menu' && (
-        <Box sx={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 3, p: 3 }}>
+        <Box
+          sx={{
+            flex: 1,
+            display: 'flex',
+            flexWrap: 'wrap',
+            alignItems: 'center',
+            alignContent: 'center',
+            justifyContent: 'center',
+            gap: 3,
+            p: 3,
+            overflowY: 'auto',
+          }}
+        >
           <ButtonBase
             onClick={startNewOrder}
             sx={{
@@ -260,6 +278,42 @@ export default function WaiterKioskPage() {
               </Typography>
             </ButtonBase>
           </Badge>
+
+          <ButtonBase
+            onClick={() => setScreen('showMenu')}
+            sx={{
+              width: 280,
+              height: 200,
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 1.5,
+              borderRadius: 3,
+              border: '2px solid',
+              borderColor: 'divider',
+              '&:active': { bgcolor: 'action.selected' },
+            }}
+          >
+            <BookOpen size={40} />
+            <Typography variant="h6" sx={{ fontWeight: 800 }}>
+              Mostrar menú
+            </Typography>
+          </ButtonBase>
+        </Box>
+      )}
+
+      {screen === 'showMenu' && (
+        <Box sx={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
+          <Box sx={{ p: 1.5 }}>
+            <Button startIcon={<ArrowLeft size={16} />} onClick={() => setScreen('menu')}>
+              Volver
+            </Button>
+          </Box>
+          {/* Solo de consulta: el pedido lo sigue tomando el mesero desde "Pedido nuevo". */}
+          <Box sx={{ px: 2 }}>
+            <PublicMenuBrowser businessId={business.data?.id} readOnly />
+          </Box>
         </Box>
       )}
 

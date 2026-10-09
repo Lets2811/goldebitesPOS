@@ -1,4 +1,4 @@
-import { ConflictException } from '../../../common/exceptions';
+import { BusinessRuleException, ConflictException } from '../../../common/exceptions';
 import { OrderStatus, OrderType } from '../../orders/domain/order.interface';
 import { PublicNfcOrdersService } from './public-nfc-orders.service';
 
@@ -47,6 +47,7 @@ describe('PublicNfcOrdersService', () => {
         branchId,
         businessName: 'Golden Bites',
         tableNumber,
+        selfServiceEnabled: true,
       }),
     };
     ordersService = {
@@ -103,6 +104,25 @@ describe('PublicNfcOrdersService', () => {
         items,
       );
       expect(ordersService.tryAutoConfirm).toHaveBeenCalledWith(businessId, 'order-1');
+    });
+  });
+
+  describe('submit — self-service', () => {
+    it('refuses the order, before claiming anything, when the table has self-service off', async () => {
+      nfcTagsService.resolvePublic.mockResolvedValue({
+        businessId,
+        branchId,
+        businessName: 'Golden Bites',
+        tableNumber,
+        selfServiceEnabled: false,
+      });
+
+      await expect(
+        service.submit(token, { orderType: OrderType.DINE_IN, idempotencyKey, items } as never),
+      ).rejects.toThrow(BusinessRuleException);
+      expect(submissionsRepository.claim).not.toHaveBeenCalled();
+      expect(ordersService.create).not.toHaveBeenCalled();
+      expect(ordersService.addItems).not.toHaveBeenCalled();
     });
   });
 

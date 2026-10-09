@@ -23,6 +23,11 @@ export const nfcTagsApi = {
     return data.data;
   },
 
+  async setSelfService(id: string, enabled: boolean): Promise<NfcTag> {
+    const { data } = await apiClient.patch<ApiResponse<NfcTag>>(`/nfc-tags/${id}/self-service`, { enabled });
+    return data.data;
+  },
+
   async regenerateToken(id: string): Promise<NfcTag> {
     const { data } = await apiClient.post<ApiResponse<NfcTag>>(`/nfc-tags/${id}/regenerate-token`);
     return data.data;

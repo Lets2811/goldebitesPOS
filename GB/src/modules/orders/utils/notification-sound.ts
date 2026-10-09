@@ -39,3 +39,36 @@ export function playOrderNotificationSound(): void {
     // Never let a notification sound break the print flow.
   }
 }
+
+/**
+ * La llamada de una mesa que pide ayuda: tres pitidos insistentes, a propósito
+ * distintos del "ding" de un pedido nuevo, para reconocerla sin mirar la pantalla.
+ * Igual de tolerante: si el navegador bloquea el audio, no pasa nada.
+ */
+export function playTableHelpAlertSound(): void {
+  try {
+    const ctx = getAudioContext();
+    if (!ctx) return;
+    if (ctx.state === 'suspended') ctx.resume().catch(() => {});
+
+    const now = ctx.currentTime;
+    [0, 0.28, 0.56].forEach((offset) => {
+      const oscillator = ctx.createOscillator();
+      const gain = ctx.createGain();
+      oscillator.type = 'square';
+      oscillator.frequency.value = 660;
+
+      const start = now + offset;
+      gain.gain.setValueAtTime(0, start);
+      gain.gain.linearRampToValueAtTime(0.18, start + 0.01);
+      gain.gain.setValueAtTime(0.18, start + 0.14);
+      gain.gain.linearRampToValueAtTime(0, start + 0.18);
+
+      oscillator.connect(gain).connect(ctx.destination);
+      oscillator.start(start);
+      oscillator.stop(start + 0.2);
+    });
+  } catch {
+    // Una alerta sonora nunca debe romper la pantalla de pedidos.
+  }
+}

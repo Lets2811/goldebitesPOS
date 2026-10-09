@@ -10,6 +10,7 @@ export class NfcTagMapper {
       name: row.name,
       token: row.token,
       isActive: row.is_active,
+      selfServiceEnabled: row.self_service_enabled,
       createdAt: row.created_at,
       updatedAt: row.updated_at,
     };

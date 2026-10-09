@@ -31,6 +31,12 @@ interface PublicMenuBrowserProps {
   /** Present only from the NFC-scanned flow (/m/:token) — absent here means the generic preview, which never offers "Confirmar pedido". */
   token?: string;
   orderType?: 'DINE_IN' | 'TAKEAWAY';
+  /**
+   * Menú solo de consulta: se puede ver cada producto, pero no hay forma de
+   * agregarlo ni carrito. Lo usa una mesa sin autoservicio, donde el pedido
+   * lo toma el mesero.
+   */
+  readOnly?: boolean;
 }
 
 /**
@@ -44,6 +50,7 @@ export default function PublicMenuBrowser({
   showMenuLabel = true,
   token,
   orderType,
+  readOnly = false,
 }: PublicMenuBrowserProps) {
   const { enqueueSnackbar } = useSnackbar();
   const { data: menu, isLoading, isError } = usePublicMenu(businessId);
@@ -220,7 +227,7 @@ export default function PublicMenuBrowser({
         )}
       </Box>
 
-      {itemCount > 0 && (
+      {!readOnly && itemCount > 0 && (
         <Fab
           color="primary"
           variant="extended"
@@ -240,10 +247,11 @@ export default function PublicMenuBrowser({
         sides={menu?.sides ?? []}
         onAdd={addToCart}
         onClose={() => setSelectedProduct(null)}
+        readOnly={readOnly}
       />
 
       <PublicCartDrawer
-        open={cartOpen}
+        open={cartOpen && !readOnly}
         cart={cart}
         sauces={menu?.sauces ?? []}
         sides={menu?.sides ?? []}

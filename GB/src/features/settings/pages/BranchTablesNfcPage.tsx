@@ -8,6 +8,7 @@ import DialogContent from '@mui/material/DialogContent';
 import DialogActions from '@mui/material/DialogActions';
 import IconButton from '@mui/material/IconButton';
 import Stack from '@mui/material/Stack';
+import Switch from '@mui/material/Switch';
 import TextField from '@mui/material/TextField';
 import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
@@ -23,6 +24,7 @@ import { useBranch } from '../../../modules/branches/hooks/use-branch';
 import { useNfcTags } from '../../../modules/nfc-tags/hooks/use-nfc-tags';
 import { useCreateNfcTag } from '../../../modules/nfc-tags/hooks/use-create-nfc-tag';
 import { useSetNfcTagStatus } from '../../../modules/nfc-tags/hooks/use-set-nfc-tag-status';
+import { useSetNfcTagSelfService } from '../../../modules/nfc-tags/hooks/use-set-nfc-tag-self-service';
 import { useRegenerateNfcTag } from '../../../modules/nfc-tags/hooks/use-regenerate-nfc-tag';
 import type { NfcTag } from '../../../modules/nfc-tags/types/nfc-tag.types';
 import { useTableNameMap } from '../../../modules/table-names/hooks/use-table-name-map';
@@ -115,6 +117,11 @@ export default function BranchTablesNfcPage() {
       },
     },
     {
+      id: 'selfService',
+      header: 'Autoservicio',
+      cell: ({ row }) => (row.original.tag ? <SelfServiceSwitch tag={row.original.tag} /> : '—'),
+    },
+    {
       id: 'link',
       header: 'Enlace',
       cell: ({ row }) => {
@@ -160,6 +167,11 @@ export default function BranchTablesNfcPage() {
           El número de mesas se define en Configuración → Sedes. Cada mesa puede tener a lo sumo un gallo NFC. El
           nombre de mesa es independiente del gallo NFC — se usa en todo el sistema (Pedidos, cocina, comandas
           impresas y el menú público) en vez de "Mesa {'{'}número{'}'}"; puedes ponerlo sin necesidad de generar un enlace.
+        </Typography>
+        <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+          Con el autoservicio activo, los clientes de la mesa envían su pedido desde el menú del gallo NFC. Con el
+          autoservicio apagado el menú es solo de consulta y el mesero toma el pedido. En ambos casos la mesa puede
+          llamar al personal desde el menú.
         </Typography>
       </Box>
 
@@ -273,6 +285,33 @@ function TableNameCell({ branchId, tableNumber, currentName }: TableNameCellProp
         <X size={16} />
       </IconButton>
     </Stack>
+  );
+}
+
+/** Whether customers at this table send their own order from the NFC menu, or a waiter takes it. */
+function SelfServiceSwitch({ tag }: { tag: NfcTag }) {
+  const { enqueueSnackbar } = useSnackbar();
+  const setSelfService = useSetNfcTagSelfService(tag.id);
+
+  return (
+    <Tooltip title={tag.selfServiceEnabled ? 'Los clientes envían su pedido desde el menú' : 'El mesero toma el pedido'}>
+      <Switch
+        size="small"
+        checked={tag.selfServiceEnabled}
+        disabled={setSelfService.isPending}
+        onChange={(_, enabled) =>
+          setSelfService.mutate(enabled, {
+            onSuccess: () =>
+              enqueueSnackbar(
+                enabled ? `Autoservicio activado en ${tag.name}` : `Autoservicio desactivado en ${tag.name}`,
+                { variant: 'success' },
+              ),
+            onError: (error) => enqueueSnackbar(normalizeApiError(error).message, { variant: 'error' }),
+          })
+        }
+        slotProps={{ input: { 'aria-label': `Autoservicio de ${tag.name}` } }}
+      />
+    </Tooltip>
   );
 }
 

@@ -3,7 +3,7 @@ import { NfcTagsService } from '../services/nfc-tags.service';
 
 describe('NfcTagsController', () => {
   let service: jest.Mocked<
-    Pick<NfcTagsService, 'register' | 'findAllByBranch' | 'update' | 'setActive' | 'regenerateToken'>
+    Pick<NfcTagsService, 'register' | 'findAllByBranch' | 'update' | 'setActive' | 'setSelfService' | 'regenerateToken'>
   >;
   let controller: NfcTagsController;
 
@@ -13,6 +13,7 @@ describe('NfcTagsController', () => {
       findAllByBranch: jest.fn(),
       update: jest.fn(),
       setActive: jest.fn(),
+      setSelfService: jest.fn(),
       regenerateToken: jest.fn(),
     };
     controller = new NfcTagsController(service as unknown as NfcTagsService);
@@ -46,6 +47,12 @@ describe('NfcTagsController', () => {
     service.setActive.mockResolvedValue({} as never);
     await controller.setStatus('business-1', 'user-1', 'tag-1', { isActive: false });
     expect(service.setActive).toHaveBeenCalledWith('business-1', 'tag-1', false, 'user-1');
+  });
+
+  it('setSelfService() forwards the flag', async () => {
+    service.setSelfService.mockResolvedValue({} as never);
+    await controller.setSelfService('business-1', 'user-1', 'tag-1', { enabled: false });
+    expect(service.setSelfService).toHaveBeenCalledWith('business-1', 'tag-1', false, 'user-1');
   });
 
   it('regenerateToken() forwards id and actor', async () => {
