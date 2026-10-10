@@ -7,7 +7,7 @@ import ToggleButton from '@mui/material/ToggleButton';
 import Alert from '@mui/material/Alert';
 import FormControlLabel from '@mui/material/FormControlLabel';
 import Switch from '@mui/material/Switch';
-import { Plus, LayoutGrid, List as ListIcon, Tablet, Car, History } from 'lucide-react';
+import { Plus, LayoutGrid, List as ListIcon, Tablet, Car, History, Share2 } from 'lucide-react';
 import { useSnackbar } from 'notistack';
 import { useNavigate } from 'react-router-dom';
 import dayjs from 'dayjs';
@@ -40,6 +40,7 @@ import OrdersKanban from '../components/OrdersKanban';
 import OrderDetailDrawer from '../components/OrderDetailDrawer';
 import NewOrderDrawer from '../components/NewOrderDrawer';
 import TableHelpAlerts from '../components/TableHelpAlerts';
+import PublicMenuLinkDialog from '../../products/components/PublicMenuLinkDialog';
 import type { NewOrderFormValues } from '../schemas/orderSchema';
 import { KIOSK_PATHS } from '../../../routes/kioskConfig';
 import { MODULE_PATHS } from '../../../routes/navConfig';
@@ -63,6 +64,7 @@ export default function OrdersPage() {
   const [specificDate, setSpecificDate] = useState(() => dayjs().format('YYYY-MM-DD'));
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
   const [newOrderOpen, setNewOrderOpen] = useState(false);
+  const [shareMenuOpen, setShareMenuOpen] = useState(false);
   const [autoPrintEnabled, setAutoPrintEnabled] = useState(loadAutoPrintPreference);
 
   // "Hoy" se recalcula al cambiar el día: una pantalla que queda abierta de un
@@ -251,6 +253,9 @@ export default function OrdersPage() {
             >
               Abrir Car Service ↗
             </Button>
+            <Button variant="outlined" startIcon={<Share2 size={16} />} onClick={() => setShareMenuOpen(true)}>
+              Enviar menú
+            </Button>
             <Can permission="orders.create">
               <Button variant="contained" startIcon={<Plus size={16} />} onClick={() => setNewOrderOpen(true)}>
                 Nuevo pedido
@@ -258,6 +263,13 @@ export default function OrdersPage() {
             </Can>
           </>
         }
+      />
+
+      <PublicMenuLinkDialog
+        open={shareMenuOpen}
+        businessId={business?.id}
+        businessName={business?.name}
+        onClose={() => setShareMenuOpen(false)}
       />
 
       <TableHelpAlerts branchId={branchId} tableNames={tableNames} />
