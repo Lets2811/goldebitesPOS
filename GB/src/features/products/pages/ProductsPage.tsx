@@ -205,7 +205,7 @@ export default function ProductsPage() {
               startIcon={<QrCode size={16} />}
               onClick={() => setMenuLinkOpen(true)}
             >
-              Vista previa del menú
+              Compartir menú
             </Button>
             {tab === 'productos' && (
               <Can permission="products.create">
@@ -344,6 +344,7 @@ export default function ProductsPage() {
       <PublicMenuLinkDialog
         open={menuLinkOpen}
         businessId={currentBusiness?.id}
+        businessName={currentBusiness?.name}
         onClose={() => setMenuLinkOpen(false)}
       />
     </>

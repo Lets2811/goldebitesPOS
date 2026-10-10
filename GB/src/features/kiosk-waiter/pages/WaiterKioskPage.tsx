@@ -9,7 +9,7 @@ import Divider from '@mui/material/Divider';
 import Drawer from '@mui/material/Drawer';
 import IconButton from '@mui/material/IconButton';
 import Tooltip from '@mui/material/Tooltip';
-import { ArrowLeft, BookOpen, ClipboardList, LogOut, MapPin, Plus, X } from 'lucide-react';
+import { ArrowLeft, BookOpen, ClipboardList, LogOut, MapPin, Plus, Share2, X } from 'lucide-react';
 import { useSnackbar } from 'notistack';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../../modules/auth/store/auth.store';
@@ -34,6 +34,7 @@ import WaiterOrderDetailDrawer from '../components/WaiterOrderDetailDrawer';
 import ActiveTablesGrid from '../components/ActiveTablesGrid';
 import TableHelpAlerts from '../../orders/components/TableHelpAlerts';
 import PublicMenuBrowser from '../../public-menu/components/PublicMenuBrowser';
+import PublicMenuLinkDialog from '../../products/components/PublicMenuLinkDialog';
 
 /** 'showMenu' es la carta tal como la ve el cliente, para mostrársela en la tablet; 'menu' es el inicio del mesero. */
 type Screen = 'menu' | 'order' | 'tables' | 'showMenu';
@@ -59,6 +60,7 @@ export default function WaiterKioskPage() {
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
   const [myOrdersOpen, setMyOrdersOpen] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [shareMenuOpen, setShareMenuOpen] = useState(false);
 
   useEffect(() => {
     const requestFullscreen = () => {
@@ -305,11 +307,14 @@ export default function WaiterKioskPage() {
 
       {screen === 'showMenu' && (
         <Box sx={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
-          <Box sx={{ p: 1.5 }}>
+          <Stack direction="row" sx={{ p: 1.5, justifyContent: 'space-between' }}>
             <Button startIcon={<ArrowLeft size={16} />} onClick={() => setScreen('menu')}>
               Volver
             </Button>
-          </Box>
+            <Button variant="outlined" startIcon={<Share2 size={16} />} onClick={() => setShareMenuOpen(true)}>
+              Enviar menú
+            </Button>
+          </Stack>
           {/* Solo de consulta: el pedido lo sigue tomando el mesero desde "Pedido nuevo". */}
           <Box sx={{ px: 2 }}>
             <PublicMenuBrowser businessId={business.data?.id} readOnly />
@@ -400,6 +405,13 @@ export default function WaiterKioskPage() {
           </Box>
         </Box>
       </Drawer>
+
+      <PublicMenuLinkDialog
+        open={shareMenuOpen}
+        businessId={business.data?.id}
+        businessName={business.data?.name}
+        onClose={() => setShareMenuOpen(false)}
+      />
 
       <WaiterOrderDetailDrawer
         orderId={selectedOrderId}
