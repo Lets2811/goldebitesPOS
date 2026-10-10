@@ -1,7 +1,8 @@
 import { QueryClient } from '@tanstack/react-query';
 import { AxiosError } from 'axios';
 
-const NON_RETRYABLE_STATUSES = new Set([400, 401, 403, 404]);
+// 429: reintentar de inmediato una petición rechazada por exceso solo empeora el exceso.
+const NON_RETRYABLE_STATUSES = new Set([400, 401, 403, 404, 429]);
 
 export const queryClient = new QueryClient({
   defaultOptions: {

@@ -100,13 +100,15 @@ export function useAutoPrintKitchenTickets(
             itemIds: fullOrder.items.map((item) => item.id),
           };
           saveItemState(itemState.current);
-        })
-        .catch(() => {
-          // Si falla la carga del pedido no bloqueamos la lista; el usuario puede reimprimir manualmente.
-        })
-        .finally(() => {
+          // Solo aquí queda como impreso: si la carga falla, el pedido sigue
+          // pendiente y se reintenta en la siguiente consulta en vez de perder la comanda.
           printedIds.current.add(order.id);
           savePrintedIds(printedIds.current);
+        })
+        .catch(() => {
+          // Sin marcar: la próxima consulta lo vuelve a intentar.
+        })
+        .finally(() => {
           inFlightIds.current.delete(order.id);
         });
     });

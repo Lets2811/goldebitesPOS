@@ -11,7 +11,7 @@ export function usePendingTableHelpRequests(branchId?: string | null) {
     queryKey: tableHelpRequestKeys.pending(branchId),
     queryFn: () => tableHelpRequestsApi.getPending(branchId),
     staleTime: 0,
-    refetchInterval: 5_000,
+    refetchInterval: 10_000,
     refetchIntervalInBackground: true,
   });
 }

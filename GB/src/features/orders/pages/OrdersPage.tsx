@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Button from '@mui/material/Button';
 import TextField from '@mui/material/TextField';
 import MenuItem from '@mui/material/MenuItem';
@@ -65,17 +65,25 @@ export default function OrdersPage() {
   const [newOrderOpen, setNewOrderOpen] = useState(false);
   const [autoPrintEnabled, setAutoPrintEnabled] = useState(loadAutoPrintPreference);
 
+  // "Hoy" se recalcula al cambiar el día: una pantalla que queda abierta de un
+  // día para otro seguiría consultando la fecha de ayer y no vería pedidos nuevos.
+  const [today, setToday] = useState(() => dayjs().format('YYYY-MM-DD'));
+  useEffect(() => {
+    const interval = window.setInterval(() => setToday(dayjs().format('YYYY-MM-DD')), 60_000);
+    return () => window.clearInterval(interval);
+  }, []);
+
   const todayFilters = useMemo(
     () => ({
       limit: 100,
-      dateFrom: dayjs().startOf('day').toISOString(),
-      dateTo: dayjs().endOf('day').toISOString(),
+      dateFrom: dayjs(today).startOf('day').toISOString(),
+      dateTo: dayjs(today).endOf('day').toISOString(),
     }),
-    [],
+    [today],
   );
 
   const filters = useMemo(() => {
-    const day = dateMode === 'hoy' ? dayjs() : dateMode === 'fecha' ? dayjs(specificDate) : null;
+    const day = dateMode === 'hoy' ? dayjs(today) : dateMode === 'fecha' ? dayjs(specificDate) : null;
     return {
       limit: 100,
       status: statusFilter === 'todos' ? undefined : statusFilter,
@@ -83,10 +91,15 @@ export default function OrdersPage() {
       dateFrom: day ? day.startOf('day').toISOString() : undefined,
       dateTo: day ? day.endOf('day').toISOString() : undefined,
     };
-  }, [statusFilter, typeFilter, dateMode, specificDate]);
+  }, [statusFilter, typeFilter, dateMode, specificDate, today]);
 
   const { data, isLoading, isError, refetch } = useOrders(filters);
-  const { data: todayOrdersData } = useOrders(todayFilters);
+  // De esta consulta salen las comandas: va más seguido y no se detiene al
+  // cambiar de pestaña (p. ej. al abrir el modo tablet en otra).
+  const { data: todayOrdersData } = useOrders(todayFilters, {
+    refetchInterval: 15_000,
+    refetchIntervalInBackground: true,
+  });
   const { data: backlog } = useOrdersBacklog();
   const { data: customersData } = useCustomers({ limit: 100 });
   const { data: business } = useCurrentBusiness();

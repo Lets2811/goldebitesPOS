@@ -8,6 +8,7 @@ import {
   Post,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import { CurrentBusiness } from '../../../common/decorators/current-business.decorator';
 import { CurrentUser } from '../../../common/decorators/current-user.decorator';
 import { Public } from '../../../common/decorators/public.decorator';
@@ -20,12 +21,19 @@ import { RefreshTokenDto } from '../dto/refresh-token.dto';
 import { ResetPasswordDto } from '../dto/reset-password.dto';
 import { AuthService, RequestMetadata } from '../services/auth.service';
 
+/**
+ * The endpoints that take credentials keep the limit the whole API had before
+ * the global one was raised for polling: guessing passwords stays as slow as it was.
+ */
+const CREDENTIALS_THROTTLE = { default: { limit: 100, ttl: 60000 } };
+
 @ApiTags('Auth')
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   @Public()
+  @Throttle(CREDENTIALS_THROTTLE)
   @Post('login')
   @ApiOperation({ summary: 'Authenticate with email and password' })
   login(
@@ -72,6 +80,7 @@ export class AuthController {
   }
 
   @Public()
+  @Throttle(CREDENTIALS_THROTTLE)
   @Post('forgot-password')
   @ApiOperation({ summary: 'Request a password reset link' })
   async forgotPassword(@Body() dto: ForgotPasswordDto) {
@@ -83,6 +92,7 @@ export class AuthController {
   }
 
   @Public()
+  @Throttle(CREDENTIALS_THROTTLE)
   @Post('reset-password')
   @ApiOperation({ summary: 'Reset a password using a reset token' })
   async resetPassword(@Body() dto: ResetPasswordDto) {

@@ -73,10 +73,14 @@ import { WasteModule } from './modules/waste/waste.module';
       validate,
       load: [appConfig, databaseConfig],
     }),
+    // Per IP, and every device of a restaurant (the orders screen, each
+    // waiter tablet, the kitchen) shares one public IP while polling. The
+    // limit has to fit a whole venue; endpoints that need a tight one (login,
+    // password reset) set their own with @Throttle.
     ThrottlerModule.forRoot([
       {
         ttl: 60000,
-        limit: 100,
+        limit: 600,
       },
     ]),
     DatabaseModule,
