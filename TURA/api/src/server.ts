@@ -3,8 +3,14 @@ import Anthropic from '@anthropic-ai/sdk';
 import cors from 'cors';
 import express, { type Response } from 'express';
 import { z } from 'zod';
-import { runTurn, TuraDeclinedError, type TuraEvent } from './agent/run-turn.js';
+import {
+  runTurn,
+  TuraDeclinedError,
+  TuraTruncatedError,
+  type TuraEvent,
+} from './agent/agent.service.js';
 import { runSimulatedTurn } from './agent/simulated-turn.js';
+import { newAudit, recordAudit } from './audit/audit-log.js';
 import { authenticate, UnauthenticatedError } from './auth.js';
 import { config } from './config.js';
 import { PosApiError } from './pos/pos-client.js';
@@ -31,11 +37,17 @@ function describeFailure(error: unknown): string {
   if (error instanceof TuraDeclinedError) {
     return 'No puedo ayudarte con esa solicitud.';
   }
+  if (error instanceof TuraTruncatedError) {
+    return 'La respuesta quedó incompleta. Intenta de nuevo con una pregunta más corta.';
+  }
   if (error instanceof Anthropic.AuthenticationError) {
     return 'TURA no está configurada: falta la credencial del modelo en el servidor.';
   }
   if (error instanceof Anthropic.RateLimitError) {
     return 'TURA está recibiendo muchas consultas. Intenta de nuevo en un momento.';
+  }
+  if (error instanceof Anthropic.APIConnectionTimeoutError) {
+    return 'TURA tardó demasiado en responder. Intenta de nuevo en un momento.';
   }
   if (error instanceof PosApiError) {
     return 'No pude conectarme con el POS. Intenta de nuevo en un momento.';
@@ -53,13 +65,21 @@ app.use(cors({ origin: config.corsOrigin.split(',') }));
 app.use(express.json({ limit: '200kb' }));
 
 app.get('/tura/health', (_req, res) => {
-  res.json({ status: 'ok', simulated: config.simulateAi });
+  res.json({
+    status: 'ok',
+    simulated: config.simulateAi,
+    // False when this service answers without the app being linked: while the
+    // AI is simulated, or when a development token stands in for the user.
+    linkRequired: !config.simulateAi && !config.devPosToken,
+    pos: config.posApiTarget,
+  });
 });
 
 /**
  * One conversational turn. The client sends the text history (it owns the
- * conversation; this service keeps no state) and receives the answer as a
- * stream of server-sent events — see TuraEvent.
+ * conversation; this service keeps no state — the agent reads only its most
+ * recent turns) and receives the answer as a stream of server-sent events —
+ * see TuraEvent.
  */
 app.post('/tura/chat', async (req, res) => {
   const parsed = chatRequestSchema.safeParse(req.body);
@@ -101,20 +121,31 @@ app.post('/tura/chat', async (req, res) => {
 
   const startedAt = Date.now();
   const meter = newMeter();
+  const audit = newAudit();
   let outcome: TurnRecord['outcome'] = 'ok';
+  let failure: string | undefined;
 
   try {
     const emit = (event: TuraEvent) => sendEvent(res, event);
     if (config.simulateAi) {
       await runSimulatedTurn(session, parsed.data.messages, emit, () => clientGone);
     } else {
-      await runTurn(session, parsed.data.messages, parsed.data.mode, meter, emit, () => clientGone);
+      await runTurn({
+        session,
+        history: parsed.data.messages,
+        mode: parsed.data.mode,
+        meter,
+        audit,
+        emit,
+        isCancelled: () => clientGone,
+      });
     }
     if (clientGone) {
       outcome = 'cancelled';
     }
   } catch (error) {
     outcome = 'error';
+    failure = error instanceof Error ? `${error.name}: ${error.message}` : String(error);
     console.error('Turn failed', error);
     if (!clientGone) {
       sendEvent(res, { type: 'error', message: describeFailure(error) });
@@ -131,6 +162,19 @@ app.post('/tura/chat', async (req, res) => {
       tools: meter.tools,
       calls: meter.calls,
     }).catch((error: unknown) => console.error('Could not record usage', error));
+    recordAudit({
+      at: new Date(startedAt).toISOString(),
+      userId: session.userId,
+      businessId: session.businessId,
+      branchId: session.branchId,
+      role: session.roleName,
+      mode: parsed.data.mode,
+      message: parsed.data.messages.at(-1)?.content ?? '',
+      outcome,
+      error: failure,
+      totalMs: Date.now() - startedAt,
+      ...audit,
+    }).catch((error: unknown) => console.error('Could not record audit', error));
   }
 });
 
@@ -167,6 +211,12 @@ app.get('/tura/admin/usage', async (req, res) => {
 
 app.listen(config.port, () => {
   console.log(`TURA API running on http://localhost:${config.port}/tura`);
+  console.log(`POS: ${config.posApiTarget} (${config.posApiUrl})`);
+  if (config.devPosToken) {
+    console.warn(
+      'TURA_DEV_POS_TOKEN is set: requests without a token act as that POS user. Development only.',
+    );
+  }
   if (config.simulateAi) {
     console.warn('TURA_SIMULATE_AI is on: answers are canned and Claude is not called');
   } else if (!process.env.ANTHROPIC_API_KEY && !process.env.ANTHROPIC_AUTH_TOKEN) {

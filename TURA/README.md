@@ -71,15 +71,24 @@ en desarrollo.
 
 Chat de texto y conversación por voz, solo lectura.
 
-| Herramienta            | Qué consulta                                    | Permiso del POS   |
-| ---------------------- | ----------------------------------------------- | ----------------- |
-| `resumen_del_dia`      | Ventas de hoy, pedidos activos, stock bajo, caja | `dashboard.read`  |
-| `consultar_ventas`     | Ventas por día y productos más vendidos         | `analytics.read`  |
-| `listar_pedidos`       | Pedidos por estado, tipo, fecha o búsqueda      | `orders.read`     |
-| `consultar_stock_bajo` | Insumos por debajo de su mínimo                 | `inventory.read`  |
+| Herramienta           | Endpoint del POS          | Qué consulta                                   | Permiso del POS |
+| --------------------- | ------------------------- | ---------------------------------------------- | --------------- |
+| `consultar_productos` | `GET /assistant/products` | Productos por nombre o SKU: precio, estado y existencias | `products.read` |
 
-Las herramientas están en `api/src/agent/tools.ts`. TURA solo ofrece las que el
-token permite usar.
+Cada herramienta corresponde a un solo endpoint del POS y vive en su propio
+archivo en `api/src/tools/`. Para añadir una: crear el archivo con
+`defineReadTool` (nombre, descripción para el modelo, permiso, parámetros y la
+llamada al endpoint) y agregarla a la lista de `api/src/tools/registry.ts`.
+TURA solo ofrece las que el token del usuario permite usar, y el POS vuelve a
+comprobar cada llamada.
+
+El loop del agente está en `api/src/agent/agent.service.ts`: pregunta al
+modelo, ejecuta las herramientas que pide, le devuelve los resultados (un error
+del POS vuelve como error de la herramienta, para que lo explique) y se detiene
+a las 6 vueltas. Cada mensaje queda en `api/data/audit.jsonl` con el usuario,
+las herramientas, sus parámetros, el inicio de cada resultado y los errores.
+
+Pruebas: `npm test` en `api/` (POS y modelo simulados, sin gastar créditos).
 
 La voz (pantalla Hablar) la oye y la dice el navegador: reconocimiento de voz
 para transcribir y síntesis de voz para responder. Funciona en Chrome y Edge.

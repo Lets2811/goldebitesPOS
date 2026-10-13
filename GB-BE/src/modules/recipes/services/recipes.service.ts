@@ -8,7 +8,11 @@ import { TransactionService } from '../../../database/transaction.service';
 import { AuditService } from '../../audit/services/audit.service';
 import { InventoryItemsService } from '../../inventory-items/services/inventory-items.service';
 import { ProductsService } from '../../products/services/products.service';
-import { RecipeRow, RecipeWithItems } from '../domain/recipe.interface';
+import {
+  ProductInventoryLink,
+  RecipeRow,
+  RecipeWithItems,
+} from '../domain/recipe.interface';
 import {
   CreateRecipeData,
   RecipeItemInput,
@@ -101,6 +105,36 @@ export class RecipesService {
       businessId,
     );
     return row ? this.buildRecipeWithItems(row) : null;
+  }
+
+  /**
+   * What each of these products consumes from inventory, keyed by product.
+   * A product missing from the map has no recipe (or an empty one), so
+   * selling it moves no stock.
+   */
+  async findInventoryLinksByProducts(
+    businessId: string,
+    productIds: string[],
+  ): Promise<Map<string, ProductInventoryLink[]>> {
+    const rows = await this.recipesRepository.findInventoryLinksByProductIds(
+      businessId,
+      productIds,
+    );
+    const byProduct = new Map<string, ProductInventoryLink[]>();
+    for (const row of rows) {
+      const links = byProduct.get(row.product_id) ?? [];
+      links.push({
+        productId: row.product_id,
+        inventoryItemId: row.inventory_item_id,
+        inventoryItemName: row.inventory_item_name,
+        unit: row.unit,
+        quantityPerUnit:
+          parseFloat(row.quantity) / parseFloat(row.yield_quantity),
+        inventoryItemAvailable: row.inventory_item_available,
+      });
+      byProduct.set(row.product_id, links);
+    }
+    return byProduct;
   }
 
   async update(

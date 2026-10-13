@@ -1,7 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import { DatabaseService } from '../../../database/database.service';
 import { DbClient } from '../../../database/types/database.types';
-import { RecipeItemDetailRow, RecipeRow } from '../domain/recipe.interface';
+import {
+  ProductInventoryLinkRow,
+  RecipeItemDetailRow,
+  RecipeRow,
+} from '../domain/recipe.interface';
 import {
   CreateRecipeData,
   RecipeItemInput,
@@ -142,6 +146,27 @@ export class RecipesRepository implements IRecipesRepository {
       ],
       client,
     );
+  }
+
+  async findInventoryLinksByProductIds(
+    businessId: string,
+    productIds: string[],
+  ): Promise<ProductInventoryLinkRow[]> {
+    if (productIds.length === 0) {
+      return [];
+    }
+    const result = await this.db.query<ProductInventoryLinkRow>(
+      `SELECT r.product_id, ri.inventory_item_id, ii.name AS inventory_item_name, ii.unit,
+              ri.quantity, r.yield_quantity,
+              (ii.deleted_at IS NULL AND ii.is_active) AS inventory_item_available
+       FROM recipes r
+       JOIN recipe_items ri ON ri.recipe_id = r.id
+       JOIN inventory_items ii ON ii.id = ri.inventory_item_id
+       WHERE r.business_id = $1 AND r.product_id = ANY($2::uuid[])
+       ORDER BY r.product_id, ii.name`,
+      [businessId, productIds],
+    );
+    return result.rows;
   }
 
   async getTotalCost(recipeId: string, client?: DbClient): Promise<number> {

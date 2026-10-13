@@ -22,6 +22,7 @@
     "migration:status": "tsx src/database/migration-status.ts",
     "migration:create": "tsx src/database/migration-create.ts",
     "seed": "ts-node -P tsconfig.json src/database/seed-runner.ts",
+    "dev:token": "ts-node -P tsconfig.json src/database/dev-token.ts",
     "db:reset": "tsx src/database/reset-database.ts"
   },
   "dependencies": {

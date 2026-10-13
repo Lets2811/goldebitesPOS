@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useSyncExternalStore, type FormEvent } from 'react';
-import { AiModeBadge, useAiSimulated } from './AiModeBadge';
+import { AiModeBadge, useLinkOptional } from './AiModeBadge';
 import { BackIcon } from './icons';
 import { getLink, subscribe } from './link';
 import { onboardingOpening, onboardingReply } from './onboarding';
@@ -18,18 +18,14 @@ interface Message {
 }
 
 const SUGGESTIONS = [
-  '¿Cómo va el día?',
-  '¿Qué fue lo más vendido esta semana?',
-  '¿Qué pedidos están pendientes?',
-  '¿Qué insumos están bajos?',
+  '¿Cuánto cuesta el agua manantial?',
+  '¿Cuántas botellas de agua quedan?',
+  '¿Qué productos están ocultos del menú?',
 ];
 
 /** What to show while TURA waits on each POS tool (names come from TURA/api). */
 const TOOL_STATUS: Record<string, string> = {
-  resumen_del_dia: 'Revisando el día…',
-  consultar_ventas: 'Consultando ventas…',
-  listar_pedidos: 'Buscando pedidos…',
-  consultar_stock_bajo: 'Revisando inventario…',
+  consultar_productos: 'Buscando productos…',
 };
 
 /** TURA/api accepts at most this many turns; older ones are dropped. */
@@ -48,8 +44,8 @@ function toHistory(messages: Message[]): ChatTurn[] {
 export function ChatScreen({ hidden }: { hidden: boolean }) {
   const link = useSyncExternalStore(subscribe, getLink);
   // While the AI is simulated the chat can be tried without linking the app.
-  const simulated = useAiSimulated();
-  const ready = link !== null || simulated;
+  const linkOptional = useLinkOptional();
+  const ready = link !== null || linkOptional;
   const [messages, setMessages] = useState<Message[]>([]);
   const [draft, setDraft] = useState('');
   /** Null when idle; otherwise what TURA is doing right now. */
@@ -182,7 +178,7 @@ export function ChatScreen({ hidden }: { hidden: boolean }) {
         ) : ready ? (
           <section className="chat__welcome">
             <h2>{link ? `Hola, ${link.userName}` : 'Hola'}</h2>
-            <p>Pregúntame por las ventas, los pedidos o el inventario.</p>
+            <p>Pregúntame por un producto: su precio, si está en el menú o cuántas unidades quedan.</p>
             <div className="chat__suggestions">
               {SUGGESTIONS.map((suggestion) => (
                 <button key={suggestion} type="button" onClick={() => void send(suggestion)}>

@@ -1,5 +1,5 @@
 import type { Session } from '../auth.js';
-import type { ChatTurn, TuraEvent } from './run-turn.js';
+import type { ChatTurn, TuraEvent } from './agent.service.js';
 
 /**
  * Stands in for the model while the interface is being worked on
@@ -17,40 +17,22 @@ interface Script {
 
 const SCRIPTS: Script[] = [
   {
-    matches: /venta|vend|factur/i,
-    tool: 'consultar_ventas',
+    matches: /producto|precio|cu[aá]nto (cuesta|vale)|existencia|stock|queda|agua|gaseosa/i,
+    tool: 'consultar_productos',
     reply: () =>
-      'Dato de prueba: esta semana van 4.850.000 pesos en 132 pedidos. Lo más vendido fue la hamburguesa clásica, con 48 unidades.',
-  },
-  {
-    matches: /pedido|orden|mesa/i,
-    tool: 'listar_pedidos',
-    reply: () =>
-      'Dato de prueba: hay 3 pedidos pendientes. Dos son en mesa y uno es para llevar; el más antiguo lleva 12 minutos en preparación.',
-  },
-  {
-    matches: /stock|inventario|insumo|bajo/i,
-    tool: 'consultar_stock_bajo',
-    reply: () =>
-      'Dato de prueba: hay 2 insumos por debajo del mínimo. Quedan 3 kilos de queso y 10 panes de hamburguesa.',
-  },
-  {
-    matches: /d[ií]a|resumen|c[oó]mo va|caja/i,
-    tool: 'resumen_del_dia',
-    reply: () =>
-      'Dato de prueba: hoy van 18 pedidos por 640.000 pesos, con un ticket promedio de 35.500. Hay 3 pedidos activos y la caja está abierta.',
+      'Dato de prueba: encontré Agua manantial, a 6.000 pesos. Está activa en el menú y quedan 9 botellas.',
   },
   {
     matches: /hola|buen[oa]s|qu[eé] tal|c[oó]mo est[aá]s/i,
     reply: (session) =>
-      `¡Hola${session.firstName ? `, ${session.firstName}` : ''}! Estoy muy bien, gracias. Estoy en modo de prueba, sin inteligencia artificial. Pregúntame por ventas, pedidos o inventario y te respondo con datos de ejemplo.`,
+      `¡Hola${session.firstName ? `, ${session.firstName}` : ''}! Estoy muy bien, gracias. Estoy en modo de prueba, sin inteligencia artificial. Pregúntame por un producto y te respondo con datos de ejemplo.`,
   },
 ];
 
 const FALLBACK: Script = {
   matches: /./,
   reply: () =>
-    'Estoy en modo de prueba, así que no consulté nada de verdad. Pregúntame por ventas, pedidos, inventario o cómo va el día para ver una respuesta de ejemplo.',
+    'Estoy en modo de prueba, así que no consulté nada de verdad. Pregúntame por un producto, su precio o sus existencias para ver una respuesta de ejemplo.',
 };
 
 const THINKING_MS = 1200;

@@ -8,21 +8,26 @@ import { useSyncExternalStore } from 'react';
 type AiMode = 'live' | 'simulated' | 'unknown';
 
 let mode: AiMode = 'unknown';
+/** Whether the service answers an app that is not linked: while simulated, or with a development token. */
+let linkOptional = false;
 const listeners = new Set<() => void>();
 
 async function refresh(): Promise<void> {
   let next: AiMode = 'unknown';
+  let nextLinkOptional = false;
   try {
     const response = await fetch('/tura/health');
     if (response.ok) {
-      const health = (await response.json()) as { simulated?: boolean };
+      const health = (await response.json()) as { simulated?: boolean; linkRequired?: boolean };
       next = health.simulated ? 'simulated' : 'live';
+      nextLinkOptional = health.linkRequired === false || health.simulated === true;
     }
   } catch {
     // Stays unknown: the service is not running or not reachable.
   }
-  if (next !== mode) {
+  if (next !== mode || nextLinkOptional !== linkOptional) {
     mode = next;
+    linkOptional = nextLinkOptional;
     listeners.forEach((listener) => listener());
   }
 }
@@ -50,6 +55,16 @@ const LABELS: Record<AiMode, { text: string; title: string }> = {
 /** The same as useAiSimulated, for code that is not a component. */
 export function isAiSimulated(): boolean {
   return mode === 'simulated';
+}
+
+/** Whether the conversation can start without linking the app first. */
+export function isLinkOptional(): boolean {
+  return linkOptional;
+}
+
+/** The same as isLinkOptional, for components. */
+export function useLinkOptional(): boolean {
+  return useSyncExternalStore(subscribe, () => linkOptional);
 }
 
 /** Whether the service is answering with canned replies, a development setting. */

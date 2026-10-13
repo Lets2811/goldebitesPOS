@@ -15,6 +15,7 @@ describe('RecipesService', () => {
     findItemsWithDetails: jest.Mock;
     replaceItems: jest.Mock;
     getTotalCost: jest.Mock;
+    findInventoryLinksByProductIds: jest.Mock;
   };
   let productsService: {
     getOwnedOrFail: jest.Mock;
@@ -68,6 +69,7 @@ describe('RecipesService', () => {
       findItemsWithDetails: jest.fn().mockResolvedValue([]),
       replaceItems: jest.fn(),
       getTotalCost: jest.fn().mockResolvedValue(0),
+      findInventoryLinksByProductIds: jest.fn().mockResolvedValue([]),
     };
     productsService = {
       getOwnedOrFail: jest
@@ -219,6 +221,61 @@ describe('RecipesService', () => {
       expect(auditService.record).toHaveBeenCalledWith(
         expect.objectContaining({ action: 'DELETE' }),
       );
+    });
+  });
+  describe('findInventoryLinksByProducts', () => {
+    it('groups the links by product and derives the per-unit consumption from the yield', async () => {
+      repository.findInventoryLinksByProductIds.mockResolvedValue([
+        {
+          product_id: 'water',
+          inventory_item_id: 'inv-water',
+          inventory_item_name: 'Agua botella',
+          unit: 'botella',
+          quantity: '1.000',
+          yield_quantity: '1.000',
+          inventory_item_available: true,
+        },
+        {
+          product_id: 'burger',
+          inventory_item_id: 'inv-beef',
+          inventory_item_name: 'Beef',
+          unit: 'kg',
+          quantity: '0.600',
+          yield_quantity: '4.000',
+          inventory_item_available: true,
+        },
+        {
+          product_id: 'burger',
+          inventory_item_id: 'inv-bun',
+          inventory_item_name: 'Bun',
+          unit: 'unidad',
+          quantity: '4.000',
+          yield_quantity: '4.000',
+          inventory_item_available: false,
+        },
+      ]);
+
+      const links = await service.findInventoryLinksByProducts(businessId, [
+        'water',
+        'burger',
+        'no-recipe',
+      ]);
+
+      expect(repository.findInventoryLinksByProductIds).toHaveBeenCalledWith(
+        businessId,
+        ['water', 'burger', 'no-recipe'],
+      );
+      expect(links.get('water')).toEqual([
+        expect.objectContaining({
+          inventoryItemId: 'inv-water',
+          quantityPerUnit: 1,
+          inventoryItemAvailable: true,
+        }),
+      ]);
+      expect(links.get('burger')).toHaveLength(2);
+      expect(links.get('burger')?.[0].quantityPerUnit).toBeCloseTo(0.15, 5);
+      expect(links.get('burger')?.[1].inventoryItemAvailable).toBe(false);
+      expect(links.has('no-recipe')).toBe(false);
     });
   });
 });

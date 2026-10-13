@@ -1,4 +1,4 @@
-import { isAiSimulated } from './AiModeBadge';
+import { isLinkOptional } from './AiModeBadge';
 import { getAccessToken } from './link';
 
 export interface ChatTurn {
@@ -48,7 +48,7 @@ export async function* streamChat(
   mode: ConversationMode = 'chat',
 ): AsyncGenerator<TuraEvent> {
   let accessToken = await getAccessToken();
-  if (!accessToken && !isAiSimulated()) {
+  if (!accessToken && !isLinkOptional()) {
     throw new NotLinkedError();
   }
 

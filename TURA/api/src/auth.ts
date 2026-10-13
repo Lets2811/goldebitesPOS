@@ -4,6 +4,8 @@ import { PosApiError, PosClient } from './pos/pos-client.js';
 
 /** The claims TURA reads from GB-BE's access token (see JwtPayload in GB-BE). */
 interface AccessTokenClaims {
+  sub: string | null;
+  businessId: string | null;
   branchId: string | null;
   roleName: string;
   permissions: string[];
@@ -24,6 +26,9 @@ interface LinkIdentity {
 
 export interface Session {
   pos: PosClient;
+  /** Who is asking, for the audit log. Null only while the AI is simulated and nobody is signed in. */
+  userId: string | null;
+  businessId: string | null;
   firstName: string;
   /** The user's business, when known: it comes with a TURA link, not with a POS sign-in. */
   businessName: string | null;
@@ -44,6 +49,8 @@ function decodeClaims(token: string): AccessTokenClaims {
       Buffer.from(payload, 'base64url').toString('utf-8'),
     ) as Partial<AccessTokenClaims>;
     return {
+      sub: claims.sub ?? null,
+      businessId: claims.businessId ?? null,
       branchId: claims.branchId ?? null,
       roleName: claims.roleName ?? '',
       permissions: Array.isArray(claims.permissions) ? claims.permissions : [],
@@ -64,7 +71,8 @@ function decodeClaims(token: string): AccessTokenClaims {
  */
 export async function authenticate(req: Request): Promise<Session> {
   const header = req.headers.authorization ?? '';
-  const token = header.startsWith('Bearer ') ? header.slice(7).trim() : '';
+  // A linked app sends its own token; the development token only stands in when there is none.
+  const token = (header.startsWith('Bearer ') ? header.slice(7).trim() : '') || config.devPosToken;
   if (!token) {
     if (!config.simulateAi) {
       throw new UnauthenticatedError();
@@ -73,6 +81,8 @@ export async function authenticate(req: Request): Promise<Session> {
     // spent, so the interface can be tried without linking the app first.
     return {
       pos: new PosClient(''),
+      userId: null,
+      businessId: null,
       firstName: '',
       businessName: null,
       roleName: '',
@@ -85,6 +95,8 @@ export async function authenticate(req: Request): Promise<Session> {
   const claims = decodeClaims(token);
   const access = {
     pos,
+    userId: claims.sub,
+    businessId: claims.businessId,
     roleName: claims.roleName,
     branchId: claims.branchId,
     permissions: claims.permissions,

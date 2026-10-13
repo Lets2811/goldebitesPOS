@@ -40,6 +40,7 @@ export const TURA_PERMISSIONS = [
   'analytics.read',
   'orders.read',
   'inventory.read',
+  'products.read',
 ];
 
 const CODE_LENGTH = 6;

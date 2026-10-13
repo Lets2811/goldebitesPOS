@@ -47,10 +47,15 @@ export class PosClient {
     try {
       response = await fetch(url, {
         headers: { Authorization: `Bearer ${this.accessToken}` },
-        signal: AbortSignal.timeout(15_000),
+        signal: AbortSignal.timeout(config.posTimeoutMs),
       });
-    } catch {
-      throw new PosApiError(503, 'No se pudo conectar con el POS');
+    } catch (error) {
+      throw new PosApiError(
+        error instanceof Error && error.name === 'TimeoutError' ? 504 : 503,
+        error instanceof Error && error.name === 'TimeoutError'
+          ? 'El POS tardó demasiado en responder'
+          : 'No se pudo conectar con el POS',
+      );
     }
 
     const body: unknown = await response.json().catch(() => null);

@@ -155,4 +155,78 @@ describe('RecipesRepository (integration)', () => {
       await repository.findByProductId(productId, randomUUID()),
     ).toBeNull();
   });
+  describe('findInventoryLinksByProductIds()', () => {
+    it('returns the items of several products in one go, and nothing for a product without a recipe', async () => {
+      const single = await createProduct();
+      const withoutRecipe = await createProduct();
+      const recipe = await repository.create({
+        businessId,
+        productId: single,
+        name: 'Single item',
+        yieldQuantity: 4,
+      });
+      await repository.replaceItems(recipe.id, [
+        { inventoryItemId, quantity: 0.6 },
+      ]);
+
+      const rows = await repository.findInventoryLinksByProductIds(businessId, [
+        single,
+        withoutRecipe,
+      ]);
+
+      expect(rows).toHaveLength(1);
+      expect(rows[0]).toEqual({
+        product_id: single,
+        inventory_item_id: inventoryItemId,
+        inventory_item_name: 'Beef',
+        unit: 'kg',
+        quantity: '0.600',
+        yield_quantity: '4.000',
+        inventory_item_available: true,
+      });
+    });
+
+    it('flags a link whose inventory item was deleted', async () => {
+      const deleted = await pool.query<{ id: string }>(
+        `INSERT INTO inventory_items (business_id, name, unit, deleted_at) VALUES ($1, 'Gone', 'kg', now()) RETURNING id`,
+        [businessId],
+      );
+      const productId = await createProduct();
+      const recipe = await repository.create({
+        businessId,
+        productId,
+        name: 'Stale',
+      });
+      await repository.replaceItems(recipe.id, [
+        { inventoryItemId: deleted.rows[0].id, quantity: 1 },
+      ]);
+
+      const rows = await repository.findInventoryLinksByProductIds(businessId, [
+        productId,
+      ]);
+
+      expect(rows[0].inventory_item_available).toBe(false);
+    });
+
+    it('is scoped by business and makes no query for an empty list', async () => {
+      const productId = await createProduct();
+      const recipe = await repository.create({
+        businessId,
+        productId,
+        name: 'Scoped',
+      });
+      await repository.replaceItems(recipe.id, [
+        { inventoryItemId, quantity: 1 },
+      ]);
+
+      expect(
+        await repository.findInventoryLinksByProductIds(randomUUID(), [
+          productId,
+        ]),
+      ).toEqual([]);
+      expect(
+        await repository.findInventoryLinksByProductIds(businessId, []),
+      ).toEqual([]);
+    });
+  });
 });

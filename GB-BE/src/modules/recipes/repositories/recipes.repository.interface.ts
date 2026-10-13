@@ -1,5 +1,9 @@
 import { DbClient } from '../../../database/types/database.types';
-import { RecipeItemDetailRow, RecipeRow } from '../domain/recipe.interface';
+import {
+  ProductInventoryLinkRow,
+  RecipeItemDetailRow,
+  RecipeRow,
+} from '../domain/recipe.interface';
 import {
   CreateRecipeData,
   RecipeItemInput,
@@ -35,6 +39,15 @@ export interface IRecipesRepository {
     client?: DbClient,
   ): Promise<void>;
   getTotalCost(recipeId: string, client?: DbClient): Promise<number>;
+  /**
+   * The inventory items consumed by the recipes of several products, in one
+   * query — for callers that would otherwise load each product's recipe in
+   * turn. Products without a recipe simply have no rows.
+   */
+  findInventoryLinksByProductIds(
+    businessId: string,
+    productIds: string[],
+  ): Promise<ProductInventoryLinkRow[]>;
 }
 
 export const RECIPES_REPOSITORY = Symbol('RECIPES_REPOSITORY');

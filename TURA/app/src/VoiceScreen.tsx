@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
-import { AiModeBadge, aiModeKnown, isAiSimulated } from './AiModeBadge';
+import { AiModeBadge, aiModeKnown, isLinkOptional } from './AiModeBadge';
 import { setAIState, useAIState, type AIState } from './ai-state';
 import { BackIcon, MicIcon, MicOffIcon } from './icons';
 import { getLink } from './link';
@@ -42,12 +42,12 @@ function opening(): string {
 }
 
 /**
- * Whether the conversation has to start by linking the app. Not while the AI
- * is simulated: its canned replies need no business behind them, and linking
- * first would only get in the way of trying the interface.
+ * Whether the conversation has to start by linking the app. Not when the
+ * service answers without a link — while the AI is simulated, or with a
+ * development token — where linking first would only get in the way.
  */
 function needsLinking(): boolean {
-  return !getLink() && !isAiSimulated();
+  return !getLink() && !isLinkOptional();
 }
 
 /** The service accepts 40 messages; older turns are dropped well before that. */
