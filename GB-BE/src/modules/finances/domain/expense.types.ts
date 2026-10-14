@@ -1,10 +1,8 @@
-export enum ExpenseCategory {
-  COGS = 'COGS',
-  OPERATING = 'OPERATING',
-  PAYROLL = 'PAYROLL',
-  MARKETING = 'MARKETING',
-  OTHER = 'OTHER',
-}
+/**
+ * The code of the expense category an expense is recorded under — one of the
+ * business's own (see ExpenseCategoriesService), which it can add to and rename.
+ */
+export type ExpenseCategory = string;
 
 /** Which fund an expense drew from — determines what gets debited and whether it affects the cash session's expected cash. */
 export enum ExpensePaymentSource {
@@ -74,6 +72,12 @@ export interface ExpenseSummaryQuery {
   businessId: string;
   dateFrom: string;
   dateTo: string;
+}
+
+export interface ExpenseDailyTotal {
+  /** Calendar day (YYYY-MM-DD) the expenses are dated. */
+  date: string;
+  total: number;
 }
 
 export interface ExpenseCategoryTotal {

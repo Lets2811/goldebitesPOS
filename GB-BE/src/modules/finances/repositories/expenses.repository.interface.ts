@@ -1,8 +1,5 @@
 import { DbClient } from '../../../database/types/database.types';
-import {
-  ExpenseCategoryTotalRow,
-  ExpenseRow,
-} from '../domain/expense.interface';
+import { ExpenseCategoryTotalRow, ExpenseDailyTotalRow, ExpenseRow } from '../domain/expense.interface';
 import {
   CreateExpenseData,
   ExpenseQuery,
@@ -39,6 +36,8 @@ export interface IExpensesRepository {
     client: DbClient,
   ): Promise<ExpenseRow>;
   softDelete(id: string, businessId: string): Promise<ExpenseRow | null>;
+  /** Total spent on each day of the range that has expenses, oldest first. */
+  getDailyTotals(query: ExpenseSummaryQuery): Promise<ExpenseDailyTotalRow[]>;
   getSummaryByCategory(
     query: ExpenseSummaryQuery,
   ): Promise<ExpenseCategoryTotalRow[]>;

@@ -1,5 +1,6 @@
 import type { Session } from '../auth.js';
 import { consultarProductos } from './consultar-productos.js';
+import { consultarVentas } from './consultar-ventas.js';
 import type { AssistantTool } from './types.js';
 
 /**
@@ -7,7 +8,7 @@ import type { AssistantTool } from './types.js';
  * a line here. The order is part of what the model's prompt cache is keyed
  * on, so new tools go at the end.
  */
-const TOOLS: AssistantTool[] = [consultarProductos];
+const TOOLS: AssistantTool[] = [consultarProductos, consultarVentas];
 
 /**
  * The tools offered in one conversation. Those the user has no permission

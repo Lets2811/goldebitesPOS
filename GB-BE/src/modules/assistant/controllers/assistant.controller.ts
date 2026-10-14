@@ -6,7 +6,9 @@ import { Permissions } from '../../../common/decorators/permissions.decorator';
 import { RequiresFeature } from '../../../common/decorators/requires-feature.decorator';
 import type { AuthenticatedUser } from '../../../common/interfaces/authenticated-user.interface';
 import { AssistantProductsQueryDto } from '../dto/assistant-products-query.dto';
+import { AssistantSalesQueryDto } from '../dto/assistant-sales-query.dto';
 import { AssistantProductsService } from '../services/assistant-products.service';
+import { AssistantSalesService } from '../services/assistant-sales.service';
 import { AssistantService } from '../services/assistant.service';
 
 /** What the inventory endpoints themselves ask for; stock is only shown to a caller who could read it there. */
@@ -25,6 +27,7 @@ export class AssistantController {
   constructor(
     private readonly assistantService: AssistantService,
     private readonly assistantProductsService: AssistantProductsService,
+    private readonly assistantSalesService: AssistantSalesService,
   ) {}
 
   @Get('products')
@@ -51,6 +54,29 @@ export class AssistantController {
       limit: query.limit,
       sortBy: query.sortBy,
       sortOrder: query.sortOrder,
+    });
+  }
+
+  @Get('sales')
+  @RequiresFeature('analytics')
+  @Permissions('analytics.read')
+  @ApiOperation({
+    summary:
+      'Sales of a range of calendar days: the total, and on request its breakdown over time and the best-selling products',
+  })
+  getSales(
+    @CurrentBusiness() businessId: string,
+    @Query() query: AssistantSalesQueryDto,
+  ) {
+    return this.assistantSalesService.getSales({
+      businessId,
+      dateFrom: query.dateFrom,
+      dateTo: query.dateTo,
+      branchName: query.branch,
+      groupBy: query.groupBy,
+      includeTopProducts: query.includeTopProducts,
+      topProductsLimit: query.topProductsLimit,
+      topProductsOrder: query.topProductsOrder,
     });
   }
 }

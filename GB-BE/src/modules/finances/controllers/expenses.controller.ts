@@ -73,6 +73,20 @@ export class ExpensesController {
     });
   }
 
+  @Get('daily')
+  @Permissions('finances.read')
+  @ApiOperation({ summary: 'Total expenses of each day within a date range' })
+  getDailyTotals(
+    @CurrentBusiness() businessId: string,
+    @Query() query: ExpenseSummaryQueryDto,
+  ) {
+    return this.expensesService.getDailyTotals({
+      businessId,
+      dateFrom: query.dateFrom,
+      dateTo: query.dateTo,
+    });
+  }
+
   @Patch(':id')
   @Permissions('finances.manage')
   @ApiOperation({ summary: 'Update an expense' })

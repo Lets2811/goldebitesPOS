@@ -26,6 +26,7 @@ import { useUpdateTaxRate } from '../../../modules/settings/hooks/use-update-tax
 import { useBranches } from '../../../modules/branches/hooks/use-branches';
 import BranchTableCountField from '../components/BranchTableCountField';
 import TuraLinksSection from '../components/TuraLinksSection';
+import ExpenseCategoriesSection from '../components/ExpenseCategoriesSection';
 import { useProductCategories } from '../../../modules/product-categories/hooks/use-product-categories';
 import { useCreateProductCategory } from '../../../modules/product-categories/hooks/use-create-product-category';
 import { normalizeApiError } from '../../../lib/api/api-error';
@@ -418,6 +419,13 @@ export default function SettingsPage() {
           </Stack>
         </AccordionDetails>
       </Accordion>
+
+      {/* Who records expenses decides what kinds there are. */}
+      <HasFeature feature="finances">
+        <Can permission="finances.manage">
+          <ExpenseCategoriesSection />
+        </Can>
+      </HasFeature>
 
       {/* TURA is a paid module: the section only exists for businesses a platform admin has given it to. */}
       <HasFeature feature="tura">

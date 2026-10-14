@@ -15,12 +15,14 @@ import { Expense } from '../domain/expense.interface';
 import {
   CreateExpenseData,
   ExpenseCategoryTotal,
+  ExpenseDailyTotal,
   ExpensePaymentSource,
   ExpenseQuery,
   ExpenseSummaryQuery,
   ReclassifyExpenseSourceData,
   UpdateExpenseData,
 } from '../domain/expense.types';
+import { ExpenseCategoriesService } from './expense-categories.service';
 import { ExpenseMapper } from '../mappers/expense.mapper';
 import { EXPENSES_REPOSITORY } from '../repositories/expenses.repository.interface';
 import type { IExpensesRepository } from '../repositories/expenses.repository.interface';
@@ -60,9 +62,11 @@ export class ExpensesService {
     private readonly fundsService: FundsService,
     private readonly transactionService: TransactionService,
     private readonly auditService: AuditService,
+    private readonly categoriesService: ExpenseCategoriesService,
   ) {}
 
   async create(data: CreateExpenseData, actorUserId: string): Promise<Expense> {
+    await this.categoriesService.assertUsable(data.businessId, data.category);
     const payerName = await this.resolvePayerName(
       data.businessId,
       data.paymentSource,
@@ -135,6 +139,10 @@ export class ExpensesService {
           'AMOUNT_LOCKED_BY_SOURCE',
         );
       }
+    }
+
+    if (data.category !== undefined) {
+      await this.categoriesService.assertUsable(businessId, data.category);
     }
 
     const row = await this.expensesRepository.update(id, businessId, data);
@@ -250,6 +258,11 @@ export class ExpensesService {
       entityId: id,
       action: 'DELETE',
     });
+  }
+
+  async getDailyTotals(query: ExpenseSummaryQuery): Promise<ExpenseDailyTotal[]> {
+    const rows = await this.expensesRepository.getDailyTotals(query);
+    return rows.map((row) => ({ date: row.date, total: parseFloat(row.total) }));
   }
 
   async getSummaryByCategory(

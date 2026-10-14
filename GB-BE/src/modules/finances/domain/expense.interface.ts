@@ -42,6 +42,11 @@ export interface ExpenseRow {
   deleted_at: Date | null;
 }
 
+export interface ExpenseDailyTotalRow {
+  date: string;
+  total: string;
+}
+
 export interface ExpenseCategoryTotalRow {
   category: ExpenseCategory;
   total: string;

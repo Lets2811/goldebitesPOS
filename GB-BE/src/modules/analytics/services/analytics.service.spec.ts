@@ -2,7 +2,11 @@ import { BusinessRuleException } from '../../../common/exceptions';
 import { AnalyticsService } from './analytics.service';
 
 describe('AnalyticsService', () => {
-  let ordersService: { getSalesByDay: jest.Mock; getTopProducts: jest.Mock };
+  let ordersService: {
+    getSalesSummary: jest.Mock;
+    getSalesByDay: jest.Mock;
+    getTopProducts: jest.Mock;
+  };
   let service: AnalyticsService;
 
   const businessId = 'business-1';
@@ -10,6 +14,9 @@ describe('AnalyticsService', () => {
 
   beforeEach(() => {
     ordersService = {
+      getSalesSummary: jest
+        .fn()
+        .mockResolvedValue({ orderCount: 0, totalAmount: 0 }),
       getSalesByDay: jest.fn().mockResolvedValue([]),
       getTopProducts: jest.fn().mockResolvedValue([]),
     };
@@ -67,7 +74,63 @@ describe('AnalyticsService', () => {
         '2026-01-01',
         '2026-01-31',
         5,
+        'revenue',
       );
+    });
+  });
+
+  it('getTopProducts() ranks by quantity when asked', async () => {
+    await service.getTopProducts(
+      businessId,
+      branchId,
+      '2026-01-01',
+      '2026-01-31',
+      5,
+      'quantity',
+    );
+    expect(ordersService.getTopProducts).toHaveBeenCalledWith(
+      businessId,
+      branchId,
+      '2026-01-01',
+      '2026-01-31',
+      5,
+      'quantity',
+    );
+  });
+
+  describe('getSalesSummary', () => {
+    it('rejects a range where dateFrom is after dateTo', async () => {
+      await expect(
+        service.getSalesSummary(
+          businessId,
+          branchId,
+          '2026-02-01',
+          '2026-01-01',
+        ),
+      ).rejects.toThrow(BusinessRuleException);
+      expect(ordersService.getSalesSummary).not.toHaveBeenCalled();
+    });
+
+    it('delegates to OrdersService', async () => {
+      ordersService.getSalesSummary.mockResolvedValue({
+        orderCount: 4,
+        totalAmount: 80000,
+      });
+
+      const summary = await service.getSalesSummary(
+        businessId,
+        branchId,
+        '2026-01-01',
+        '2026-01-31',
+      );
+
+      expect(ordersService.getSalesSummary).toHaveBeenCalledWith(
+        businessId,
+        branchId,
+        '2026-01-01',
+        '2026-01-31',
+      );
+      expect(summary).toEqual({ orderCount: 4, totalAmount: 80000 });
     });
   });
 });

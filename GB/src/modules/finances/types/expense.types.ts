@@ -1,4 +1,30 @@
-export type ExpenseCategory = 'COGS' | 'OPERATING' | 'PAYROLL' | 'MARKETING' | 'OTHER';
+/** Código del tipo de gasto: uno de los que el negocio administra (ver ExpenseCategoryDefinition). */
+export type ExpenseCategory = string;
+
+/** Un tipo de gasto del negocio. Los gastos lo guardan por `code`, que no cambia al renombrarlo. */
+export interface ExpenseCategoryDefinition {
+  id: string;
+  code: string;
+  name: string;
+  /** Si sus gastos son el costo de lo vendido: Finanzas los resta de las ventas para el margen bruto. */
+  isCostOfSales: boolean;
+  /** Un tipo inactivo conserva sus gastos pero no se ofrece para gastos nuevos. */
+  isActive: boolean;
+  sortOrder: number;
+}
+
+export interface CreateExpenseCategoryPayload {
+  name: string;
+  isCostOfSales?: boolean;
+}
+
+export type UpdateExpenseCategoryPayload = Partial<CreateExpenseCategoryPayload> & { isActive?: boolean };
+
+/** Total gastado en un día (YYYY-MM-DD). Los días sin gastos no vienen. */
+export interface ExpenseDailyTotal {
+  date: string;
+  total: number;
+}
 
 /** De dónde salió el dinero del gasto. Refleja `ExpensePaymentSource` de GB-BE. */
 export type SelectableExpensePaymentSource = 'CASH_OPERATIONAL' | 'CASH_RESERVE' | 'BANK_ACCOUNT' | 'PERSONAL_MONEY';

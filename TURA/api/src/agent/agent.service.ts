@@ -4,7 +4,7 @@ import type { Session } from '../auth.js';
 import { config } from '../config.js';
 import { PosApiError } from '../pos/pos-client.js';
 import { toolsFor } from '../tools/registry.js';
-import type { AssistantTool } from '../tools/types.js';
+import { ToolRefusedError, type AssistantTool } from '../tools/types.js';
 import type { TurnMeter } from '../usage/usage-log.js';
 import { buildSystemPrompt, type ConversationMode } from './system-prompt.js';
 
@@ -248,6 +248,9 @@ async function runTool(
   } catch (error) {
     if (error instanceof PosApiError) {
       return fail(`El POS respondió con un error (${error.status}): ${error.message}`);
+    }
+    if (error instanceof ToolRefusedError) {
+      return fail(error.message);
     }
     console.error(`Tool ${call.name} failed unexpectedly`, error);
     return fail('Ocurrió un error interno al ejecutar la herramienta.');

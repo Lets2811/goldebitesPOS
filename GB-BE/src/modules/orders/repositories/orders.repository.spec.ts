@@ -144,12 +144,14 @@ describe('OrdersRepository (integration)', () => {
     const noPaymentsYet = await repository.getTotalPaid(order.id);
     expect(noPaymentsYet).toBe(0);
 
-    await pool.query(`INSERT INTO payments (order_id, payment_method, amount) VALUES ($1, 'CASH', 30000)`, [
-      order.id,
-    ]);
-    await pool.query(`INSERT INTO payments (order_id, payment_method, amount) VALUES ($1, 'CARD', 20000)`, [
-      order.id,
-    ]);
+    await pool.query(
+      `INSERT INTO payments (order_id, payment_method, amount) VALUES ($1, 'CASH', 30000)`,
+      [order.id],
+    );
+    await pool.query(
+      `INSERT INTO payments (order_id, payment_method, amount) VALUES ($1, 'CARD', 20000)`,
+      [order.id],
+    );
 
     const totalPaid = await repository.getTotalPaid(order.id);
     expect(totalPaid).toBe(50000);
@@ -278,13 +280,22 @@ describe('OrdersRepository (integration)', () => {
       { businessId, branchId, orderType: OrderType.DINE_IN, tableNumber: '42' },
       undefined,
     );
-    await repository.setStatus(cancelled.id, businessId, OrderStatus.CANCELLED, 'cancelled_at');
+    await repository.setStatus(
+      cancelled.id,
+      businessId,
+      OrderStatus.CANCELLED,
+      'cancelled_at',
+    );
     const active = await repository.create(
       { businessId, branchId, orderType: OrderType.DINE_IN, tableNumber: '42' },
       undefined,
     );
 
-    const found = await repository.findActiveByTable(businessId, branchId, '42');
+    const found = await repository.findActiveByTable(
+      businessId,
+      branchId,
+      '42',
+    );
 
     expect(found?.id).toBe(active.id);
     expect(found?.id).not.toBe(cancelled.id);
@@ -292,7 +303,11 @@ describe('OrdersRepository (integration)', () => {
   });
 
   it('findActiveByTable() returns null when the table has no active order', async () => {
-    const found = await repository.findActiveByTable(businessId, branchId, 'no-such-table');
+    const found = await repository.findActiveByTable(
+      businessId,
+      branchId,
+      'no-such-table',
+    );
     expect(found).toBeNull();
   });
 
@@ -345,7 +360,7 @@ describe('OrdersRepository (integration)', () => {
   });
 
   describe('reporting aggregates', () => {
-    async function createDeliveredOrder(
+    async function createSale(
       quantity: number,
       unitPrice: number,
     ): Promise<string> {
@@ -358,7 +373,7 @@ describe('OrdersRepository (integration)', () => {
           productId,
           quantity,
           productNameSnapshot: 'Burger',
-        productDescriptionSnapshot: null,
+          productDescriptionSnapshot: null,
           unitPrice,
           unitCostSnapshot: 8000,
           totalPrice: quantity * unitPrice,
@@ -378,7 +393,20 @@ describe('OrdersRepository (integration)', () => {
         OrderStatus.DELIVERED,
         'delivered_at',
       );
+      await pay(order.id, quantity * unitPrice);
       return order.id;
+    }
+
+    /** Registers a payment and, when it covers the order, marks the order paid — as PaymentsService does. */
+    async function pay(orderId: string, amount: number, full = true) {
+      await pool.query(
+        `INSERT INTO payments (order_id, payment_method, amount) VALUES ($1, 'CASH', $2)`,
+        [orderId, amount],
+      );
+      await pool.query(`UPDATE orders SET payment_status = $2 WHERE id = $1`, [
+        orderId,
+        full ? 'PAID' : 'PARTIALLY_PAID',
+      ]);
     }
 
     it('getActiveCount() only counts orders still in the pipeline', async () => {
@@ -386,14 +414,14 @@ describe('OrdersRepository (integration)', () => {
         { businessId, branchId, orderType: OrderType.DINE_IN },
         undefined,
       );
-      await createDeliveredOrder(1, 1000);
+      await createSale(1, 1000);
 
       const active = await repository.getActiveCount(businessId, branchId);
       expect(active).toBeGreaterThanOrEqual(1);
     });
 
-    it('getSalesSummary() sums only DELIVERED orders within the date range', async () => {
-      await createDeliveredOrder(2, 5000);
+    it('getSalesSummary() sums the sales within the date range', async () => {
+      await createSale(2, 5000);
 
       const now = new Date();
       const dateFrom = new Date(now.getTime() - 60000).toISOString();
@@ -412,7 +440,7 @@ describe('OrdersRepository (integration)', () => {
     });
 
     it('getSalesByDay() groups totals by calendar day', async () => {
-      await createDeliveredOrder(1, 3000);
+      await createSale(1, 3000);
 
       const now = new Date();
       const dateFrom = new Date(now.getTime() - 60000).toISOString();
@@ -423,21 +451,20 @@ describe('OrdersRepository (integration)', () => {
         branchId,
         dateFrom,
         dateTo,
+        'America/Bogota',
       );
       expect(days.length).toBeGreaterThanOrEqual(1);
-      // DATE(delivered_at) buckets by the DB session's timezone, not UTC —
-      // asking Postgres for its own idea of "today" keeps this assertion
-      // correct across the UTC/local date boundary instead of drifting from
-      // what now.toISOString() would compute in UTC.
+      // The bucket is the day in the timezone asked for, whatever the
+      // database session's own timezone is.
       const todayResult = await pool.query<{ today: string }>(
-        `SELECT CURRENT_DATE::text AS today`,
+        `SELECT (now() AT TIME ZONE 'America/Bogota')::date::text AS today`,
       );
       const today = todayResult.rows[0].today;
       expect(days.some((day) => day.date === today)).toBe(true);
     });
 
     it('getTopProducts() aggregates quantity and revenue per product', async () => {
-      await createDeliveredOrder(4, 2500);
+      await createSale(4, 2500);
 
       const now = new Date();
       const dateFrom = new Date(now.getTime() - 60000).toISOString();
@@ -453,6 +480,285 @@ describe('OrdersRepository (integration)', () => {
       const entry = top.find((row) => row.product_id === productId);
       expect(entry).toBeDefined();
       expect(parseFloat(entry?.quantity_sold ?? '0')).toBeGreaterThanOrEqual(4);
+    });
+
+    /** Moves an order's payment to a given instant, to place the sale on a known day. */
+    async function soldAt(orderId: string, instant: string) {
+      await pool.query(`UPDATE payments SET paid_at = $2 WHERE order_id = $1`, [
+        orderId,
+        instant,
+      ]);
+    }
+
+    it("getSalesByDay() puts a late-night sale on the business's day, not the next UTC day", async () => {
+      // 11:30 PM on March 3rd in Bogotá, already March 4th in UTC...
+      await soldAt(await createSale(1, 7000), '2020-03-04T04:30:00Z');
+      // ...and 12:30 AM on March 4th in Bogotá.
+      await soldAt(await createSale(1, 9000), '2020-03-04T05:30:00Z');
+
+      const range = [
+        '2020-03-03T05:00:00Z',
+        '2020-03-05T04:59:59.999Z',
+      ] as const;
+      const inBogota = await repository.getSalesByDay(
+        businessId,
+        branchId,
+        ...range,
+        'America/Bogota',
+      );
+      const inUtc = await repository.getSalesByDay(
+        businessId,
+        branchId,
+        ...range,
+        'UTC',
+      );
+
+      expect(
+        inBogota.map((day) => [day.date, parseFloat(day.total_amount)]),
+      ).toEqual([
+        ['2020-03-03', 7000],
+        ['2020-03-04', 9000],
+      ]);
+      expect(
+        inUtc.map((day) => [day.date, parseFloat(day.total_amount)]),
+      ).toEqual([['2020-03-04', 16000]]);
+    });
+
+    it('getTopProducts() ranks by revenue by default and by units when asked', async () => {
+      // Few units of something expensive, many of something cheap.
+      const cheap = await pool.query<{ id: string }>(
+        `INSERT INTO products (business_id, name, sale_price) VALUES ($1, 'Agua', 1000) RETURNING id`,
+        [businessId],
+      );
+      const expensive = await createSale(2, 30000);
+      await soldAt(expensive, '2020-05-10T15:00:00Z');
+      const cheapOrder = await repository.create(
+        { businessId, branchId, orderType: OrderType.TAKEAWAY },
+        undefined,
+      );
+      await repository.addItems(cheapOrder.id, [
+        {
+          productId: cheap.rows[0].id,
+          quantity: 20,
+          productNameSnapshot: 'Agua',
+          productDescriptionSnapshot: null,
+          unitPrice: 1000,
+          unitCostSnapshot: 500,
+          totalPrice: 20000,
+        },
+      ]);
+      await repository.updateTotals(cheapOrder.id, 20000, 0, 0, 0, 20000);
+      await pay(cheapOrder.id, 20000);
+      await soldAt(cheapOrder.id, '2020-05-10T16:00:00Z');
+
+      const range = ['2020-05-10T00:00:00Z', '2020-05-10T23:59:59Z'] as const;
+      const byRevenue = await repository.getTopProducts(
+        businessId,
+        branchId,
+        ...range,
+        10,
+      );
+      const byQuantity = await repository.getTopProducts(
+        businessId,
+        branchId,
+        ...range,
+        10,
+        'quantity',
+      );
+
+      expect(byRevenue.map((row) => row.product_name)).toEqual([
+        'Burger',
+        'Agua',
+      ]);
+      expect(byQuantity.map((row) => row.product_name)).toEqual([
+        'Agua',
+        'Burger',
+      ]);
+      expect(
+        await repository.getTopProducts(
+          businessId,
+          branchId,
+          ...range,
+          1,
+          'quantity',
+        ),
+      ).toHaveLength(1);
+    });
+
+    describe('what counts as a sale', () => {
+      const day = ['2020-07-01T00:00:00Z', '2020-07-01T23:59:59Z'] as const;
+
+      /** An order of 9000 that is neither delivered nor paid yet. */
+      async function createOpenOrder(): Promise<string> {
+        const order = await repository.create(
+          { businessId, branchId, orderType: OrderType.TAKEAWAY },
+          undefined,
+        );
+        await repository.updateTotals(order.id, 9000, 0, 0, 0, 9000);
+        return order.id;
+      }
+
+      async function salesOfTheDay() {
+        const summary = await repository.getSalesSummary(
+          businessId,
+          branchId,
+          ...day,
+        );
+        return {
+          count: parseInt(summary.order_count, 10),
+          total: parseFloat(summary.total_amount ?? '0'),
+        };
+      }
+
+      beforeEach(async () => {
+        // Each case starts from an empty day.
+        await pool.query(
+          `UPDATE payments SET paid_at = '2019-01-01T12:00:00Z'
+           WHERE paid_at BETWEEN $1 AND $2 AND order_id IN (SELECT id FROM orders WHERE business_id = $3)`,
+          [...day, businessId],
+        );
+      });
+
+      it('an order paid in full is a sale even before it is delivered', async () => {
+        const order = await createOpenOrder();
+        await pay(order, 9000);
+        await soldAt(order, '2020-07-01T15:00:00Z');
+
+        expect(await salesOfTheDay()).toEqual({ count: 1, total: 9000 });
+      });
+
+      it('an order delivered but not paid is not a sale', async () => {
+        const order = await createOpenOrder();
+        await repository.setStatus(
+          order,
+          businessId,
+          OrderStatus.DELIVERED,
+          'delivered_at',
+        );
+        await pool.query(
+          `UPDATE orders SET delivered_at = '2020-07-01T15:00:00Z' WHERE id = $1`,
+          [order],
+        );
+
+        expect(await salesOfTheDay()).toEqual({ count: 0, total: 0 });
+      });
+
+      it('a part payment is not a sale until the order is paid in full, and then it is one for the whole total', async () => {
+        const order = await createOpenOrder();
+        await pay(order, 4000, false);
+        await soldAt(order, '2020-07-01T13:00:00Z');
+        expect(await salesOfTheDay()).toEqual({ count: 0, total: 0 });
+
+        await pay(order, 5000);
+        expect(await salesOfTheDay()).toEqual({ count: 0, total: 0 });
+
+        // The payment that completes it is what dates the sale.
+        await pool.query(
+          `UPDATE payments SET paid_at = '2020-07-01T18:00:00Z' WHERE order_id = $1 AND amount = 5000`,
+          [order],
+        );
+        expect(await salesOfTheDay()).toEqual({ count: 1, total: 9000 });
+      });
+
+      it('a sale belongs to the day it was paid, not the day it was delivered', async () => {
+        const order = await createSale(1, 4000);
+        await soldAt(order, '2020-07-01T15:00:00Z');
+        await pool.query(
+          `UPDATE orders SET delivered_at = '2020-07-03T15:00:00Z' WHERE id = $1`,
+          [order],
+        );
+
+        expect(await salesOfTheDay()).toEqual({ count: 1, total: 4000 });
+      });
+
+      it('a cancelled order is not a sale, even if it was paid', async () => {
+        const order = await createSale(1, 6000);
+        await soldAt(order, '2020-07-01T15:00:00Z');
+        await pool.query(
+          `UPDATE orders SET status = 'CANCELLED' WHERE id = $1`,
+          [order],
+        );
+
+        expect(await salesOfTheDay()).toEqual({ count: 0, total: 0 });
+      });
+
+      it('the same rule decides the daily figures and the best-selling products', async () => {
+        const paid = await createSale(3, 2000);
+        await soldAt(paid, '2020-07-01T15:00:00Z');
+        const unpaid = await createOpenOrder();
+        await repository.addItems(unpaid, [
+          {
+            productId,
+            quantity: 50,
+            productNameSnapshot: 'Burger',
+            productDescriptionSnapshot: null,
+            unitPrice: 100,
+            unitCostSnapshot: 50,
+            totalPrice: 5000,
+          },
+        ]);
+        await repository.setStatus(
+          unpaid,
+          businessId,
+          OrderStatus.DELIVERED,
+          'delivered_at',
+        );
+        await pool.query(
+          `UPDATE orders SET delivered_at = '2020-07-01T16:00:00Z' WHERE id = $1`,
+          [unpaid],
+        );
+
+        const days = await repository.getSalesByDay(
+          businessId,
+          branchId,
+          ...day,
+          'UTC',
+        );
+        const top = await repository.getTopProducts(
+          businessId,
+          branchId,
+          ...day,
+          10,
+        );
+
+        expect(days).toEqual([
+          { date: '2020-07-01', order_count: '1', total_amount: '6000.00' },
+        ]);
+        expect(top).toHaveLength(1);
+        expect(parseFloat(top[0].quantity_sold)).toBe(3);
+      });
+    });
+
+    it('sales figures are scoped to the business and, when given, the branch', async () => {
+      const order = await createSale(1, 5000);
+      await soldAt(order, '2020-09-01T15:00:00Z');
+      const range = ['2020-09-01T00:00:00Z', '2020-09-01T23:59:59Z'] as const;
+
+      const ownBranch = await repository.getSalesSummary(
+        businessId,
+        branchId,
+        ...range,
+      );
+      const wholeBusiness = await repository.getSalesSummary(
+        businessId,
+        undefined,
+        ...range,
+      );
+      const otherBranch = await repository.getSalesSummary(
+        businessId,
+        randomUUID(),
+        ...range,
+      );
+      const otherBusiness = await repository.getSalesSummary(
+        randomUUID(),
+        undefined,
+        ...range,
+      );
+
+      expect(parseInt(ownBranch.order_count, 10)).toBe(1);
+      expect(parseInt(wholeBusiness.order_count, 10)).toBe(1);
+      expect(parseInt(otherBranch.order_count, 10)).toBe(0);
+      expect(parseInt(otherBusiness.order_count, 10)).toBe(0);
     });
   });
 });

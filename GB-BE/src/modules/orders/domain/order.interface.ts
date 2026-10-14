@@ -176,6 +176,9 @@ export interface TopProduct {
   revenue: number;
 }
 
+/** What "best-selling" is measured by: the money a product brought in, or the units sold. */
+export type TopProductsOrder = 'revenue' | 'quantity';
+
 export interface TopProductRow {
   product_id: string | null;
   product_name: string;

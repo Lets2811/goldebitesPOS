@@ -11,6 +11,7 @@ import {
   PaymentPolicy,
   SalesSummaryRow,
   TopProductRow,
+  TopProductsOrder,
 } from '../domain/order.interface';
 import {
   CreateOrderData,
@@ -32,6 +33,26 @@ const HISTORY_COLUMNS = `id, order_id, previous_status, new_status, changed_by, 
 interface CountRow {
   count: string;
 }
+
+/**
+ * What counts as a sale, for every sales figure: an order that is fully paid
+ * and was not cancelled. It is a sale from the moment its last payment came
+ * in, whether or not it has been delivered yet — an order paid at the counter
+ * before it is served is already sold, and one delivered on credit is not.
+ * A part payment is not a sale until the order is paid in full.
+ */
+const SALES = `orders o
+       JOIN LATERAL (
+         SELECT MAX(p.paid_at) AS sold_at FROM payments p
+         WHERE p.order_id = o.id AND p.status = 'PAID'
+       ) sale ON true`;
+const IS_SALE = `o.payment_status = 'PAID' AND o.status <> 'CANCELLED'`;
+
+/** The two ways to rank products, spelled out here so the ORDER BY never comes from outside. */
+const TOP_PRODUCTS_ORDER: Record<TopProductsOrder, string> = {
+  revenue: 'SUM(oi.total_price) DESC, SUM(oi.quantity) DESC',
+  quantity: 'SUM(oi.quantity) DESC, SUM(oi.total_price) DESC',
+};
 
 @Injectable()
 export class OrdersRepository implements IOrdersRepository {
@@ -378,13 +399,13 @@ export class OrdersRepository implements IOrdersRepository {
     let branchCondition = '';
     if (branchId) {
       params.push(branchId);
-      branchCondition = ` AND branch_id = $${params.length}`;
+      branchCondition = ` AND o.branch_id = $${params.length}`;
     }
     const result = await this.db.query<SalesSummaryRow>(
-      `SELECT COUNT(*)::text AS order_count, SUM(total_amount)::text AS total_amount
-       FROM orders
-       WHERE business_id = $1 AND status = 'DELIVERED'
-         AND delivered_at >= $2 AND delivered_at <= $3${branchCondition}`,
+      `SELECT COUNT(*)::text AS order_count, SUM(o.total_amount)::text AS total_amount
+       FROM ${SALES}
+       WHERE o.business_id = $1 AND ${IS_SALE}
+         AND sale.sold_at >= $2 AND sale.sold_at <= $3${branchCondition}`,
       params,
     );
     return result.rows[0];
@@ -395,20 +416,23 @@ export class OrdersRepository implements IOrdersRepository {
     branchId: string | undefined,
     dateFrom: string,
     dateTo: string,
+    timezone: string,
   ): Promise<DailySalesRow[]> {
-    const params: unknown[] = [businessId, dateFrom, dateTo];
+    const params: unknown[] = [businessId, dateFrom, dateTo, timezone];
     let branchCondition = '';
     if (branchId) {
       params.push(branchId);
-      branchCondition = ` AND branch_id = $${params.length}`;
+      branchCondition = ` AND o.branch_id = $${params.length}`;
     }
+    // The day is taken in the business's timezone, not the database's: a sale
+    // paid at 11:30 PM belongs to that day wherever the server runs.
     const result = await this.db.query<DailySalesRow>(
-      `SELECT DATE(delivered_at)::text AS date, COUNT(*)::text AS order_count, SUM(total_amount)::text AS total_amount
-       FROM orders
-       WHERE business_id = $1 AND status = 'DELIVERED'
-         AND delivered_at >= $2 AND delivered_at <= $3${branchCondition}
-       GROUP BY DATE(delivered_at)
-       ORDER BY DATE(delivered_at)`,
+      `SELECT (sale.sold_at AT TIME ZONE $4)::date::text AS date, COUNT(*)::text AS order_count, SUM(o.total_amount)::text AS total_amount
+       FROM ${SALES}
+       WHERE o.business_id = $1 AND ${IS_SALE}
+         AND sale.sold_at >= $2 AND sale.sold_at <= $3${branchCondition}
+       GROUP BY (sale.sold_at AT TIME ZONE $4)::date
+       ORDER BY (sale.sold_at AT TIME ZONE $4)::date`,
       params,
     );
     return result.rows;
@@ -420,6 +444,7 @@ export class OrdersRepository implements IOrdersRepository {
     dateFrom: string,
     dateTo: string,
     limit: number,
+    orderBy: TopProductsOrder = 'revenue',
   ): Promise<TopProductRow[]> {
     const params: unknown[] = [businessId, dateFrom, dateTo];
     let branchCondition = '';
@@ -431,12 +456,12 @@ export class OrdersRepository implements IOrdersRepository {
     const result = await this.db.query<TopProductRow>(
       `SELECT oi.product_id, oi.product_name_snapshot AS product_name,
               SUM(oi.quantity)::text AS quantity_sold, SUM(oi.total_price)::text AS revenue
-       FROM order_items oi
-       JOIN orders o ON o.id = oi.order_id
-       WHERE o.business_id = $1 AND o.status = 'DELIVERED'
-         AND o.delivered_at >= $2 AND o.delivered_at <= $3${branchCondition}
+       FROM ${SALES}
+       JOIN order_items oi ON oi.order_id = o.id
+       WHERE o.business_id = $1 AND ${IS_SALE}
+         AND sale.sold_at >= $2 AND sale.sold_at <= $3${branchCondition}
        GROUP BY oi.product_id, oi.product_name_snapshot
-       ORDER BY revenue DESC
+       ORDER BY ${TOP_PRODUCTS_ORDER[orderBy]}, oi.product_name_snapshot
        LIMIT $${params.length}`,
       params,
     );

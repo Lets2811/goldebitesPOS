@@ -72,6 +72,13 @@ export interface PendingActionStore {
   discard(id: string, userId: string): Promise<void>;
 }
 
+/**
+ * Thrown by a tool that will not run what it was asked — a range too long,
+ * say. Its message goes to the model as the tool's error, so it is written
+ * for the user: what was wrong and what to ask for instead.
+ */
+export class ToolRefusedError extends Error {}
+
 /** A tool as the agent holds it: its definition for the model, plus how to run it. */
 export interface AssistantTool {
   kind: 'read' | 'write';

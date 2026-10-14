@@ -23,16 +23,22 @@ const SCRIPTS: Script[] = [
       'Dato de prueba: encontré Agua manantial, a 6.000 pesos. Está activa en el menú y quedan 9 botellas.',
   },
   {
+    matches: /venta|vend|factur|ticket/i,
+    tool: 'consultar_ventas',
+    reply: () =>
+      'Dato de prueba: esta semana van 4.850.000 pesos en 132 ventas, con un ticket promedio de 36.700. Lo más vendido fue la hamburguesa clásica, con 48 unidades.',
+  },
+  {
     matches: /hola|buen[oa]s|qu[eé] tal|c[oó]mo est[aá]s/i,
     reply: (session) =>
-      `¡Hola${session.firstName ? `, ${session.firstName}` : ''}! Estoy muy bien, gracias. Estoy en modo de prueba, sin inteligencia artificial. Pregúntame por un producto y te respondo con datos de ejemplo.`,
+      `¡Hola${session.firstName ? `, ${session.firstName}` : ''}! Estoy muy bien, gracias. Estoy en modo de prueba, sin inteligencia artificial. Pregúntame por un producto o por las ventas y te respondo con datos de ejemplo.`,
   },
 ];
 
 const FALLBACK: Script = {
   matches: /./,
   reply: () =>
-    'Estoy en modo de prueba, así que no consulté nada de verdad. Pregúntame por un producto, su precio o sus existencias para ver una respuesta de ejemplo.',
+    'Estoy en modo de prueba, así que no consulté nada de verdad. Pregúntame por un producto o por las ventas para ver una respuesta de ejemplo.',
 };
 
 const THINKING_MS = 1200;

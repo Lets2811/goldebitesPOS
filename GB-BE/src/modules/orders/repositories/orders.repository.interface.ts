@@ -8,6 +8,7 @@ import {
   PaymentPolicy,
   SalesSummaryRow,
   TopProductRow,
+  TopProductsOrder,
 } from '../domain/order.interface';
 import {
   CreateOrderData,
@@ -94,11 +95,13 @@ export interface IOrdersRepository {
     dateFrom: string,
     dateTo: string,
   ): Promise<SalesSummaryRow>;
+  /** Days are the business's own: each sale falls on the calendar day it was paid in full, in `timezone`. */
   getSalesByDay(
     businessId: string,
     branchId: string | undefined,
     dateFrom: string,
     dateTo: string,
+    timezone: string,
   ): Promise<DailySalesRow[]>;
   getTopProducts(
     businessId: string,
@@ -106,6 +109,7 @@ export interface IOrdersRepository {
     dateFrom: string,
     dateTo: string,
     limit: number,
+    orderBy?: TopProductsOrder,
   ): Promise<TopProductRow[]>;
 }
 

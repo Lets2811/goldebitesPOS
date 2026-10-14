@@ -29,6 +29,7 @@ import {
   PaymentPolicy,
   SalesSummary,
   TopProduct,
+  TopProductsOrder,
 } from '../domain/order.interface';
 import {
   CreateOrderData,
@@ -89,7 +90,10 @@ export class OrdersService {
       );
     }
 
-    const branch = await this.branchesService.findOne(data.businessId, data.branchId);
+    const branch = await this.branchesService.findOne(
+      data.businessId,
+      data.branchId,
+    );
     if (data.customerId) {
       await this.customersService.getOwnedOrFail(
         data.businessId,
@@ -207,7 +211,11 @@ export class OrdersService {
     return rows.map((row) => OrderMapper.toDomain(row));
   }
 
-  /** Used by DashboardService: completed (DELIVERED) sales within a date range. */
+  /**
+   * Used by DashboardService and AnalyticsService: the sales of a date range.
+   * A sale is an order paid in full and not cancelled, dated by the payment
+   * that completed it — see SALES in OrdersRepository.
+   */
   async getSalesSummary(
     businessId: string,
     branchId: string | undefined,
@@ -226,18 +234,20 @@ export class OrdersService {
     };
   }
 
-  /** Used by AnalyticsService: completed sales grouped by calendar day. */
+  /** Used by AnalyticsService: sales grouped by the business's calendar day. */
   async getSalesByDay(
     businessId: string,
     branchId: string | undefined,
     dateFrom: string,
     dateTo: string,
   ): Promise<DailySales[]> {
+    const timezone = await this.businessesService.getTimezone(businessId);
     const rows = await this.ordersRepository.getSalesByDay(
       businessId,
       branchId,
       dateFrom,
       dateTo,
+      timezone,
     );
     return rows.map((row) => ({
       date: row.date,
@@ -246,13 +256,14 @@ export class OrdersService {
     }));
   }
 
-  /** Used by AnalyticsService: best-selling products by revenue within a date range. */
+  /** Used by AnalyticsService: best-selling products within a date range, by revenue unless asked by quantity. */
   async getTopProducts(
     businessId: string,
     branchId: string | undefined,
     dateFrom: string,
     dateTo: string,
     limit: number,
+    orderBy: TopProductsOrder = 'revenue',
   ): Promise<TopProduct[]> {
     const rows = await this.ordersRepository.getTopProducts(
       businessId,
@@ -260,6 +271,7 @@ export class OrdersService {
       dateFrom,
       dateTo,
       limit,
+      orderBy,
     );
     return rows.map((row) => ({
       productId: row.product_id,
@@ -313,9 +325,7 @@ export class OrdersService {
     const additionalSubtotal = round2(
       computedItems.reduce((sum, item) => sum + item.totalPrice, 0),
     );
-    const newSubtotal = round2(
-      parseFloat(order.subtotal) + additionalSubtotal,
-    );
+    const newSubtotal = round2(parseFloat(order.subtotal) + additionalSubtotal);
     const totals = this.computeTotalsFromSubtotal(
       newSubtotal,
       parseFloat(order.discount_amount),
@@ -356,14 +366,20 @@ export class OrdersService {
       // total instead of leaving a stale PAID/PARTIALLY_PAID status behind.
       // Existing payments are never touched here, only re-evaluated against
       // the new total.
-      const totalPaid = round2(await this.ordersRepository.getTotalPaid(id, client));
+      const totalPaid = round2(
+        await this.ordersRepository.getTotalPaid(id, client),
+      );
       newPaymentStatus =
         totalPaid <= 0
           ? OrderPaymentStatus.PENDING
           : totalPaid < totals.totalAmount
             ? OrderPaymentStatus.PARTIALLY_PAID
             : OrderPaymentStatus.PAID;
-      await this.ordersRepository.updatePaymentStatus(id, newPaymentStatus, client);
+      await this.ordersRepository.updatePaymentStatus(
+        id,
+        newPaymentStatus,
+        client,
+      );
     });
 
     await this.auditService.record({
@@ -548,7 +564,10 @@ export class OrdersService {
    * leaves it PENDING for staff to confirm manually after collecting payment, instead
    * of failing the whole request.
    */
-  async tryAutoConfirm(businessId: string, id: string): Promise<OrderWithItems> {
+  async tryAutoConfirm(
+    businessId: string,
+    id: string,
+  ): Promise<OrderWithItems> {
     try {
       return await this.updateStatus(businessId, id, OrderStatus.CONFIRMED);
     } catch (error) {

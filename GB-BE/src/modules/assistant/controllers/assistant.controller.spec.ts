@@ -7,6 +7,7 @@ import { PermissionsGuard } from '../../../common/guards/permissions.guard';
 import { AuthenticatedUser } from '../../../common/interfaces/authenticated-user.interface';
 import { AssistantProductsQueryDto } from '../dto/assistant-products-query.dto';
 import { AssistantProductsService } from '../services/assistant-products.service';
+import { AssistantSalesService } from '../services/assistant-sales.service';
 import { AssistantService } from '../services/assistant.service';
 import { AssistantController } from './assistant.controller';
 
@@ -60,6 +61,7 @@ describe('AssistantController', () => {
     controller = new AssistantController(
       new AssistantService(),
       productsService as unknown as AssistantProductsService,
+      {} as AssistantSalesService,
     );
   });
 

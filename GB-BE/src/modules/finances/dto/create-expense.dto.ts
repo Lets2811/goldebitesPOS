@@ -11,12 +11,14 @@ import {
   MaxLength,
   MinLength,
 } from 'class-validator';
-import { ExpenseCategory, ExpensePaymentSource, SELECTABLE_EXPENSE_PAYMENT_SOURCES } from '../domain/expense.types';
+import { ExpensePaymentSource, SELECTABLE_EXPENSE_PAYMENT_SOURCES } from '../domain/expense.types';
 
 export class CreateExpenseDto {
-  @ApiProperty({ enum: ExpenseCategory })
-  @IsEnum(ExpenseCategory)
-  category: ExpenseCategory;
+  @ApiProperty({ maxLength: 20, description: "Code of one of the business's active expense categories (GET /expense-categories)." })
+  @IsString()
+  @MinLength(1)
+  @MaxLength(20)
+  category: string;
 
   @ApiProperty({ minLength: 2, maxLength: 150 })
   @IsString()

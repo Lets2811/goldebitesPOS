@@ -17,7 +17,7 @@ import { useLowStock } from '../../../modules/inventory/hooks/use-low-stock';
 import { useExpenses } from '../../../modules/finances/hooks/use-expenses';
 import { useCreateExpense } from '../../../modules/finances/hooks/use-create-expense';
 import { useDeleteExpense } from '../../../modules/finances/hooks/use-delete-expense';
-import { EXPENSE_CATEGORY_LABELS } from '../../../modules/finances/expense-category';
+import { useExpenseCategories } from '../../../modules/finances/hooks/use-expense-categories';
 import {
   EXPENSE_PAYMENT_SOURCE_LABELS,
   expenseErrorMessage,
@@ -49,6 +49,7 @@ export default function PurchasesPage() {
 
   const { data: expensesData } = useExpenses({ limit: 100 });
   const expenses = expensesData?.data ?? [];
+  const { labelOf: categoryLabel } = useExpenseCategories();
   const createExpense = useCreateExpense();
   const deleteExpense = useDeleteExpense();
 
@@ -67,7 +68,7 @@ export default function PurchasesPage() {
     { id: 'name', header: 'Nombre', cell: ({ row }) => row.original.name ?? '—' },
     { accessorKey: 'description', header: 'Motivo' },
     { id: 'responsible', header: 'Responsable', cell: ({ row }) => row.original.responsible ?? '—' },
-    { id: 'category', header: 'Categoría', cell: ({ row }) => EXPENSE_CATEGORY_LABELS[row.original.category] },
+    { id: 'category', header: 'Tipo', cell: ({ row }) => categoryLabel(row.original.category) },
     { id: 'paymentSource', header: 'Pagado con', cell: ({ row }) => EXPENSE_PAYMENT_SOURCE_LABELS[row.original.paymentSource] },
     { id: 'amount', header: 'Cantidad', cell: ({ row }) => formatCOP(row.original.amount) },
     {

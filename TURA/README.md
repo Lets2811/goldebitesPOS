@@ -74,6 +74,7 @@ Chat de texto y conversación por voz, solo lectura.
 | Herramienta           | Endpoint del POS          | Qué consulta                                   | Permiso del POS |
 | --------------------- | ------------------------- | ---------------------------------------------- | --------------- |
 | `consultar_productos` | `GET /assistant/products` | Productos por nombre o SKU: precio, estado y existencias | `products.read` |
+| `consultar_ventas`    | `GET /assistant/sales`    | Ventas de un período: total, número de ventas, ticket promedio, detalle por día/semana/mes y productos más vendidos | `analytics.read` |
 
 Cada herramienta corresponde a un solo endpoint del POS y vive en su propio
 archivo en `api/src/tools/`. Para añadir una: crear el archivo con

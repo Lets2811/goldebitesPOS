@@ -17,7 +17,7 @@ export class AnalyticsController {
   @Get('sales')
   @Permissions('analytics.read')
   @ApiOperation({
-    summary: 'Completed sales grouped by calendar day within a date range',
+    summary: 'Sales (fully paid orders) grouped by calendar day within a date range',
   })
   getSales(
     @CurrentBusiness() businessId: string,

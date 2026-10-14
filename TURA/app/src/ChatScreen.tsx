@@ -18,14 +18,15 @@ interface Message {
 }
 
 const SUGGESTIONS = [
-  '¿Cuánto cuesta el agua manantial?',
-  '¿Cuántas botellas de agua quedan?',
-  '¿Qué productos están ocultos del menú?',
+  '¿Cuánto vendimos hoy?',
+  '¿Qué fue lo más vendido esta semana?',
+  '¿Qué se nos está acabando?',
 ];
 
 /** What to show while TURA waits on each POS tool (names come from TURA/api). */
 const TOOL_STATUS: Record<string, string> = {
   consultar_productos: 'Buscando productos…',
+  consultar_ventas: 'Consultando ventas…',
 };
 
 /** TURA/api accepts at most this many turns; older ones are dropped. */
@@ -178,7 +179,7 @@ export function ChatScreen({ hidden }: { hidden: boolean }) {
         ) : ready ? (
           <section className="chat__welcome">
             <h2>{link ? `Hola, ${link.userName}` : 'Hola'}</h2>
-            <p>Pregúntame por un producto: su precio, si está en el menú o cuántas unidades quedan.</p>
+            <p>Pregúntame por las ventas o por un producto: su precio y cuántas unidades quedan.</p>
             <div className="chat__suggestions">
               {SUGGESTIONS.map((suggestion) => (
                 <button key={suggestion} type="button" onClick={() => void send(suggestion)}>

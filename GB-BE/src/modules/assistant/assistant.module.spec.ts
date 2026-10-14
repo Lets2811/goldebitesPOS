@@ -2,6 +2,7 @@ import { MODULE_METADATA } from '@nestjs/common/constants';
 import { AssistantModule } from './assistant.module';
 import { AssistantController } from './controllers/assistant.controller';
 import { AssistantProductsService } from './services/assistant-products.service';
+import { AssistantSalesService } from './services/assistant-sales.service';
 import { AssistantService } from './services/assistant.service';
 
 describe('AssistantModule', () => {
@@ -14,6 +15,10 @@ describe('AssistantModule', () => {
   it('provides its own services and no data access of its own', () => {
     expect(
       Reflect.getMetadata(MODULE_METADATA.PROVIDERS, AssistantModule),
-    ).toEqual([AssistantService, AssistantProductsService]);
+    ).toEqual([
+      AssistantService,
+      AssistantProductsService,
+      AssistantSalesService,
+    ]);
   });
 });

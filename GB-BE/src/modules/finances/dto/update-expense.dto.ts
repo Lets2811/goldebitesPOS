@@ -10,13 +10,14 @@ import {
   MaxLength,
   MinLength,
 } from 'class-validator';
-import { ExpenseCategory } from '../domain/expense.types';
 
 export class UpdateExpenseDto {
-  @ApiPropertyOptional({ enum: ExpenseCategory })
+  @ApiPropertyOptional({ maxLength: 20, description: "Code of one of the business's expense categories." })
   @IsOptional()
-  @IsEnum(ExpenseCategory)
-  category?: ExpenseCategory;
+  @IsString()
+  @MinLength(1)
+  @MaxLength(20)
+  category?: string;
 
   @ApiPropertyOptional({ minLength: 2, maxLength: 150 })
   @IsOptional()

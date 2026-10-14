@@ -2,7 +2,7 @@ import { BusinessRuleException, CashSessionClosedException, EntityNotFoundExcept
 import { CashSessionStatus } from '../../cash-sessions/domain/cash-session.interface';
 import { FundType } from '../../funds/domain/fund.types';
 import { ExpenseRow } from '../domain/expense.interface';
-import { ExpenseCategory, ExpensePaymentSource } from '../domain/expense.types';
+import { ExpensePaymentSource } from '../domain/expense.types';
 import { ExpensesService } from './expenses.service';
 
 describe('ExpensesService', () => {
@@ -14,7 +14,9 @@ describe('ExpensesService', () => {
     updateSource: jest.Mock;
     softDelete: jest.Mock;
     getSummaryByCategory: jest.Mock;
+    getDailyTotals: jest.Mock;
   };
+  let categoriesService: { assertUsable: jest.Mock };
   let employeesService: { findOne: jest.Mock };
   let reimbursementsService: {
     createForExpense: jest.Mock;
@@ -36,7 +38,7 @@ describe('ExpensesService', () => {
       id: 'expense-1',
       business_id: businessId,
       branch_id: branchId,
-      category: ExpenseCategory.OPERATING,
+      category: 'OPERATING',
       name: 'Aseo',
       description: 'Productos de limpieza',
       responsible: 'Ana',
@@ -64,6 +66,7 @@ describe('ExpensesService', () => {
       updateSource: jest.fn().mockResolvedValue(makeExpenseRow()),
       softDelete: jest.fn(),
       getSummaryByCategory: jest.fn(),
+      getDailyTotals: jest.fn().mockResolvedValue([]),
     };
     employeesService = { findOne: jest.fn() };
     reimbursementsService = {
@@ -84,6 +87,7 @@ describe('ExpensesService', () => {
       execute: jest.fn((work: (client: unknown) => Promise<unknown>) => work({})),
     };
     auditService = { record: jest.fn() };
+    categoriesService = { assertUsable: jest.fn().mockResolvedValue(undefined) };
     service = new ExpensesService(
       expensesRepository as never,
       employeesService as never,
@@ -92,6 +96,7 @@ describe('ExpensesService', () => {
       fundsService as never,
       transactionService as never,
       auditService as never,
+      categoriesService as never,
     );
   });
 
@@ -99,7 +104,7 @@ describe('ExpensesService', () => {
     return {
       businessId,
       branchId,
-      category: ExpenseCategory.OPERATING,
+      category: 'OPERATING',
       name: 'Aseo',
       description: 'Productos de limpieza',
       responsible: 'Ana',
@@ -413,6 +418,47 @@ describe('ExpensesService', () => {
       expect(reimbursementsService.voidObligationInTransaction).not.toHaveBeenCalled();
       expect(fundsService.debit).not.toHaveBeenCalled();
       expect(expensesRepository.updateSource).not.toHaveBeenCalled();
+    });
+  });
+  describe('expense category', () => {
+    it('records an expense only under a category the business uses', async () => {
+      await service.create(baseCreateData() as never, actorUserId);
+
+      expect(categoriesService.assertUsable).toHaveBeenCalledWith(businessId, 'OPERATING');
+    });
+
+    it('records nothing, and moves no money, when the category is not usable', async () => {
+      categoriesService.assertUsable.mockRejectedValue(
+        new BusinessRuleException('unknown', 'UNKNOWN_EXPENSE_CATEGORY'),
+      );
+
+      await expect(service.create(baseCreateData() as never, actorUserId)).rejects.toThrow(BusinessRuleException);
+      expect(expensesRepository.create).not.toHaveBeenCalled();
+      expect(cashSessionsService.recordMovementInTransaction).not.toHaveBeenCalled();
+    });
+
+    it('checks the category again when an expense is moved to another', async () => {
+      expensesRepository.update.mockResolvedValue(makeExpenseRow());
+      await service.update(businessId, 'expense-1', { category: 'PAYROLL' }, actorUserId);
+      expect(categoriesService.assertUsable).toHaveBeenCalledWith(businessId, 'PAYROLL');
+
+      categoriesService.assertUsable.mockClear();
+      await service.update(businessId, 'expense-1', { name: 'Otro nombre' }, actorUserId);
+      expect(categoriesService.assertUsable).not.toHaveBeenCalled();
+    });
+
+    it('getDailyTotals() returns the total of each day as numbers', async () => {
+      expensesRepository.getDailyTotals.mockResolvedValue([
+        { date: '2026-10-01', total: '120000.00' },
+        { date: '2026-10-03', total: '45000.50' },
+      ]);
+
+      const totals = await service.getDailyTotals({ businessId, dateFrom: '2026-10-01', dateTo: '2026-10-31' });
+
+      expect(totals).toEqual([
+        { date: '2026-10-01', total: 120000 },
+        { date: '2026-10-03', total: 45000.5 },
+      ]);
     });
   });
 });

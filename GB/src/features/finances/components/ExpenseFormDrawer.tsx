@@ -6,7 +6,7 @@ import TextField from '@mui/material/TextField';
 import MenuItem from '@mui/material/MenuItem';
 import FormDrawer from '../../../components/common/FormDrawer';
 import CurrencyField from '../../../components/common/CurrencyField';
-import { EXPENSE_CATEGORY_LABELS } from '../../../modules/finances/expense-category';
+import { useExpenseCategories } from '../../../modules/finances/hooks/use-expense-categories';
 import {
   EXPENSE_PAYMENT_SOURCE_LABELS,
   SELECTABLE_EXPENSE_PAYMENT_SOURCES,
@@ -25,7 +25,8 @@ interface ExpenseFormDrawerProps {
 }
 
 const emptyValues: ExpenseFormValues = {
-  category: 'OPERATING',
+  // Sin tipo preseleccionado: los tipos son del negocio y se elige el que corresponde.
+  category: '',
   name: '',
   description: '',
   responsible: '',
@@ -73,6 +74,11 @@ export default function ExpenseFormDrawer({
     }
   }, [open, initialExpense, defaultCategory, reset]);
 
+  const { active: activeCategories, categories } = useExpenseCategories();
+  // Al editar, el tipo del gasto se ofrece aunque ya esté desactivado.
+  const categoryOptions = initialExpense
+    ? categories.filter((category) => category.isActive || category.code === initialExpense.category)
+    : activeCategories;
   const paymentSource = useWatch({ control, name: 'paymentSource' });
   // Al editar, la fuente ya movió el dinero: no se cambia desde aquí, ni el monto que movió.
   const editing = Boolean(initialExpense);
@@ -216,10 +222,17 @@ export default function ExpenseFormDrawer({
           name="category"
           control={control}
           render={({ field }) => (
-            <TextField {...field} select label="Categoría" fullWidth>
-              {Object.entries(EXPENSE_CATEGORY_LABELS).map(([value, label]) => (
-                <MenuItem key={value} value={value}>
-                  {label}
+            <TextField
+              {...field}
+              select
+              label="Tipo de gasto"
+              fullWidth
+              error={Boolean(errors.category)}
+              helperText={errors.category?.message}
+            >
+              {categoryOptions.map((category) => (
+                <MenuItem key={category.code} value={category.code}>
+                  {category.name}
                 </MenuItem>
               ))}
             </TextField>

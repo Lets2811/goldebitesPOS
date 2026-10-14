@@ -954,6 +954,14 @@ describe('OrdersService', () => {
       expect(result).toEqual([
         { date: '2026-01-15', orderCount: 2, totalAmount: 5000 },
       ]);
+      // Days are cut in the business's own timezone.
+      expect(repository.getSalesByDay).toHaveBeenCalledWith(
+        businessId,
+        branchId,
+        '2026-01-01',
+        '2026-01-31',
+        'America/Bogota',
+      );
     });
   });
 

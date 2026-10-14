@@ -4,6 +4,7 @@ import { getOffset } from '../../../common/pagination/pagination.util';
 import { DbClient } from '../../../database/types/database.types';
 import {
   ExpenseCategoryTotalRow,
+  ExpenseDailyTotalRow,
   ExpenseRow,
 } from '../domain/expense.interface';
 import {
@@ -183,6 +184,18 @@ export class ExpensesRepository implements IExpensesRepository {
       [id, businessId],
     );
     return result.rows[0] ?? null;
+  }
+
+  async getDailyTotals(query: ExpenseSummaryQuery): Promise<ExpenseDailyTotalRow[]> {
+    const result = await this.db.query<ExpenseDailyTotalRow>(
+      `SELECT expense_date::text AS date, COALESCE(SUM(amount), 0)::text AS total
+       FROM expenses
+       WHERE business_id = $1 AND deleted_at IS NULL AND expense_date >= $2 AND expense_date <= $3
+       GROUP BY expense_date
+       ORDER BY expense_date`,
+      [query.businessId, query.dateFrom, query.dateTo],
+    );
+    return result.rows;
   }
 
   async getSummaryByCategory(

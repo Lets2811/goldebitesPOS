@@ -373,3 +373,103 @@ describe('recentHistory', () => {
     assert.deepEqual(recentHistory(history, 1), [turn('user', 'c')]);
   });
 });
+
+describe('sales questions', () => {
+  afterEach(() => mock.restoreAll());
+
+  const analyst = makeSession({ permissions: ['analytics.read'] });
+  const salesAnswer = (total: number) => ({
+    body: {
+      success: true,
+      data: {
+        period: { from: '2026-10-05', to: '2026-10-11' },
+        scope: { branch: null },
+        summary: { totalSales: total, orderCount: 10, averageTicket: total / 10 },
+      },
+    },
+  });
+
+  it('compares two periods with two calls to the same endpoint, and no special comparison endpoint', async () => {
+    const pos = mockPos(({ url }) =>
+      salesAnswer(url.searchParams.get('dateFrom') === '2026-10-12' ? 900000 : 1500000),
+    );
+
+    const { requests, text } = await ask(
+      [
+        {
+          content: [
+            {
+              type: 'tool_use',
+              id: 'this-week',
+              name: 'consultar_ventas',
+              input: { desde: '2026-10-12', hasta: '2026-10-13' },
+            },
+            {
+              type: 'tool_use',
+              id: 'last-week',
+              name: 'consultar_ventas',
+              input: { desde: '2026-10-05', hasta: '2026-10-11' },
+            },
+          ],
+          stop_reason: 'tool_use',
+        },
+        say('Esta semana van 900.000 pesos; la pasada cerró en 1.500.000.'),
+      ],
+      [{ role: 'user', content: 'Compara esta semana con la semana pasada' }],
+      analyst,
+    );
+
+    assert.deepEqual(
+      pos.map(({ url }) => [url.pathname, url.searchParams.get('dateFrom'), url.searchParams.get('dateTo')]),
+      [
+        ['/api/v1/assistant/sales', '2026-10-12', '2026-10-13'],
+        ['/api/v1/assistant/sales', '2026-10-05', '2026-10-11'],
+      ],
+    );
+    const results = toolResults(requests[1]);
+    assert.deepEqual(
+      results.map((result) => JSON.parse(result.content as string).resumen.total_vendido),
+      [900000, 1500000],
+    );
+    assert.match(text, /900\.000/);
+  });
+
+  it("returns the tool's own refusal to the model in its words, and the turn goes on", async () => {
+    const pos = mockPos(() => salesAnswer(0));
+
+    const { requests, events, audit } = await ask(
+      [
+        {
+          content: [
+            {
+              type: 'tool_use',
+              id: 'call-1',
+              name: 'consultar_ventas',
+              input: { desde: '2024-01-01', hasta: '2026-10-13' },
+            },
+          ],
+          stop_reason: 'tool_use',
+        },
+        say('Solo puedo consultar hasta un año a la vez.'),
+      ],
+      [{ role: 'user', content: '¿Cuánto hemos vendido desde 2024?' }],
+      analyst,
+    );
+
+    assert.equal(pos.length, 0);
+    const [result] = toolResults(requests[1]);
+    assert.equal(result.is_error, true);
+    assert.match(result.content as string, /máximo es 366/);
+    assert.deepEqual(events.at(-1), { type: 'done' });
+    assert.equal(audit.tools[0].ok, false);
+  });
+
+  it('is not offered to a user without analytics.read', async () => {
+    const { requests } = await ask([say('No tengo acceso a ventas.')], undefined, makeSession());
+
+    assert.deepEqual(
+      requests[0].tools?.map((tool) => ('name' in tool ? tool.name : null)),
+      ['consultar_productos'],
+    );
+  });
+});

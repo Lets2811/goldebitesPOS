@@ -3,7 +3,8 @@ import { z } from 'zod';
 /** Mirrors GB-BE's CreateExpenseDto/UpdateExpenseDto. */
 export const expenseSchema = z
   .object({
-    category: z.enum(['COGS', 'OPERATING', 'PAYROLL', 'MARKETING', 'OTHER']),
+    // El código de uno de los tipos de gasto del negocio (Configuración → Tipos de gasto).
+    category: z.string().min(1, 'Selecciona el tipo de gasto'),
     name: z.string().min(2, 'Ingresa un nombre').max(150),
     description: z.string().min(2, 'Ingresa el motivo').max(255),
     responsible: z.string().min(2, 'Ingresa el responsable').max(150),

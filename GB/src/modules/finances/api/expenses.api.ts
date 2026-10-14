@@ -4,6 +4,7 @@ import type {
   CreateExpensePayload,
   Expense,
   ExpenseCategoryTotal,
+  ExpenseDailyTotal,
   ExpenseFilters,
   UpdateExpensePayload,
 } from '../types/expense.types';
@@ -28,6 +29,13 @@ export const expensesApi = {
 
   async deleteExpense(id: string): Promise<void> {
     await apiClient.delete(`/expenses/${id}`);
+  },
+
+  async getDailyTotals(dateFrom: string, dateTo: string): Promise<ExpenseDailyTotal[]> {
+    const { data } = await apiClient.get<ApiResponse<ExpenseDailyTotal[]>>('/expenses/daily', {
+      params: { dateFrom, dateTo },
+    });
+    return data.data;
   },
 
   async getSummary(dateFrom: string, dateTo: string): Promise<ExpenseCategoryTotal[]> {
