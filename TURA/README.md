@@ -41,6 +41,13 @@ permisos: de los suyos, solo los de lectura que TURA usa (`dashboard.read`,
 `analytics.read`, `orders.read`, `inventory.read`). Un cambio de rol llega a
 TURA con el siguiente token.
 
+Un mismo dispositivo puede vincularse a **varias empresas** (quien tiene más
+de un negocio, o quien hace demostraciones): la primera se vincula hablando
+con TURA y las siguientes desde el inicio, con **+ Agregar otra empresa**. TURA
+responde por una a la vez, la que esté seleccionada en el inicio; al cambiarla
+empieza una conversación nueva. Cada vínculo es independiente: quitar uno no
+toca los demás.
+
 El acceso se corta de inmediato si el vínculo se quita desde esa misma sección
 del POS, si el usuario se desactiva o si el negocio pierde el módulo. El módulo
 del POS es `GB-BE/src/modules/tura-links`.

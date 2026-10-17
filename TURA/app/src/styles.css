@@ -226,6 +226,74 @@ button {
   border: none;
 }
 
+.businesses {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.businesses__list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.businesses__chip {
+  min-height: 40px;
+  padding: 8px 16px;
+  color: var(--white);
+  background: var(--graphite);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+}
+
+.businesses__chip--active {
+  color: var(--black);
+  font-weight: 600;
+  background: var(--gold);
+  border-color: var(--gold);
+}
+
+.businesses__add {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  width: 100%;
+  color: var(--gray);
+}
+
+.businesses__add-row {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+}
+
+.businesses__add-row input {
+  flex: 1;
+  min-width: 0;
+  letter-spacing: 4px;
+}
+
+.businesses__submit {
+  flex: none;
+  padding: 0 18px;
+  font-weight: 600;
+  color: var(--black);
+  background: var(--gold);
+  border: none;
+  border-radius: 12px;
+}
+
+.businesses__submit:disabled {
+  opacity: 0.6;
+}
+
+.businesses__error {
+  color: var(--error);
+}
+
 .home__options {
   display: flex;
   flex-direction: column;

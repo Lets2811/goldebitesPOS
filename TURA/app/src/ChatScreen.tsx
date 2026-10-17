@@ -62,6 +62,19 @@ export function ChatScreen({ hidden }: { hidden: boolean }) {
   // Stop an in-flight answer when the screen is torn down.
   useEffect(() => () => abortRef.current?.abort(), []);
 
+  // A conversation belongs to one business: switching to another (or losing
+  // the link) starts a new one. Linking for the first time keeps the chat,
+  // where TURA has just confirmed it.
+  const previousLink = useRef(link);
+  useEffect(() => {
+    if (previousLink.current && link !== previousLink.current) {
+      abortRef.current?.abort();
+      setMessages([]);
+      setStatus(null);
+    }
+    previousLink.current = link;
+  }, [link]);
+
   const showError = (content: string) =>
     setMessages((current) => [...current, { id: nextId.current++, role: 'error', content }]);
 
