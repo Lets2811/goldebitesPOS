@@ -10,6 +10,9 @@ ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
 # "staging" shows the STAGING chip (docker-compose.staging.yml); empty = production.
 ARG VITE_APP_ENV=
 ENV VITE_APP_ENV=$VITE_APP_ENV
+# TURA's app, linked from the platform admin's TURA panel; empty hides the link.
+ARG VITE_TURA_APP_URL=
+ENV VITE_TURA_APP_URL=$VITE_TURA_APP_URL
 RUN npm run build
 
 FROM nginx:1.27-alpine AS production

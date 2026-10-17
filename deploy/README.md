@@ -62,6 +62,19 @@ Despliega **el código local tal como está** (con o sin commit) a <https://stag
    ```
 3. **Desplegar producción** una vez con este `GB/nginx.conf` (trae el reenvío a staging). `deploy.sh` prueba la configuración con `nginx -t` antes de reiniciar: si el certificado faltara, se detiene sin tumbar el sitio.
 
+## TURA en staging
+
+El mismo `npm run deploy:staging` despliega TURA (`TURA/README.md`) en <https://tura-staging.goldenbites.net>: su servicio (`tura-api`) y su app (`tura-web`), dentro del proyecto `gbstaging`. TURA lee el POS de staging por su API, con el token de quien pregunta.
+
+- Sus secretos van aparte, en `/opt/golden-bites/staging/.env.tura.staging`. La primera vez el script le envía la `ANTHROPIC_API_KEY` (de la variable `GB_TURA_ANTHROPIC_API_KEY` o, si no está, de `TURA/api/.env` local) y genera un `TURA_ADMIN_KEY` aleatorio para la pantalla de costos.
+- Sus registros de uso y auditoría quedan en el volumen `gbstaging_staging_tura_data`.
+
+Preparación (una sola vez), igual que staging:
+
+1. **DNS (GoDaddy):** registro `A`, nombre `tura-staging`, valor `157.137.220.21`.
+2. **Certificado:** el mismo comando de arriba con `-d tura-staging.goldenbites.net`.
+3. **nginx de producción** con este `GB/nginx.conf` (trae el reenvío a `tura-staging`).
+
 ## Apagar / borrar staging
 
 ```

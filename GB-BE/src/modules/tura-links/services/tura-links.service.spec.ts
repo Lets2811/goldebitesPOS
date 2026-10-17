@@ -23,6 +23,7 @@ describe('TuraLinksService', () => {
   let usersService: { findRawById: jest.Mock };
   let rolesService: { findOne: jest.Mock };
   let jwtService: { sign: jest.Mock };
+  let auditService: { record: jest.Mock };
   let service: TuraLinksService;
 
   const businessId = 'business-1';
@@ -80,6 +81,7 @@ describe('TuraLinksService', () => {
       }),
     };
     jwtService = { sign: jest.fn().mockReturnValue('signed-token') };
+    auditService = { record: jest.fn().mockResolvedValue(undefined) };
     service = new TuraLinksService(
       turaLinksRepository,
       businessesService as never,
@@ -93,6 +95,7 @@ describe('TuraLinksService', () => {
           jwt: { accessSecret: 'secret', accessExpiresIn: '15m' },
         }),
       } as never,
+      auditService as never,
     );
   });
 
@@ -249,6 +252,92 @@ describe('TuraLinksService', () => {
 
       await expect(service.revoke(businessId, 'link-x')).rejects.toThrow(
         EntityNotFoundException,
+      );
+    });
+  });
+
+  describe('getPlatformStatus', () => {
+    it('reports the module as off when it is off platform-wide', async () => {
+      platformFeatureFlagsService.getEnabledKeys.mockResolvedValue(['orders']);
+
+      const status = await service.getPlatformStatus(businessId);
+
+      expect(status).toEqual({ enabled: false, links: [] });
+    });
+  });
+
+  describe('generateCodeForUser', () => {
+    const adminId = 'platform-admin-1';
+
+    it('links the code to the chosen user, not to the admin, and audits it', async () => {
+      const { code } = await service.generateCodeForUser(
+        businessId,
+        user.id,
+        adminId,
+      );
+
+      expect(code).toMatch(/^\d{6}$/);
+      expect(usersService.findRawById).toHaveBeenCalledWith(
+        user.id,
+        businessId,
+      );
+      expect(turaLinksRepository.createCode).toHaveBeenCalledWith(
+        expect.objectContaining({ businessId, createdBy: user.id }),
+      );
+      expect(auditService.record).toHaveBeenCalledWith(
+        expect.objectContaining({
+          businessId,
+          userId: adminId,
+          action: 'PLATFORM_GENERATE_TURA_CODE',
+          newValues: { forUserId: user.id },
+        }),
+      );
+    });
+
+    it('refuses a business without the module', async () => {
+      businessFeaturesService.getEnabledKeys.mockResolvedValue(['orders']);
+
+      await expect(
+        service.generateCodeForUser(businessId, user.id, adminId),
+      ).rejects.toThrow(BusinessRuleException);
+      expect(turaLinksRepository.createCode).not.toHaveBeenCalled();
+    });
+
+    it('refuses a user of another business', async () => {
+      usersService.findRawById.mockResolvedValue(null);
+
+      await expect(
+        service.generateCodeForUser(businessId, 'user-x', adminId),
+      ).rejects.toThrow(EntityNotFoundException);
+      expect(turaLinksRepository.createCode).not.toHaveBeenCalled();
+    });
+
+    it('refuses an inactive user', async () => {
+      usersService.findRawById.mockResolvedValue({
+        ...user,
+        status: UserStatus.INACTIVE,
+      });
+
+      await expect(
+        service.generateCodeForUser(businessId, user.id, adminId),
+      ).rejects.toThrow(BusinessRuleException);
+    });
+  });
+
+  describe('revokeForPlatform', () => {
+    it('revokes within the business and audits who did it', async () => {
+      await service.revokeForPlatform(businessId, 'link-1', 'platform-admin-1');
+
+      expect(turaLinksRepository.revoke).toHaveBeenCalledWith(
+        businessId,
+        'link-1',
+      );
+      expect(auditService.record).toHaveBeenCalledWith(
+        expect.objectContaining({
+          userId: 'platform-admin-1',
+          entityId: 'link-1',
+          action: 'PLATFORM_REVOKE_TURA_LINK',
+        }),
       );
     });
   });

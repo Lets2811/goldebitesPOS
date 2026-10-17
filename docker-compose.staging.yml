@@ -44,6 +44,7 @@ services:
         VITE_API_BASE_URL: /api/v1
         # Shows the STAGING chip in the app.
         VITE_APP_ENV: staging
+        VITE_TURA_APP_URL: https://tura-staging.goldenbites.net
         NGINX_CONF: nginx.staging.conf
     networks:
       default:
@@ -54,6 +55,38 @@ services:
       - backend
     restart: unless-stopped
 
+  # TURA, the assistant (TURA/README.md): its service and its app, at
+  # https://tura-staging.goldenbites.net. It reads this stack's POS through
+  # the backend's API with the user's own token, never its database.
+  tura-api:
+    build:
+      context: ./TURA/api
+    env_file: .env.tura.staging
+    environment:
+      NODE_ENV: production
+      PORT: 3100
+      POS_API_TARGET: prod
+      POS_API_URL_PROD: http://backend:3000/api/v1
+      CORS_ORIGIN: https://tura-staging.goldenbites.net
+    volumes:
+      - staging_tura_data:/app/data
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+  tura-web:
+    build:
+      context: ./TURA/app
+    networks:
+      default:
+      edge:
+        # The name production's nginx forwards tura-staging.goldenbites.net to.
+        aliases: [gb-staging-tura]
+    depends_on:
+      - backend
+      - tura-api
+    restart: unless-stopped
+
 networks:
   edge:
     name: gb_edge
@@ -62,3 +95,4 @@ networks:
 volumes:
   staging_pg_data:
   staging_uploads:
+  staging_tura_data:

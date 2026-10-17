@@ -16,4 +16,6 @@ export const env = {
   appEnv,
   /** The demo copy at staging.goldenbites.net: shows the STAGING chip. */
   isStaging: appEnv === 'staging',
+  /** TURA's app (the assistant), where a link code is entered. Empty when not deployed. */
+  turaAppUrl: import.meta.env.VITE_TURA_APP_URL || '',
 };
