@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import Alert from '@mui/material/Alert';
 import Box from '@mui/material/Box';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
@@ -13,7 +14,7 @@ import DialogContentText from '@mui/material/DialogContentText';
 import DialogActions from '@mui/material/DialogActions';
 import { useSnackbar } from 'notistack';
 import IconButton from '@mui/material/IconButton';
-import { MapPin, ArrowRight, Ban, CreditCard, Users, Printer, Receipt, Pencil, Plus, Check, X } from 'lucide-react';
+import { MapPin, ArrowRight, Ban, CreditCard, Users, Printer, Receipt, Pencil, Plus, Check, X, FileCheck, FileText } from 'lucide-react';
 import DetailDrawer from '../../../components/common/DetailDrawer';
 import StatusChip from '../../../components/common/StatusChip';
 import OptionSelectionsText from '../../../modules/option-groups/components/OptionSelectionsText';
@@ -31,6 +32,12 @@ import { useReplaceOrderItems } from '../../../modules/orders/hooks/use-replace-
 import { useAddOrderItems } from '../../../modules/orders/hooks/use-add-order-items';
 import { usePrintKitchenTicket } from '../../../modules/orders/hooks/use-print-kitchen-ticket';
 import { usePrintInvoice } from '../../../modules/orders/hooks/use-print-invoice';
+import {
+  openEInvoicePdf,
+  useEInvoicingAvailable,
+  useOrderEInvoice,
+} from '../../../modules/e-invoicing/hooks/use-e-invoicing';
+import EInvoiceDialog from './EInvoiceDialog';
 import { normalizeApiError } from '../../../lib/api/api-error';
 import LoadingSkeleton from '../../../components/common/LoadingSkeleton';
 import SplitBillDialog from './SplitBillDialog';
@@ -85,7 +92,14 @@ export default function OrderDetailDrawer({
   const replaceItems = useReplaceOrderItems();
   const addItems = useAddOrderItems();
   const printTicket = usePrintKitchenTicket();
-  const { printNow: printInvoiceNow, printByOrderId: printInvoiceByOrderId } = usePrintInvoice();
+  const {
+    printNow: printInvoiceNow,
+    printByOrderId: printInvoiceByOrderId,
+    printElectronic: printElectronicInvoice,
+  } = usePrintInvoice();
+  const { available: eInvoicing, sandbox: eInvoicingSandbox } = useEInvoicingAvailable();
+  const { data: eInvoice } = useOrderEInvoice(orderId ?? undefined, eInvoicing);
+  const [eInvoiceOpen, setEInvoiceOpen] = useState(false);
 
   if (!orderId) return null;
 
@@ -168,7 +182,7 @@ export default function OrderDetailDrawer({
         }
       >
         <Stack spacing={3}>
-          <Stack direction="row" spacing={1}>
+          <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: 'wrap' }}>
             <Button
               variant="outlined"
               size="small"
@@ -185,6 +199,16 @@ export default function OrderDetailDrawer({
             >
               Imprimir factura
             </Button>
+            {eInvoicing && eInvoice?.status !== 'ISSUED' && order.paymentStatus === 'PAID' && order.status !== 'CANCELLED' && (
+              <Button
+                variant="contained"
+                size="small"
+                startIcon={<FileCheck size={16} />}
+                onClick={() => setEInvoiceOpen(true)}
+              >
+                Factura electrónica
+              </Button>
+            )}
             {order.status !== 'DELIVERED' && order.status !== 'CANCELLED' && (
               <Can permission="orders.update">
                 <Button
@@ -210,6 +234,35 @@ export default function OrderDetailDrawer({
               </Can>
             )}
           </Stack>
+
+          {eInvoicing && eInvoice && (
+            <Alert
+              severity={eInvoice.status === 'ISSUED' ? 'success' : 'error'}
+              icon={<FileCheck size={20} />}
+              action={
+                eInvoice.status === 'ISSUED' ? (
+                  <Stack direction="row" spacing={0.5}>
+                    <Button size="small" color="inherit" startIcon={<FileText size={14} />} onClick={() => void openEInvoicePdf(eInvoice.id)}>
+                      PDF
+                    </Button>
+                    <Button size="small" color="inherit" startIcon={<Printer size={14} />} onClick={() => void printElectronicInvoice(order, payments, eInvoice)}>
+                      Imprimir
+                    </Button>
+                  </Stack>
+                ) : undefined
+              }
+            >
+              {eInvoice.status === 'ISSUED' ? (
+                <>
+                  Factura electrónica <b>{eInvoice.number}</b>
+                  {eInvoice.environment === 'SANDBOX' ? ' (pruebas)' : ''} ·{' '}
+                  {eInvoice.customer.kind === 'IDENTIFIED' ? eInvoice.customer.name : 'Consumidor final'}
+                </>
+              ) : (
+                <>No se pudo emitir: {eInvoice.errorMessage}. Corrige y vuelve a intentar.</>
+              )}
+            </Alert>
+          )}
 
           <Box>
             <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 1 }}>
@@ -476,6 +529,20 @@ export default function OrderDetailDrawer({
           </Button>
         </DialogActions>
       </Dialog>
+
+      {eInvoicing && (
+        <EInvoiceDialog
+          open={eInvoiceOpen}
+          order={order}
+          sandbox={eInvoicingSandbox}
+          onClose={() => setEInvoiceOpen(false)}
+          onIssued={(invoice) => {
+            setEInvoiceOpen(false);
+            enqueueSnackbar(`Factura electrónica ${invoice.number} emitida`, { variant: 'success' });
+            void printElectronicInvoice(order, payments, invoice);
+          }}
+        />
+      )}
 
       <SplitBillDialog
         open={splitBillOpen}

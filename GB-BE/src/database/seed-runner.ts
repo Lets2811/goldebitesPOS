@@ -101,9 +101,14 @@ async function seedGoldenBites(
   rolesService: RolesService,
   usersService: UsersService,
 ): Promise<void> {
+  // By name OR by its admin: a business renamed after seeding (staging's demo
+  // restaurant) must not get a second "Golden Bites" with the default password.
   const existing = await db.query<{ id: string }>(
-    'SELECT id FROM businesses WHERE name = $1',
-    [GOLDEN_BITES_BUSINESS_NAME],
+    `SELECT id FROM businesses WHERE name = $1
+     UNION ALL
+     SELECT business_id FROM users WHERE lower(email) = lower($2)
+     LIMIT 1`,
+    [GOLDEN_BITES_BUSINESS_NAME, GOLDEN_BITES_ADMIN_EMAIL],
   );
 
   let businessId: string;
@@ -181,8 +186,12 @@ async function seedPlatformAdmin(
   rolesService: RolesService,
   usersService: UsersService,
 ): Promise<void> {
+  // By name OR by an existing platform admin, for the same reason as above.
   const existing = await db.query<{ id: string }>(
-    'SELECT id FROM businesses WHERE name = $1',
+    `SELECT id FROM businesses WHERE name = $1
+     UNION ALL
+     SELECT business_id FROM users WHERE is_platform_admin
+     LIMIT 1`,
     [PLATFORM_BUSINESS_NAME],
   );
 

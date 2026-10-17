@@ -51,6 +51,7 @@ import { PaymentsModule } from './modules/payments/payments.module';
 import { PermissionsModule } from './modules/permissions/permissions.module';
 import { PlatformAdminModule } from './modules/platform-admin/platform-admin.module';
 import { ProductCategoriesModule } from './modules/product-categories/product-categories.module';
+import { EInvoicingModule } from './modules/e-invoicing/e-invoicing.module';
 import { OptionGroupsModule } from './modules/option-groups/option-groups.module';
 import { ProductsModule } from './modules/products/products.module';
 import { PublicMenuModule } from './modules/public-menu/public-menu.module';
@@ -95,6 +96,7 @@ import { WasteModule } from './modules/waste/waste.module';
     ProductCategoriesModule,
     ProductsModule,
     OptionGroupsModule,
+    EInvoicingModule,
     SuppliersModule,
     TableNamesModule,
     TuraLinksModule,

@@ -24,6 +24,12 @@ export const PERMISSIONS: PermissionDefinition[] = [
   { code: 'orders.cancel', module: 'orders', description: 'Cancelar pedidos' },
 
   {
+    code: 'einvoices.issue',
+    module: 'einvoicing',
+    description: 'Emitir facturas electrónicas (DIAN)',
+  },
+
+  {
     code: 'kitchen.read',
     module: 'kitchen',
     description: 'Ver la pantalla de cocina',
@@ -296,6 +302,7 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<SystemRoleName, string[]> = {
     'orders.create',
     'orders.update',
     'orders.cancel',
+    'einvoices.issue',
     'kitchen.read',
     'kitchen.update_status',
     'inventory.read',
@@ -347,6 +354,7 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<SystemRoleName, string[]> = {
     'orders.read',
     'orders.create',
     'orders.update',
+    'einvoices.issue',
     'kitchen.read',
     'products.read',
     'cash.open',

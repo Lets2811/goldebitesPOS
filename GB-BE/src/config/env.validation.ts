@@ -112,6 +112,12 @@ class EnvironmentVariables {
   @IsString()
   @IsOptional()
   CASH_SESSION_MASTER_KEY: string = '';
+
+  /** Encrypts third-party credentials kept in the database (electronic invoicing).
+   *  Empty: those credentials cannot be saved, and electronic invoicing stays unavailable. */
+  @IsString()
+  @IsOptional()
+  CREDENTIALS_ENCRYPTION_KEY: string = '';
 }
 
 export function validate(config: Record<string, unknown>) {

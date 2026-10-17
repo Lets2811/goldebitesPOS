@@ -87,6 +87,9 @@ export const FEATURE_MODULES: FeatureModuleDefinition[] = [
   // The assistant, a separate app that reads this business's data (see the
   // tura-links module). Sold separately, so it starts off.
   { key: 'tura', label: 'TURA (asistente)', optIn: true },
+  // DIAN electronic invoicing through Factus, with the business's own
+  // account (see the e-invoicing module). Sold separately, so it starts off.
+  { key: 'einvoicing', label: 'Facturación electrónica (DIAN)', optIn: true },
 ];
 
 /** The keys that are off for a business unless it has a row turning them on. */

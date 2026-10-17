@@ -5,6 +5,7 @@ import { escapeHtml } from './escape-html';
 import { formatOptionSelections } from '../../option-groups/utils/option-group-utils';
 import type { OrderWithItems } from '../types/order.types';
 import type { Payment } from '../types/payment.types';
+import type { ElectronicInvoice } from '../../e-invoicing/types/e-invoicing.types';
 
 interface PrintInvoiceOptions {
   businessName?: string;
@@ -16,10 +17,18 @@ interface PrintInvoiceOptions {
   tableNames?: Record<string, string>;
 }
 
+/** The DIAN data printed on an electronic invoice's ticket. */
+interface ElectronicInvoiceBlock {
+  invoice: ElectronicInvoice;
+  /** The DIAN QR as an image (data URL). */
+  qrDataUrl: string | null;
+}
+
 function buildInvoiceHtml(
   order: OrderWithItems,
   payments: Payment[],
   { businessName, businessLogo, legalName, taxId, phone, tableNames }: PrintInvoiceOptions,
+  electronic?: ElectronicInvoiceBlock,
 ): string {
   const dateLabel = new Date(order.createdAt).toLocaleString('es-CO', {
     dateStyle: 'short',
@@ -104,7 +113,9 @@ function buildInvoiceHtml(
     ${taxId ? `<div class="legal">NIT: ${escapeHtml(taxId)}</div>` : ''}
     ${phone ? `<div class="legal">Tel: ${escapeHtml(phone)}</div>` : ''}
     <div class="order-number">#${order.orderNumber}</div>
-    <div class="title">Factura de venta</div>
+    <div class="title">${electronic ? 'Factura electrónica de venta' : 'Factura de venta'}</div>
+    ${electronic?.invoice.number ? `<div class="order-number">N° ${escapeHtml(electronic.invoice.number)}</div>` : ''}
+    ${electronic?.invoice.environment === 'SANDBOX' ? '<div class="legal">AMBIENTE DE PRUEBAS · SIN VALIDEZ FISCAL</div>' : ''}
     <div class="type">${ORDER_TYPE_LABELS[order.orderType]}</div>
     ${tableLine}
     ${customerLine}
@@ -125,9 +136,36 @@ function buildInvoiceHtml(
   <div class="totals-line" style="font-weight: 700; margin-top: 1mm;"><span>Total pagado</span><span>${formatCOP(amountPaid)}</span></div>`
       : ''
   }
+  ${electronic ? electronicFooter(electronic) : ''}
   <div class="footer">¡Gracias por su compra!</div>
 </body>
 </html>`;
+}
+
+function electronicFooter({ invoice, qrDataUrl }: ElectronicInvoiceBlock): string {
+  const buyer =
+    invoice.customer.kind === 'IDENTIFIED'
+      ? `${escapeHtml(invoice.customer.name)} · ${escapeHtml(invoice.customer.identification)}`
+      : 'Consumidor final';
+  return `
+  <hr />
+  <div class="footer" style="text-align: left;">Adquiriente: ${buyer}</div>
+  <div class="footer" style="text-align: left; word-break: break-all;">CUFE: ${escapeHtml(invoice.cufe ?? '')}</div>
+  ${qrDataUrl ? `<div style="text-align: center; margin-top: 2mm;"><img src="${qrDataUrl}" alt="QR DIAN" style="width: 32mm; height: 32mm;" /></div>` : ''}
+  <div class="footer">Representación gráfica de la factura electrónica. Consúltela en la DIAN con el código QR.</div>`;
+}
+
+/** Prints an electronic invoice: the same ticket with its DIAN number, CUFE and QR. */
+export async function printElectronicInvoice(
+  order: OrderWithItems,
+  payments: Payment[],
+  invoice: ElectronicInvoice,
+  options: PrintInvoiceOptions = {},
+): Promise<void> {
+  // Loaded on demand: only electronic invoices need it.
+  const QRCode = await import('qrcode');
+  const qrDataUrl = invoice.qrUrl ? await QRCode.toDataURL(invoice.qrUrl, { margin: 0, width: 240 }) : null;
+  printThermalDocument(buildInvoiceHtml(order, payments, options, { invoice, qrDataUrl }));
 }
 
 export function printInvoice(

@@ -80,7 +80,8 @@ export class OrdersRepository implements IOrdersRepository {
          delivery_address, delivery_instructions, discount_amount, delivery_fee, notes, order_number, customer_name,
          payment_policy)
        SELECT $1, $2, $3, $4, $5, $6, $7, $8, COALESCE($9::numeric, 0), COALESCE($10::numeric, 0), $11,
-         to_char(counter.order_date, 'MMDD') || '-' || lpad(counter.last_number::text, 2, '0'), $13, $14
+         -- At least two digits ("-07"); lpad would cut a 100th order to "-10", a duplicate.
+         to_char(counter.order_date, 'MMDD') || '-' || lpad(counter.last_number::text, GREATEST(2, length(counter.last_number::text)), '0'), $13, $14
        FROM counter
        RETURNING ${SELECT_COLUMNS}`,
       [

@@ -75,7 +75,12 @@ JWT_REFRESH_EXPIRES_IN=7d
 CAR_SERVICE_BUSINESS_ID=00000000-0000-0000-0000-000000000000
 CAR_SERVICE_BRANCH_ID=00000000-0000-0000-0000-000000000000
 CASH_SESSION_MASTER_KEY=$(rand 32)
+CREDENTIALS_ENCRYPTION_KEY=$(rand 48)
 ENV
+fi
+# Added after the first deploys: encrypts third-party credentials (electronic invoicing).
+if ! grep -q '^CREDENTIALS_ENCRYPTION_KEY=' "$ENV_FILE"; then
+  echo "CREDENTIALS_ENCRYPTION_KEY=$(openssl rand -base64 48 | tr -dc 'A-Za-z0-9' | head -c 48)" >> "$ENV_FILE"
 fi
 
 cp "$ENV_FILE" src/.env.staging

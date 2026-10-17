@@ -135,6 +135,27 @@ describe('OrdersRepository (integration)', () => {
     expect(parseInt(secondSeq, 10)).toBe(parseInt(firstSeq, 10) + 1);
   });
 
+  it('create() keeps numbering past the 99th order of the day instead of repeating "-10"', async () => {
+    const first = await repository.create(
+      { businessId, branchId, orderType: OrderType.DINE_IN },
+      undefined,
+    );
+    const [day] = first.order_number.split('-');
+    // As if the day had already reached order 99.
+    await pool.query(
+      `UPDATE daily_order_counters SET last_number = 99
+       WHERE business_id = $1 AND to_char(order_date, 'MMDD') = $2`,
+      [businessId, day],
+    );
+
+    const hundredth = await repository.create(
+      { businessId, branchId, orderType: OrderType.DINE_IN },
+      undefined,
+    );
+
+    expect(hundredth.order_number).toBe(`${day}-100`);
+  });
+
   it('getTotalPaid() sums every payment registered against the order', async () => {
     const order = await repository.create(
       { businessId, branchId, orderType: OrderType.DINE_IN },
