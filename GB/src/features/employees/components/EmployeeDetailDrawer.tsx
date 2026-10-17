@@ -3,13 +3,14 @@ import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import Divider from '@mui/material/Divider';
 import Button from '@mui/material/Button';
-import { Phone, Mail, Calendar, Pencil, Trash2, Receipt } from 'lucide-react';
+import { Phone, Mail, Calendar, Pencil, Trash2, Receipt, IdCard } from 'lucide-react';
 import { useSnackbar } from 'notistack';
 import DetailDrawer from '../../../components/common/DetailDrawer';
 import StatusChip from '../../../components/common/StatusChip';
 import DateDisplay from '../../../components/common/DateDisplay';
 import CurrencyDisplay from '../../../components/common/CurrencyDisplay';
 import { Can } from '../../../modules/auth/components/can';
+import { useBranches } from '../../../modules/branches/hooks/use-branches';
 import { useEmployee } from '../../../modules/employees/hooks/use-employee';
 import { useSetEmployeeShifts } from '../../../modules/employees/hooks/use-set-employee-shifts';
 import { usePrintPaymentReceipt } from '../../../modules/employees/hooks/use-print-payment-receipt';
@@ -17,6 +18,7 @@ import { useRoles } from '../../../modules/roles/hooks/use-roles';
 import { getRoleLabel } from '../../../modules/roles/role-labels';
 import { normalizeApiError } from '../../../lib/api/api-error';
 import {
+  EMPLOYEE_DOCUMENT_TYPE_LABELS,
   EMPLOYEE_PAY_FREQUENCY_LABELS,
   EMPLOYEE_STATUS_LABELS,
   EMPLOYEE_STATUS_TONE,
@@ -41,6 +43,7 @@ export default function EmployeeDetailDrawer({
   const { enqueueSnackbar } = useSnackbar();
   const { data: employee } = useEmployee(employeeId);
   const { data: roles } = useRoles();
+  const { data: branchPage } = useBranches({ isActive: true, limit: 50 });
   const roleLabel = roles?.find((role) => role.id === employee?.roleId)?.name;
   const setShifts = useSetEmployeeShifts();
   const printReceipt = usePrintPaymentReceipt();
@@ -83,6 +86,15 @@ export default function EmployeeDetailDrawer({
     >
       <Stack spacing={3}>
         <Stack spacing={1}>
+          {employee.documentNumber && (
+            <Stack direction="row" spacing={1} sx={{ alignItems: 'center', color: 'text.secondary' }}>
+              <IdCard size={14} />
+              <Typography variant="body2">
+                {employee.documentType ? `${EMPLOYEE_DOCUMENT_TYPE_LABELS[employee.documentType]} ` : ''}
+                {employee.documentNumber}
+              </Typography>
+            </Stack>
+          )}
           {employee.phone && (
             <Stack direction="row" spacing={1} sx={{ alignItems: 'center', color: 'text.secondary' }}>
               <Phone size={14} />
@@ -160,6 +172,7 @@ export default function EmployeeDetailDrawer({
               shifts={employee.shifts}
               onSave={handleSaveShifts}
               saving={setShifts.isPending}
+              branches={branchPage?.data ?? []}
             />
           </Box>
         </Can>

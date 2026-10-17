@@ -15,6 +15,8 @@ export enum CashMovementType {
   REIMBURSEMENT = 'REIMBURSEMENT',
   /** Reverses a previous EXPENSE when a source reclassification moves an expense away from Caja operativa — only ever produced by that flow, never entered manually. */
   EXPENSE_REVERSAL = 'EXPENSE_REVERSAL',
+  /** Takes back the INCOME an "other income" put in this session, when that income is voided — only ever produced by that flow. */
+  INCOME_REVERSAL = 'INCOME_REVERSAL',
 }
 
 export enum PaymentMethod {

@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react';
-import ReactGridLayout, { useContainerWidth, type Layout } from 'react-grid-layout';
+import { useMemo, useRef, useState } from 'react';
+import ReactGridLayout, { useContainerWidth, type Compactor, type Layout } from 'react-grid-layout';
 import 'react-grid-layout/css/styles.css';
 import 'react-resizable/css/styles.css';
 import Box from '@mui/material/Box';
@@ -17,6 +17,7 @@ import { GripVertical, Plus, RotateCcw, X } from 'lucide-react';
 import { useAuthStore } from '../../../modules/auth/store/auth.store';
 import { useFinanceDashboardStore, type WidgetPlacement } from '../../../store/financeDashboardStore';
 import { brand } from '../../../theme/palette';
+import { flowLayout, readingOrder, type FlowSize } from './flow-layout';
 import { DEFAULT_LAYOUT, WIDGETS, WIDGETS_BY_ID, type WidgetContext } from './widgets';
 
 const COLUMNS = 12;
@@ -31,12 +32,16 @@ interface FinanceDashboardProps {
   editing: boolean;
 }
 
-/** Solo lo que se guarda de cada widget, y solo los widgets que todavía existen. */
-function toPlacements(layout: Layout): WidgetPlacement[] {
-  return layout
-    .filter((item) => WIDGETS_BY_ID.has(item.i))
-    .map(({ i, x, y, w, h }) => ({ i, x, y, w, h }));
+/**
+ * Lo que se guarda: los widgets en orden, cada uno con el tamaño que eligió
+ * la persona (sin lo que se estiró para llenar su fila), y su lugar.
+ */
+function toPlacements(sizes: readonly FlowSize[]): WidgetPlacement[] {
+  const byId = new Map(sizes.map((size) => [size.i, size]));
+  return flowLayout(sizes, COLUMNS, { stretch: true }).map(({ i, x, y }) => ({ i, x, y, ...sizeOf(byId.get(i)!) }));
 }
+
+const sizeOf = ({ w, h }: { w: number; h: number }) => ({ w, h });
 
 function WidgetFrame({
   title,
@@ -110,32 +115,75 @@ export default function FinanceDashboard({ context, editing }: FinanceDashboardP
   const { width, containerRef, mounted } = useContainerWidth();
   const [addAnchor, setAddAnchor] = useState<HTMLElement | null>(null);
 
-  // Un widget guardado que ya no existe se ignora; el mínimo de cada uno lo pone el catálogo, no lo guardado.
-  const layout = useMemo(
+  // Los widgets en su orden, con el tamaño elegido. Un widget guardado que ya no existe se ignora.
+  const sizes = useMemo<FlowSize[]>(
     () =>
-      (saved ?? DEFAULT_LAYOUT)
-        .filter((item) => WIDGETS_BY_ID.has(item.i))
-        .map((item) => {
-          const { minW, minH } = WIDGETS_BY_ID.get(item.i)!.size;
-          return { ...item, minW, minH };
-        }),
+      readingOrder((saved ?? DEFAULT_LAYOUT).filter((item) => WIDGETS_BY_ID.has(item.i))).map(({ i, w, h }) => ({
+        i,
+        w,
+        h,
+      })),
     [saved],
   );
-  const available = WIDGETS.filter((widget) => !layout.some((item) => item.i === widget.id));
+  // Lo que se dibuja: acomodado sin huecos. El mínimo de cada uno lo pone el catálogo, no lo guardado.
+  const layout = useMemo(
+    () =>
+      flowLayout(sizes, COLUMNS, { stretch: true }).map((item) => {
+        const { minW, minH } = WIDGETS_BY_ID.get(item.i)!.size;
+        return { ...item, minW, minH };
+      }),
+    [sizes],
+  );
+  const available = WIDGETS.filter((widget) => !sizes.some((item) => item.i === widget.id));
   const stacked = width < STACKED_BELOW;
 
+  // La cuadrícula acomoda en vivo mientras se arrastra o se estira, con este mismo orden de lectura.
+  /** El widget que se está estirando: su tamaño es el que marca el puntero, y su fila no se estira mientras tanto. */
+  const resizingRef = useRef<string | null>(null);
+  const compactor = useMemo<Compactor>(
+    () => ({
+      type: 'vertical',
+      // Lo arrastrado no empuja a nadie: solo cambia el orden, y el acomodo hace el resto.
+      allowOverlap: true,
+      compact(current, cols) {
+        const chosen = new Map(sizes.map((size) => [size.i, size]));
+        const ordered = readingOrder(current).map((item) => ({
+          i: item.i,
+          ...sizeOf(item.i === resizingRef.current ? item : (chosen.get(item.i) ?? item)),
+        }));
+        const placed = new Map(
+          flowLayout(ordered, cols, { stretch: resizingRef.current === null }).map((item) => [item.i, item]),
+        );
+        return current.map((item) => ({ ...item, ...placed.get(item.i), moved: false }));
+      },
+    }),
+    [sizes],
+  );
+
+  /** Guarda el orden que dejó la cuadrícula al soltar, con el tamaño elegido de cada widget. */
+  function saveOrder(next: Layout, resized?: { i: string; w: number; h: number }) {
+    const chosen = new Map(sizes.map((size) => [size.i, size]));
+    setLayout(
+      userId,
+      toPlacements(
+        readingOrder(next)
+          .filter((item) => chosen.has(item.i))
+          .map((item) => ({ i: item.i, ...sizeOf(item.i === resized?.i ? resized : chosen.get(item.i)!) })),
+      ),
+    );
+  }
+
   function addWidget(id: string) {
-    const { w, h } = WIDGETS_BY_ID.get(id)!.size;
-    // Al final del panel; la cuadrícula lo acomoda arriba si hay hueco.
-    const bottom = layout.reduce((max, item) => Math.max(max, item.y + item.h), 0);
-    setLayout(userId, [...toPlacements(layout), { i: id, x: 0, y: bottom, w, h }]);
+    // Al final del panel, con su tamaño de fábrica.
+    setLayout(userId, toPlacements([...sizes, { i: id, ...sizeOf(WIDGETS_BY_ID.get(id)!.size) }]));
     setAddAnchor(null);
   }
 
+  // Los demás se reacomodan solos y su fila se estira: no queda el hueco.
   const removeWidget = (id: string) =>
     setLayout(
       userId,
-      toPlacements(layout).filter((item) => item.i !== id),
+      toPlacements(sizes.filter((item) => item.i !== id)),
     );
 
   const renderWidget = (id: string) => {
@@ -167,7 +215,7 @@ export default function FinanceDashboard({ context, editing }: FinanceDashboardP
           <Typography variant="body2" sx={{ flex: 1, minWidth: 220 }}>
             {stacked
               ? 'Para mover y cambiar el tamaño de los widgets usa una pantalla más ancha. Aquí puedes agregarlos.'
-              : 'Arrastra un widget por su título para moverlo y estíralo desde la esquina inferior derecha.'}
+              : 'Arrastra un widget por su título para cambiarlo de lugar; los demás se reacomodan solos. Estíralo desde la esquina inferior derecha.'}
           </Typography>
           <Button
             size="small"
@@ -245,9 +293,15 @@ export default function FinanceDashboard({ context, editing }: FinanceDashboardP
                 cancel: '.finance-widget__remove',
               }}
               resizeConfig={{ enabled: editing, handles: ['se'] }}
-              onLayoutChange={(next) => {
-                // La cuadrícula avisa también al montarse; solo se guarda lo que la persona cambió.
-                if (editing) setLayout(userId, toPlacements(next));
+              compactor={compactor}
+              // Solo se guarda al soltar: lo de en medio es la vista previa del acomodo.
+              onDragStop={(next) => saveOrder(next)}
+              onResizeStart={(_, item) => {
+                resizingRef.current = item?.i ?? null;
+              }}
+              onResizeStop={(next, _, item) => {
+                resizingRef.current = null;
+                saveOrder(next, item ?? undefined);
               }}
             >
               {layout.map((item) => (

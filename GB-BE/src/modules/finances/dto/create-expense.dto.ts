@@ -1,4 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { Type } from 'class-transformer';
 import {
   IsDateString,
   IsEnum,
@@ -7,11 +8,15 @@ import {
   IsOptional,
   IsString,
   IsUUID,
+  Matches,
   Min,
+  ValidateIf,
+  ValidateNested,
   MaxLength,
   MinLength,
 } from 'class-validator';
-import { ExpensePaymentSource, SELECTABLE_EXPENSE_PAYMENT_SOURCES } from '../domain/expense.types';
+import { CREATABLE_EXPENSE_PAYMENT_SOURCES, ExpensePaymentSource } from '../domain/expense.types';
+import { SupplierPaymentDto } from './supplier-payment.dto';
 
 export class CreateExpenseDto {
   @ApiProperty({ maxLength: 20, description: "Code of one of the business's active expense categories (GET /expense-categories)." })
@@ -53,10 +58,10 @@ export class CreateExpenseDto {
   branchId?: string;
 
   @ApiProperty({
-    enum: SELECTABLE_EXPENSE_PAYMENT_SOURCES,
+    enum: CREATABLE_EXPENSE_PAYMENT_SOURCES,
     description: 'Which fund the expense drew from — mandatory (AC-01). UNSPECIFIED_HISTORICAL is not selectable, it only exists on legacy rows.',
   })
-  @IsIn(SELECTABLE_EXPENSE_PAYMENT_SOURCES)
+  @IsIn(CREATABLE_EXPENSE_PAYMENT_SOURCES)
   paymentSource: ExpensePaymentSource;
 
   @ApiPropertyOptional({ description: 'An existing employee who paid personally — required (or payerName) when paymentSource is PERSONAL_MONEY.' })
@@ -76,4 +81,34 @@ export class CreateExpenseDto {
   @IsOptional()
   @IsUUID()
   cashSessionId?: string;
+
+  @ApiPropertyOptional({ description: 'Who it was bought from — required when paymentSource is SUPPLIER_CREDIT.' })
+  @ValidateIf(
+    (dto: CreateExpenseDto) =>
+      (dto.paymentSource === ExpensePaymentSource.SUPPLIER_CREDIT && !dto.newSupplierName) || dto.supplierId !== undefined,
+  )
+  @IsUUID()
+  supplierId?: string;
+
+  @ApiPropertyOptional({
+    maxLength: 150,
+    description: 'A supplier typed in instead of picked — reused if an active one has that name, created otherwise.',
+  })
+  @IsOptional()
+  @IsString()
+  @MinLength(2)
+  @MaxLength(150)
+  newSupplierName?: string;
+
+  @ApiPropertyOptional({ example: '2026-11-13', description: "SUPPLIER_CREDIT: when the rest is due. Defaults to the supplier's credit days." })
+  @IsOptional()
+  @IsDateString()
+  @Matches(/^\d{4}-\d{2}-\d{2}$/)
+  dueDate?: string;
+
+  @ApiPropertyOptional({ type: () => SupplierPaymentDto, description: 'SUPPLIER_CREDIT: what was paid right away (a partial payment).' })
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => SupplierPaymentDto)
+  initialPayment?: SupplierPaymentDto;
 }

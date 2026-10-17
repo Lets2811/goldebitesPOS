@@ -1,3 +1,4 @@
+import { CategoryOrderScope } from '../domain/product-category.types';
 import 'dotenv/config';
 import { randomUUID } from 'node:crypto';
 import { Pool } from 'pg';
@@ -37,11 +38,26 @@ describe('ProductCategoriesRepository (integration)', () => {
     await pool.end();
   });
 
-  it('creates a category defaulting display_order to 0', async () => {
-    const created = await repository.create({ businessId, name: 'Burgers' });
+  it('puts a new category last in both the menu and "Arma tu combo"', async () => {
+    const first = await repository.create({ businessId, name: 'Burgers' });
+    const second = await repository.create({ businessId, name: 'Postres' });
 
-    expect(created.display_order).toBe(0);
-    expect(created.is_active).toBe(true);
+    expect(second.display_order).toBeGreaterThan(first.display_order);
+    expect(second.builder_display_order).toBeGreaterThan(first.builder_display_order);
+    expect(first.is_active).toBe(true);
+  });
+
+  it('setOrder() changes one list without touching the other', async () => {
+    const a = await repository.create({ businessId, name: `A ${randomUUID()}` });
+    const b = await repository.create({ businessId, name: `B ${randomUUID()}` });
+
+    await repository.setOrder(businessId, CategoryOrderScope.BUILDER, [b.id, a.id]);
+
+    const [reA, reB] = await Promise.all([repository.findById(a.id, businessId), repository.findById(b.id, businessId)]);
+    expect(reB!.builder_display_order).toBeLessThan(reA!.builder_display_order);
+    // The menu order is still the creation one: A before B.
+    expect(reA!.display_order).toBeLessThan(reB!.display_order);
+    expect(await repository.countOwned(businessId, [a.id, b.id, randomUUID()])).toBe(2);
   });
 
   it('findById() scopes by business', async () => {

@@ -1,5 +1,10 @@
+import { ProductMenuAvailability } from '../domain/product.types';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { Type } from 'class-transformer';
 import {
+  ArrayMaxSize,
+  IsArray,
+  IsEnum,
   IsBoolean,
   IsInt,
   IsNumber,
@@ -9,7 +14,25 @@ import {
   Min,
   MaxLength,
   MinLength,
+  Max,
+  ValidateNested,
 } from 'class-validator';
+
+export class ProductOptionGroupInputDto {
+  @ApiProperty()
+  @IsUUID()
+  groupId: string;
+
+  @ApiProperty({
+    minimum: 1,
+    maximum: 20,
+    description: 'How many of the group the customer may pick',
+  })
+  @IsInt()
+  @Min(1)
+  @Max(20)
+  maxChoices: number;
+}
 
 export class CreateProductDto {
   @ApiProperty({ minLength: 2, maxLength: 150 })
@@ -53,24 +76,24 @@ export class CreateProductDto {
   trackInventory?: boolean;
 
   @ApiPropertyOptional({
-    default: 0,
-    minimum: 0,
+    type: [ProductOptionGroupInputDto],
     description:
-      'How many sauces can be chosen when ordering this product (0 = none offered)',
+      'The option groups the product offers and how many of each can be picked; replaces the whole set',
   })
   @IsOptional()
-  @IsInt()
-  @Min(0)
-  maxSauces?: number;
+  @IsArray()
+  @ArrayMaxSize(50)
+  @ValidateNested({ each: true })
+  @Type(() => ProductOptionGroupInputDto)
+  optionGroups?: ProductOptionGroupInputDto[];
 
   @ApiPropertyOptional({
-    default: 0,
-    minimum: 0,
+    enum: ProductMenuAvailability,
+    default: ProductMenuAvailability.MENU,
     description:
-      'How many sides can be chosen when ordering this product (0 = none offered)',
+      'Where customers ordering on their own see it: the regular menu, "Arma tu combo", or both',
   })
   @IsOptional()
-  @IsInt()
-  @Min(0)
-  maxSides?: number;
+  @IsEnum(ProductMenuAvailability)
+  menuAvailability?: ProductMenuAvailability;
 }

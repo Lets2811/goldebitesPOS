@@ -1,6 +1,7 @@
 import { ORDER_TYPE_LABELS, getOrderIdentifierLabel } from '../order-status';
 import { printThermalDocument } from './print-thermal-document';
 import { escapeHtml } from './escape-html';
+import { formatOptionSelections } from '../../option-groups/utils/option-group-utils';
 import type { OrderItem, OrderWithItems } from '../types/order.types';
 
 interface PrintTicketOptions {
@@ -24,12 +25,7 @@ function buildTicketHtml(
 
   const itemsHtml = (addedItems ?? order.items)
     .map((item) => {
-      const selections = [
-        item.sauceNames.length > 0 && `Salsas: ${item.sauceNames.join(', ')}`,
-        item.sideNames.length > 0 && `Acompañantes: ${item.sideNames.join(', ')}`,
-      ]
-        .filter(Boolean)
-        .join(' · ');
+      const selections = formatOptionSelections(item).join(' · ');
       return `
         <div class="item">
           <div class="item-line"><span class="qty">${item.quantity}×</span> ${escapeHtml(item.productNameSnapshot)}</div>

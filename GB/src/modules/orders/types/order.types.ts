@@ -1,3 +1,5 @@
+import type { OptionSelection } from '../../option-groups/types/option-group.types';
+
 export type OrderType = 'DINE_IN' | 'TAKEAWAY' | 'DELIVERY' | 'CAR_SERVICE';
 
 export type OrderStatus =
@@ -22,10 +24,8 @@ export interface OrderItem {
   discountAmount: number;
   totalPrice: number;
   notes: string | null;
-  sauceIds: string[];
-  sauceNames: string[];
-  sideIds: string[];
-  sideNames: string[];
+  /** Lo elegido, por grupo de opciones, con los nombres de ese día. */
+  optionSelections: OptionSelection[];
   createdAt: string;
 }
 
@@ -66,8 +66,8 @@ export interface CreateOrderItemPayload {
   quantity: number;
   discountAmount?: number;
   notes?: string;
-  sauceIds?: string[];
-  sideIds?: string[];
+  /** Las opciones elegidas, de cualquiera de los grupos del producto. */
+  optionItemIds?: string[];
 }
 
 export interface CreateOrderPayload {

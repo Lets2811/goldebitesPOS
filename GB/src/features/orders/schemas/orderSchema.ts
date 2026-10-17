@@ -4,8 +4,7 @@ export const newOrderItemSchema = z.object({
   productId: z.string().min(1, 'Selecciona un producto'),
   quantity: z.coerce.number().positive('Cantidad inválida'),
   notes: z.string().optional(),
-  sauceIds: z.array(z.string()).optional(),
-  sideIds: z.array(z.string()).optional(),
+  optionItemIds: z.array(z.string()).optional(),
 });
 
 /** Mirrors GB-BE's CreateOrderDto. */

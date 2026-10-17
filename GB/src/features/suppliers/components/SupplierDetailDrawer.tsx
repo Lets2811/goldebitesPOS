@@ -5,6 +5,9 @@ import { Phone, Mail, MapPin, Pencil, Power } from 'lucide-react';
 import DetailDrawer from '../../../components/common/DetailDrawer';
 import StatusChip from '../../../components/common/StatusChip';
 import { Can } from '../../../modules/auth/components/can';
+import { usePermissions } from '../../../modules/auth/hooks/use-permissions';
+import { useSupplierPayables } from '../../../modules/finances/hooks/use-supplier-payables';
+import { formatCOP } from '../../../utils/format';
 import type { Supplier } from '../../../modules/suppliers/types/supplier.types';
 
 interface SupplierDetailDrawerProps {
@@ -73,6 +76,12 @@ export default function SupplierDetailDrawer({
             </Stack>
           )}
         </Stack>
+        {supplier.creditDays != null && (
+          <Typography variant="body2">
+            Crédito: <strong>{supplier.creditDays} días</strong>
+          </Typography>
+        )}
+        <SupplierBalance supplierId={supplier.id} />
         {supplier.notes && (
           <Typography variant="body2" color="text.secondary">
             {supplier.notes}
@@ -80,5 +89,26 @@ export default function SupplierDetailDrawer({
         )}
       </Stack>
     </DetailDrawer>
+  );
+}
+
+/** Lo que se le debe a este proveedor por compras a crédito. Solo para quien ve las finanzas. */
+function SupplierBalance({ supplierId }: { supplierId: string }) {
+  const { hasPermission, hasFeature } = usePermissions();
+  const canSee = hasPermission('finances.read') && hasFeature('finances');
+  if (!canSee) return null;
+  return <SupplierBalanceFigure supplierId={supplierId} />;
+}
+
+function SupplierBalanceFigure({ supplierId }: { supplierId: string }) {
+  const { data: payables } = useSupplierPayables({ supplierId, openOnly: true });
+  if (!payables) return null;
+  const pending = payables.reduce((sum, payable) => sum + payable.pendingAmount, 0);
+  return (
+    <Typography variant="body2" color={pending > 0 ? 'warning.main' : 'text.secondary'}>
+      {pending > 0
+        ? `Se le deben ${formatCOP(pending)} en ${payables.length} compra${payables.length === 1 ? '' : 's'} a crédito.`
+        : 'No se le debe nada.'}
+    </Typography>
   );
 }

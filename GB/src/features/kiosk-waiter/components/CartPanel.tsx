@@ -12,19 +12,19 @@ import { ORDER_TYPE_LABELS } from '../../../modules/orders/order-status';
 import type { OrderType } from '../../../modules/orders/types/order.types';
 import OrderCartList from '../../orders/components/OrderCartList';
 import TableNumberPicker from './TableNumberPicker';
+import type { ProductOptionGroup } from '../../../modules/option-groups/types/option-group.types';
 
 export interface CartLine {
   /** Unique per cart line — NOT the same as productId, since one product can appear as several
-   *  independently-customized lines (e.g. two burgers with different sauces/sides each). */
+   *  independently-customized lines (e.g. two burgers with different sauces each). */
   id: string;
   productId: string;
   name: string;
   unitPrice: number;
   quantity: number;
-  maxSauces: number;
-  maxSides: number;
-  sauceIds: string[];
-  sideIds: string[];
+  /** The option groups this unit can be customized with, and how many of each. */
+  optionGroups: ProductOptionGroup[];
+  optionItemIds: string[];
 }
 
 interface CartPanelProps {
@@ -32,8 +32,7 @@ interface CartPanelProps {
   onIncrement: (id: string) => void;
   onDecrement: (id: string) => void;
   onRemove: (id: string) => void;
-  onToggleSauce: (id: string, sauceId: string) => void;
-  onToggleSide: (id: string, sideId: string) => void;
+  onToggleOption: (id: string, groupId: string, itemId: string) => void;
   tableNumber: string;
   onTableNumberChange: (value: string) => void;
   tableCount?: number;
@@ -55,8 +54,7 @@ export default function CartPanel({
   onIncrement,
   onDecrement,
   onRemove,
-  onToggleSauce,
-  onToggleSide,
+  onToggleOption,
   tableNumber,
   onTableNumberChange,
   tableCount,
@@ -121,8 +119,7 @@ export default function CartPanel({
           onIncrement={onIncrement}
           onDecrement={onDecrement}
           onRemove={onRemove}
-          onToggleSauce={onToggleSauce}
-          onToggleSide={onToggleSide}
+          onToggleOption={onToggleOption}
           emptyMessage="Toca un producto para agregarlo al pedido."
         />
       </Box>

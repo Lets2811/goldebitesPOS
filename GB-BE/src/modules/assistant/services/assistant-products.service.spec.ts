@@ -1,3 +1,4 @@
+import { ProductMenuAvailability } from '../../products/domain/product.types';
 import {
   BusinessRuleException,
   UnauthorizedOperationException,
@@ -31,8 +32,8 @@ describe('AssistantProductsService', () => {
       isActive: true,
       isVisible: true,
       trackInventory: true,
-      maxSauces: 0,
-      maxSides: 0,
+      optionGroups: [],
+      menuAvailability: ProductMenuAvailability.MENU,
       createdAt: new Date(),
       updatedAt: new Date(),
       ...overrides,

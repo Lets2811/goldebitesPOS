@@ -12,6 +12,17 @@ export enum EmployeePayFrequency {
   MONTH = 'MONTH',
 }
 
+/** Colombian identity document kinds, plus a catch-all. */
+export enum EmployeeDocumentType {
+  CC = 'CC',
+  CE = 'CE',
+  TI = 'TI',
+  PPT = 'PPT',
+  PASSPORT = 'PASSPORT',
+  NIT = 'NIT',
+  OTHER = 'OTHER',
+}
+
 /** The subset an employee may self-select for their own payroll cadence — SHIFT stays an admin-only classification. */
 export const SELF_SERVICE_PAY_FREQUENCIES = [
   EmployeePayFrequency.WEEK,
@@ -23,15 +34,22 @@ export interface ShiftInput {
   dayOfWeek: number;
   startTime: string;
   endTime: string;
+  /** Where this shift is worked; omitted means the employee's own branch. */
+  branchId?: string | null;
 }
 
 export interface CreateEmployeeData {
   businessId: string;
   branchId?: string;
-  /** Required — also becomes the auto-created login account's role. */
+  /** Required — the employee's job, and their login account's role when one is created. */
   roleId: string;
   firstName: string;
   lastName: string;
+  documentType?: EmployeeDocumentType;
+  documentNumber?: string;
+  status?: EmployeeStatus;
+  /** False registers the employee without a login account (it can be generated later). Defaults to true. */
+  createAccess?: boolean;
   phone?: string;
   email?: string;
   position?: string;
@@ -46,6 +64,9 @@ export interface UpdateEmployeeData {
   roleId?: string;
   firstName?: string;
   lastName?: string;
+  documentType?: EmployeeDocumentType;
+  documentNumber?: string;
+  status?: EmployeeStatus;
   phone?: string;
   email?: string;
   position?: string;

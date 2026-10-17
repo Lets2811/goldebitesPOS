@@ -11,7 +11,7 @@ import {
 import { IProductsRepository } from './products.repository.interface';
 
 const SELECT_COLUMNS = `id, business_id, category_id, name, description, sku, sale_price,
-  current_cost, image_url, is_active, is_visible, track_inventory, max_sauces, max_sides, created_at, updated_at, deleted_at`;
+  current_cost, image_url, image_path, image_mime_type, image_updated_at, is_active, is_visible, track_inventory, menu_availability, created_at, updated_at, deleted_at`;
 
 interface CountRow {
   count: string;
@@ -26,8 +26,8 @@ export class ProductsRepository implements IProductsRepository {
     client?: DbClient,
   ): Promise<ProductRow> {
     const result = await this.db.query<ProductRow>(
-      `INSERT INTO products (business_id, category_id, name, description, sku, sale_price, image_url, track_inventory, max_sauces, max_sides)
-       VALUES ($1, $2, $3, $4, $5, COALESCE($6::numeric, 0), $7, COALESCE($8, true), COALESCE($9::smallint, 0), COALESCE($10::smallint, 0))
+      `INSERT INTO products (business_id, category_id, name, description, sku, sale_price, image_url, track_inventory, menu_availability)
+       VALUES ($1, $2, $3, $4, $5, COALESCE($6::numeric, 0), $7, COALESCE($8, true), COALESCE($9, 'MENU'))
        RETURNING ${SELECT_COLUMNS}`,
       [
         data.businessId,
@@ -38,8 +38,7 @@ export class ProductsRepository implements IProductsRepository {
         data.salePrice ?? null,
         data.imageUrl ?? null,
         data.trackInventory ?? null,
-        data.maxSauces ?? null,
-        data.maxSides ?? null,
+        data.menuAvailability ?? null,
       ],
       client,
     );
@@ -137,8 +136,7 @@ export class ProductsRepository implements IProductsRepository {
            sale_price = COALESCE($7, sale_price),
            image_url = COALESCE($8, image_url),
            track_inventory = COALESCE($9, track_inventory),
-           max_sauces = COALESCE($10::smallint, max_sauces),
-           max_sides = COALESCE($11::smallint, max_sides)
+           menu_availability = COALESCE($10, menu_availability)
        WHERE id = $1 AND business_id = $2 AND deleted_at IS NULL
        RETURNING ${SELECT_COLUMNS}`,
       [
@@ -151,8 +149,7 @@ export class ProductsRepository implements IProductsRepository {
         data.salePrice ?? null,
         data.imageUrl ?? null,
         data.trackInventory ?? null,
-        data.maxSauces ?? null,
-        data.maxSides ?? null,
+        data.menuAvailability ?? null,
       ],
       client,
     );
@@ -207,6 +204,48 @@ export class ProductsRepository implements IProductsRepository {
        WHERE id = $1 AND business_id = $2 AND deleted_at IS NULL
        RETURNING ${SELECT_COLUMNS}`,
       [id, businessId],
+    );
+    return result.rows[0] ?? null;
+  }
+
+  async setImage(
+    id: string,
+    businessId: string,
+    imagePath: string,
+    mimeType: string,
+  ): Promise<ProductRow | null> {
+    const result = await this.db.query<ProductRow>(
+      `UPDATE products
+       SET image_path = $3, image_mime_type = $4, image_updated_at = now(), updated_at = now()
+       WHERE id = $1 AND business_id = $2 AND deleted_at IS NULL
+       RETURNING ${SELECT_COLUMNS}`,
+      [id, businessId, imagePath, mimeType],
+    );
+    return result.rows[0] ?? null;
+  }
+
+  /** Removes the photo, uploaded or linked. */
+  async clearImage(id: string, businessId: string): Promise<ProductRow | null> {
+    const result = await this.db.query<ProductRow>(
+      `UPDATE products
+       SET image_path = NULL, image_mime_type = NULL, image_updated_at = NULL, image_url = NULL, updated_at = now()
+       WHERE id = $1 AND business_id = $2 AND deleted_at IS NULL
+       RETURNING ${SELECT_COLUMNS}`,
+      [id, businessId],
+    );
+    return result.rows[0] ?? null;
+  }
+
+  async findImageFile(
+    id: string,
+  ): Promise<{ image_path: string; image_mime_type: string } | null> {
+    const result = await this.db.query<{
+      image_path: string;
+      image_mime_type: string;
+    }>(
+      `SELECT image_path, image_mime_type FROM products
+       WHERE id = $1 AND deleted_at IS NULL AND image_path IS NOT NULL`,
+      [id],
     );
     return result.rows[0] ?? null;
   }

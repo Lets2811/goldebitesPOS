@@ -37,6 +37,7 @@ export default function EditOrderItemsDrawer({
     control,
     handleSubmit,
     reset,
+    setValue,
     watch,
     formState: { errors, isSubmitting },
   } = useForm<EditOrderItemsFormValues>({
@@ -55,6 +56,8 @@ export default function EditOrderItemsDrawer({
           productId: item.productId ?? '',
           quantity: item.quantity,
           notes: item.notes ?? '',
+          // Kept as they were, so editing quantities doesn't drop what was picked.
+          optionItemIds: item.optionSelections.flatMap((selection) => selection.itemIds),
         })),
       });
     }
@@ -108,7 +111,18 @@ export default function EditOrderItemsDrawer({
                     name={`items.${index}.productId`}
                     control={control}
                     render={({ field: selectField }) => (
-                      <TextField {...selectField} select label="Producto" fullWidth size="small">
+                      <TextField
+                        {...selectField}
+                        onChange={(event) => {
+                          selectField.onChange(event);
+                          // Another product: what was picked for the old one doesn't apply.
+                          setValue(`items.${index}.optionItemIds`, []);
+                        }}
+                        select
+                        label="Producto"
+                        fullWidth
+                        size="small"
+                      >
                         <MenuItem value="">Selecciona…</MenuItem>
                         {products.map((p) => (
                           <MenuItem key={p.id} value={p.id}>

@@ -10,7 +10,7 @@ import {
 } from '../domain/supplier.types';
 import { ISuppliersRepository } from './suppliers.repository.interface';
 
-const SELECT_COLUMNS = `id, business_id, name, tax_id, contact_name, email, phone, address, notes, is_active, created_at, updated_at`;
+const SELECT_COLUMNS = `id, business_id, name, tax_id, contact_name, email, phone, address, notes, credit_days, is_active, created_at, updated_at`;
 
 interface CountRow {
   count: string;
@@ -25,8 +25,8 @@ export class SuppliersRepository implements ISuppliersRepository {
     client?: DbClient,
   ): Promise<SupplierRow> {
     const result = await this.db.query<SupplierRow>(
-      `INSERT INTO suppliers (business_id, name, tax_id, contact_name, email, phone, address, notes)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      `INSERT INTO suppliers (business_id, name, tax_id, contact_name, email, phone, address, notes, credit_days)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
        RETURNING ${SELECT_COLUMNS}`,
       [
         data.businessId,
@@ -37,6 +37,7 @@ export class SuppliersRepository implements ISuppliersRepository {
         data.phone ?? null,
         data.address ?? null,
         data.notes ?? null,
+        data.creditDays ?? null,
       ],
       client,
     );
@@ -114,7 +115,8 @@ export class SuppliersRepository implements ISuppliersRepository {
            email = COALESCE($6, email),
            phone = COALESCE($7, phone),
            address = COALESCE($8, address),
-           notes = COALESCE($9, notes)
+           notes = COALESCE($9, notes),
+           credit_days = COALESCE($10, credit_days)
        WHERE id = $1 AND business_id = $2
        RETURNING ${SELECT_COLUMNS}`,
       [
@@ -127,6 +129,7 @@ export class SuppliersRepository implements ISuppliersRepository {
         data.phone ?? null,
         data.address ?? null,
         data.notes ?? null,
+        data.creditDays ?? null,
       ],
       client,
     );
@@ -141,6 +144,18 @@ export class SuppliersRepository implements ISuppliersRepository {
     const result = await this.db.query<SupplierRow>(
       `UPDATE suppliers SET is_active = $3 WHERE id = $1 AND business_id = $2 RETURNING ${SELECT_COLUMNS}`,
       [id, businessId, isActive],
+    );
+    return result.rows[0] ?? null;
+  }
+
+  /** An active supplier with this exact name, ignoring case and surrounding spaces. */
+  async findActiveByName(businessId: string, name: string): Promise<SupplierRow | null> {
+    const result = await this.db.query<SupplierRow>(
+      `SELECT ${SELECT_COLUMNS} FROM suppliers
+       WHERE business_id = $1 AND is_active = true AND lower(trim(name)) = lower(trim($2))
+       ORDER BY created_at
+       LIMIT 1`,
+      [businessId, name],
     );
     return result.rows[0] ?? null;
   }

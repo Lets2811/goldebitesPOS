@@ -15,11 +15,31 @@ import {
 } from '../domain/expense.types';
 import { IExpensesRepository, UpdateExpenseSourceData } from './expenses.repository.interface';
 
-const SELECT_COLUMNS = `id, business_id, branch_id, category, name, description, responsible, amount, expense_date, payment_source, payer_employee_id, payer_name, cash_session_id, cash_movement_id, fund_movement_id, created_at, updated_at, deleted_at`;
+const SELECT_COLUMNS = `id, business_id, branch_id, category, name, description, responsible, amount, expense_date, payment_source, payer_employee_id, payer_name, supplier_id, cash_session_id, cash_movement_id, fund_movement_id, created_at, updated_at, deleted_at`;
 
 interface CountRow {
   count: string;
 }
+
+/**
+ * The business's spending ($1 = business), cash basis for purchases on credit:
+ * an ordinary expense counts on its date; a purchase on credit doesn't count
+ * when it's recorded — each payment to the supplier counts on its own date,
+ * under the purchase's category. A deleted purchase never had payments
+ * (deleting one with payments is refused), so it contributes nothing.
+ */
+const SPENDING = `
+  WITH spending AS (
+    SELECT expense_date AS date, category, amount
+    FROM expenses
+    WHERE business_id = $1 AND deleted_at IS NULL AND payment_source <> 'SUPPLIER_CREDIT'
+    UNION ALL
+    SELECT sp.payment_date AS date, e.category, sp.amount
+    FROM supplier_payments sp
+    JOIN supplier_payables p ON p.id = sp.payable_id
+    JOIN expenses e ON e.id = p.expense_id
+    WHERE sp.business_id = $1 AND e.deleted_at IS NULL
+  )`;
 
 @Injectable()
 export class ExpensesRepository implements IExpensesRepository {
@@ -30,8 +50,8 @@ export class ExpensesRepository implements IExpensesRepository {
     client?: DbClient,
   ): Promise<ExpenseRow> {
     const result = await this.db.query<ExpenseRow>(
-      `INSERT INTO expenses (business_id, branch_id, category, name, description, responsible, amount, expense_date, payment_source, payer_employee_id, payer_name)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+      `INSERT INTO expenses (business_id, branch_id, category, name, description, responsible, amount, expense_date, payment_source, payer_employee_id, payer_name, supplier_id)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
        RETURNING ${SELECT_COLUMNS}`,
       [
         data.businessId,
@@ -45,6 +65,7 @@ export class ExpensesRepository implements IExpensesRepository {
         data.paymentSource,
         data.payerEmployeeId ?? null,
         data.payerName ?? null,
+        data.supplierId ?? null,
       ],
       client,
     );
@@ -176,23 +197,25 @@ export class ExpensesRepository implements IExpensesRepository {
     return result.rows[0];
   }
 
-  async softDelete(id: string, businessId: string): Promise<ExpenseRow | null> {
+  async softDelete(id: string, businessId: string, client?: DbClient): Promise<ExpenseRow | null> {
     const result = await this.db.query<ExpenseRow>(
       `UPDATE expenses SET deleted_at = now()
        WHERE id = $1 AND business_id = $2 AND deleted_at IS NULL
        RETURNING ${SELECT_COLUMNS}`,
       [id, businessId],
+      client,
     );
     return result.rows[0] ?? null;
   }
 
   async getDailyTotals(query: ExpenseSummaryQuery): Promise<ExpenseDailyTotalRow[]> {
     const result = await this.db.query<ExpenseDailyTotalRow>(
-      `SELECT expense_date::text AS date, COALESCE(SUM(amount), 0)::text AS total
-       FROM expenses
-       WHERE business_id = $1 AND deleted_at IS NULL AND expense_date >= $2 AND expense_date <= $3
-       GROUP BY expense_date
-       ORDER BY expense_date`,
+      `${SPENDING}
+       SELECT date::text AS date, COALESCE(SUM(amount), 0)::text AS total
+       FROM spending
+       WHERE date >= $2 AND date <= $3
+       GROUP BY date
+       ORDER BY date`,
       [query.businessId, query.dateFrom, query.dateTo],
     );
     return result.rows;
@@ -202,12 +225,22 @@ export class ExpensesRepository implements IExpensesRepository {
     query: ExpenseSummaryQuery,
   ): Promise<ExpenseCategoryTotalRow[]> {
     const result = await this.db.query<ExpenseCategoryTotalRow>(
-      `SELECT category, COALESCE(SUM(amount), 0)::text AS total
-       FROM expenses
-       WHERE business_id = $1 AND deleted_at IS NULL AND expense_date >= $2 AND expense_date <= $3
+      `${SPENDING}
+       SELECT category, COALESCE(SUM(amount), 0)::text AS total
+       FROM spending
+       WHERE date >= $2 AND date <= $3
        GROUP BY category`,
       [query.businessId, query.dateFrom, query.dateTo],
     );
     return result.rows;
+  }
+
+  async findSupplierNames(supplierIds: string[]): Promise<Map<string, string>> {
+    if (supplierIds.length === 0) return new Map();
+    const result = await this.db.query<{ id: string; name: string }>(
+      `SELECT id, name FROM suppliers WHERE id = ANY($1::uuid[])`,
+      [supplierIds],
+    );
+    return new Map(result.rows.map((row) => [row.id, row.name]));
   }
 }

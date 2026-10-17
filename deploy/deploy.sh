@@ -49,6 +49,9 @@ LOCAL_SHA="$(git rev-parse HEAD)"
 step "Pulling $BRANCH on the server"
 remote "cd $REMOTE_DIR && git fetch origin $BRANCH && git checkout $BRANCH && git pull origin $BRANCH"
 
+step "Making sure the network shared with staging exists"
+remote "docker network inspect gb_edge >/dev/null 2>&1 || docker network create gb_edge"
+
 step "Rebuilding backend + frontend images on the server"
 remote "cd $REMOTE_DIR && docker compose -f docker-compose.prod.yml build backend frontend"
 
@@ -57,6 +60,12 @@ remote "cd $REMOTE_DIR && docker compose -f docker-compose.prod.yml run --rm bac
 
 step "Syncing the permissions catalog (idempotent)"
 remote "cd $REMOTE_DIR && docker compose -f docker-compose.prod.yml run --rm backend node dist/database/seed-runner.js"
+
+step "Checking the new nginx config before restarting anything"
+# A config nginx rejects (e.g. a certificate that isn't there) would leave the
+# site down after the restart; test it in a throwaway container first, with the
+# same volumes, so the running frontend is only replaced by one that starts.
+remote "cd $REMOTE_DIR && docker compose -f docker-compose.prod.yml run --rm --no-deps frontend nginx -t"   || fail "The new nginx config does not pass 'nginx -t' — nothing was restarted, the site keeps running the previous version."
 
 step "Restarting backend + frontend (postgres is left untouched)"
 remote "cd $REMOTE_DIR && docker compose -f docker-compose.prod.yml up -d --no-deps backend frontend"

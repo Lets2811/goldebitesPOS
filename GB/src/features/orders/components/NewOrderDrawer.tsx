@@ -21,6 +21,8 @@ import { useOccupiedTables } from '../../../modules/orders/hooks/use-occupied-ta
 import { useAuthStore } from '../../../modules/auth/store/auth.store';
 import { useBranch } from '../../../modules/branches/hooks/use-branch';
 import { formatCOP } from '../../../utils/format';
+import { useSnackbar } from 'notistack';
+import { useRequiredOptionCheck } from '../../../modules/option-groups/hooks/use-required-option-check';
 
 interface NewOrderDrawerProps {
   open: boolean;
@@ -48,7 +50,9 @@ export default function NewOrderDrawer({ open, onClose, onSubmit }: NewOrderDraw
   const occupiedTables = useOccupiedTables(branchId);
   const { data: customersData } = useCustomers({ limit: 100 });
   const customers = customersData?.data ?? [];
-  const { cart, addToCart, toggleSauce, toggleSide, increment, decrement, remove, clear } = useCartLines();
+  const { cart, addToCart, toggleOption, increment, decrement, remove, clear } = useCartLines();
+  const { enqueueSnackbar } = useSnackbar();
+  const checkRequiredOptions = useRequiredOptionCheck();
 
   const {
     control,
@@ -80,8 +84,7 @@ export default function NewOrderDrawer({ open, onClose, onSubmit }: NewOrderDraw
       cart.map((line) => ({
         productId: line.productId,
         quantity: line.quantity,
-        sauceIds: line.sauceIds,
-        sideIds: line.sideIds,
+        optionItemIds: line.optionItemIds,
       })),
       { shouldValidate: false },
     );
@@ -89,7 +92,14 @@ export default function NewOrderDrawer({ open, onClose, onSubmit }: NewOrderDraw
 
   const total = cart.reduce((sum, line) => sum + line.unitPrice * line.quantity, 0);
 
-  const submit = handleSubmit((values) => onSubmit(values));
+  const submit = handleSubmit((values) => {
+    const missingOption = checkRequiredOptions(cart);
+    if (missingOption) {
+      enqueueSnackbar(missingOption, { variant: 'error' });
+      return;
+    }
+    onSubmit(values);
+  });
 
   return (
     <FormDrawer
@@ -247,8 +257,7 @@ export default function NewOrderDrawer({ open, onClose, onSubmit }: NewOrderDraw
               onIncrement={increment}
               onDecrement={decrement}
               onRemove={remove}
-              onToggleSauce={toggleSauce}
-              onToggleSide={toggleSide}
+              onToggleOption={toggleOption}
             />
           </Box>
         </Stack>

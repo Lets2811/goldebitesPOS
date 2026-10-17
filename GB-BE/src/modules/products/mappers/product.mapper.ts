@@ -1,7 +1,12 @@
+import { ProductOptionGroup } from '../../option-groups/domain/option-group.interface';
 import { Product, ProductRow } from '../domain/product.interface';
+import { productImagePublicUrl } from '../storage/product-image-storage.util';
 
 export class ProductMapper {
-  static toDomain(row: ProductRow): Product {
+  static toDomain(
+    row: ProductRow,
+    optionGroups: ProductOptionGroup[] = [],
+  ): Product {
     return {
       id: row.id,
       businessId: row.business_id,
@@ -11,12 +16,16 @@ export class ProductMapper {
       sku: row.sku,
       salePrice: parseFloat(row.sale_price),
       currentCost: parseFloat(row.current_cost),
-      imageUrl: row.image_url,
+      // An uploaded photo wins over a linked one.
+      imageUrl:
+        row.image_path && row.image_updated_at
+          ? productImagePublicUrl(row.id, row.image_updated_at)
+          : row.image_url,
       isActive: row.is_active,
       isVisible: row.is_visible,
       trackInventory: row.track_inventory,
-      maxSauces: row.max_sauces,
-      maxSides: row.max_sides,
+      optionGroups,
+      menuAvailability: row.menu_availability,
       createdAt: row.created_at,
       updatedAt: row.updated_at,
     };

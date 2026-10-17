@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Card from '@mui/material/Card';
@@ -9,9 +8,9 @@ import MenuItem from '@mui/material/MenuItem';
 import Stack from '@mui/material/Stack';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
-import { ArrowRight, Plus, Trash2 } from 'lucide-react';
+import { Plus, Trash2 } from 'lucide-react';
 import { useSnackbar } from 'notistack';
-import PageHeader from '../../../components/common/PageHeader';
+import HrSectionHeader from '../components/HrSectionHeader';
 import LoadingSkeleton from '../../../components/common/LoadingSkeleton';
 import { normalizeApiError } from '../../../lib/api/api-error';
 import { useBranches } from '../../../modules/branches/hooks/use-branches';
@@ -26,7 +25,6 @@ interface RuleRow {
 const emptyRow: RuleRow = { title: '', description: '' };
 
 export default function HrSettingsPage() {
-  const navigate = useNavigate();
   const { enqueueSnackbar } = useSnackbar();
   const { data: branches, isLoading: branchesLoading } = useBranches({ isActive: true });
   const [branchId, setBranchId] = useState('');
@@ -77,11 +75,7 @@ export default function HrSettingsPage() {
 
   return (
     <>
-      <PageHeader
-        title="Recursos Humanos"
-        subtitle="Normas por sede y descripciones de rol, visibles para cada empleado en su perfil."
-        breadcrumbs={[{ label: 'Recursos Humanos' }]}
-      />
+      <HrSectionHeader description="Normas por sede, visibles para cada empleado en su perfil." />
 
       <Stack spacing={3}>
         <Card variant="outlined">
@@ -164,28 +158,6 @@ export default function HrSettingsPage() {
                   </Box>
                 </>
               )}
-            </Stack>
-          </CardContent>
-        </Card>
-
-        <Card variant="outlined">
-          <CardContent>
-            <Stack direction="row" spacing={2} sx={{ alignItems: 'center', justifyContent: 'space-between' }}>
-              <Box>
-                <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
-                  Descripciones de rol
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  La descripción de cada rol se edita en Roles y permisos — cada empleado la ve en su perfil.
-                </Typography>
-              </Box>
-              <Button
-                variant="outlined"
-                endIcon={<ArrowRight size={16} />}
-                onClick={() => navigate('/roles-permisos')}
-              >
-                Ir a Roles y permisos
-              </Button>
             </Stack>
           </CardContent>
         </Card>

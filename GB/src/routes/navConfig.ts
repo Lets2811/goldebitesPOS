@@ -12,7 +12,6 @@ import {
   Gift,
   Landmark,
   UserCog,
-  HeartHandshake,
   ListChecks,
   Trash2,
   Wrench,
@@ -21,7 +20,6 @@ import {
   Megaphone,
   BarChart3,
   Settings,
-  ShieldCheck,
 } from 'lucide-react';
 import type { ModuleKey, NavEntry } from '../types/nav';
 
@@ -32,14 +30,22 @@ export const MODULE_PATHS = {
   kitchen: '/cocina',
   'cash-register': '/caja',
   products: '/productos',
+  productsCatalog: '/productos/catalogo',
+  productsCategories: '/productos/categorias',
+  productsMenuOrganizer: '/productos/organizar',
+  productsOptionGroup: '/productos/opciones/:groupId',
   inventory: '/inventario',
   purchases: '/compras',
   suppliers: '/proveedores',
   customers: '/clientes',
   loyalty: '/fidelizacion',
   finances: '/finanzas',
-  employees: '/personal',
+  employees: '/recursos-humanos/personal',
   hr: '/recursos-humanos',
+  hrRules: '/recursos-humanos/normas',
+  hrRoster: '/recursos-humanos/turnos',
+  hrTasks: '/recursos-humanos/tareas',
+  hrLeave: '/recursos-humanos/solicitudes',
   checklists: '/checklists',
   waste: '/mermas',
   maintenance: '/mantenimiento',
@@ -48,8 +54,17 @@ export const MODULE_PATHS = {
   marketing: '/marketing',
   analytics: '/analitica',
   settings: '/configuracion',
-  roles: '/roles-permisos',
+  roles: '/recursos-humanos/roles-permisos',
 } as const;
+
+/** Rutas anteriores a reunir Personal y Roles y permisos dentro de Recursos Humanos; redirigen a las nuevas. */
+export const LEGACY_PATH_REDIRECTS: Record<string, string> = {
+  '/personal': MODULE_PATHS.employees,
+  '/roles-permisos': MODULE_PATHS.roles,
+};
+
+/** La pantalla de un grupo de opciones ("Salsas", "Tamaño"...). */
+export const optionGroupPath = (groupId: string) => `/productos/opciones/${groupId}`;
 
 /**
  * Un módulo de navegación es visible si el usuario tiene AL MENOS uno de
@@ -177,13 +192,12 @@ const ALL_NAV_ENTRIES: NavEntry[] = [
     label: 'Gestión del negocio',
     items: [
       { kind: 'item', module: 'finances', label: 'Finanzas', path: MODULE_PATHS.finances, icon: Landmark },
-      { kind: 'item', module: 'employees', label: 'Personal', path: MODULE_PATHS.employees, icon: UserCog },
       {
         kind: 'item',
         module: 'hr',
         label: 'Recursos Humanos',
         path: MODULE_PATHS.hr,
-        icon: HeartHandshake,
+        icon: UserCog,
       },
       {
         kind: 'item',
@@ -198,13 +212,6 @@ const ALL_NAV_ENTRIES: NavEntry[] = [
         label: 'Marketing',
         path: MODULE_PATHS.marketing,
         icon: Megaphone,
-      },
-      {
-        kind: 'item',
-        module: 'roles',
-        label: 'Roles y permisos',
-        path: MODULE_PATHS.roles,
-        icon: ShieldCheck,
       },
     ],
   },
@@ -264,3 +271,25 @@ export const NAV_ENTRIES: NavEntry[] = ALL_NAV_ENTRIES.flatMap((entry): NavEntry
 export const MODULE_LABELS: Record<string, string> = ALL_NAV_ENTRIES.flatMap((entry) =>
   entry.kind === 'group' ? entry.items : [entry],
 ).reduce((acc, item) => ({ ...acc, [item.module]: item.label }), {} as Record<string, string>);
+
+export interface HrSection {
+  /** Módulo activable del backend que la pestaña exige (ver FEATURE_MODULES). */
+  module: ModuleKey;
+  label: string;
+  path: string;
+  permission: string;
+}
+
+/**
+ * Pestañas de Recursos Humanos, en el orden en que se muestran. Cada una
+ * sigue siendo su propio módulo con su propio permiso: la entrada del menú
+ * aparece si el usuario puede abrir al menos una, y solo ve las que puede.
+ */
+export const HR_SECTIONS: HrSection[] = [
+  { module: 'employees', label: 'Personal', path: MODULE_PATHS.employees, permission: 'employees.read' },
+  { module: 'employees', label: 'Turnos', path: MODULE_PATHS.hrRoster, permission: 'employees.read' },
+  { module: 'hr', label: 'Tareas', path: MODULE_PATHS.hrTasks, permission: 'tasks.manage' },
+  { module: 'hr', label: 'Solicitudes', path: MODULE_PATHS.hrLeave, permission: 'leave.approve' },
+  { module: 'roles', label: 'Roles y permisos', path: MODULE_PATHS.roles, permission: 'roles.manage' },
+  { module: 'hr', label: 'Normas', path: MODULE_PATHS.hrRules, permission: 'hr.manage' },
+];

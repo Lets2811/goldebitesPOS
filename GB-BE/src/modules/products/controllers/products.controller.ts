@@ -1,4 +1,7 @@
+import { randomUUID } from 'node:crypto';
+import { extname } from 'node:path';
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -9,8 +12,17 @@ import {
   Patch,
   Post,
   Query,
+  UploadedFile,
+  UseInterceptors,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { FileInterceptor } from '@nestjs/platform-express';
+import {
+  ApiBearerAuth,
+  ApiConsumes,
+  ApiOperation,
+  ApiTags,
+} from '@nestjs/swagger';
+import { diskStorage } from 'multer';
 import { CurrentBusiness } from '../../../common/decorators/current-business.decorator';
 import { CurrentUser } from '../../../common/decorators/current-user.decorator';
 import { Permissions } from '../../../common/decorators/permissions.decorator';
@@ -21,6 +33,14 @@ import { SetProductStatusDto } from '../dto/set-product-status.dto';
 import { SetProductVisibilityDto } from '../dto/set-product-visibility.dto';
 import { UpdateProductDto } from '../dto/update-product.dto';
 import { ProductsService } from '../services/products.service';
+import {
+  ALLOWED_PRODUCT_IMAGE_MIME_TYPES,
+  MAX_PRODUCT_IMAGE_SIZE_BYTES,
+  PRODUCT_IMAGES_UPLOADS_DIR,
+  ensureProductImagesUploadsDir,
+} from '../storage/product-image-storage.util';
+
+ensureProductImagesUploadsDir();
 import { RequiresFeature } from '../../../common/decorators/requires-feature.decorator';
 
 @ApiTags('Products')
@@ -113,7 +133,10 @@ export class ProductsController {
 
   @Patch(':id/visibility')
   @Permissions('products.update')
-  @ApiOperation({ summary: 'Show or hide a product on customer-facing surfaces like the public menu' })
+  @ApiOperation({
+    summary:
+      'Show or hide a product on customer-facing surfaces like the public menu',
+  })
   setVisibility(
     @CurrentBusiness() businessId: string,
     @CurrentUser('userId') actorUserId: string,
@@ -139,5 +162,65 @@ export class ProductsController {
     @Param('id') id: string,
   ) {
     await this.productsService.softDelete(businessId, id, actorUserId);
+  }
+
+  @Post(':id/image')
+  @Permissions('products.update')
+  @ApiConsumes('multipart/form-data')
+  @ApiOperation({
+    summary: "Upload the product's photo (replaces the current one)",
+  })
+  @UseInterceptors(
+    FileInterceptor('file', {
+      storage: diskStorage({
+        destination: PRODUCT_IMAGES_UPLOADS_DIR,
+        filename: (_req, file, cb) => {
+          cb(null, `${randomUUID()}${extname(file.originalname)}`);
+        },
+      }),
+      limits: { fileSize: MAX_PRODUCT_IMAGE_SIZE_BYTES },
+      fileFilter: (_req, file, cb) => {
+        if (!ALLOWED_PRODUCT_IMAGE_MIME_TYPES.includes(file.mimetype)) {
+          cb(
+            new BadRequestException(
+              'Solo se permiten imágenes JPG, PNG o WEBP.',
+            ),
+            false,
+          );
+          return;
+        }
+        cb(null, true);
+      },
+    }),
+  )
+  async uploadImage(
+    @CurrentBusiness() businessId: string,
+    @CurrentUser('userId') actorUserId: string,
+    @Param('id') id: string,
+    @UploadedFile() file: Express.Multer.File,
+  ) {
+    if (!file) {
+      throw new BadRequestException(
+        'Debes adjuntar una imagen (JPG, PNG o WEBP).',
+      );
+    }
+    return this.productsService.setImage(
+      businessId,
+      id,
+      file.path,
+      file.mimetype,
+      actorUserId,
+    );
+  }
+
+  @Delete(':id/image')
+  @Permissions('products.update')
+  @ApiOperation({ summary: "Remove the product's photo" })
+  removeImage(
+    @CurrentBusiness() businessId: string,
+    @CurrentUser('userId') actorUserId: string,
+    @Param('id') id: string,
+  ) {
+    return this.productsService.clearImage(businessId, id, actorUserId);
   }
 }

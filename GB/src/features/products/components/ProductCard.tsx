@@ -32,18 +32,37 @@ export default function ProductCard({
                 width: 48,
                 height: 48,
                 borderRadius: 2,
+                overflow: 'hidden',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 backgroundColor: alpha(brand.gold, 0.12),
               }}
             >
-              <Package size={22} color={brand.gold} />
+              {product.imageUrl ? (
+                <Box
+                  component="img"
+                  src={product.imageUrl}
+                  alt=""
+                  loading="lazy"
+                  sx={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                />
+              ) : (
+                <Package size={22} color={brand.gold} />
+              )}
             </Box>
-            <StatusChip
-              label={product.isActive ? 'Activo' : 'Inactivo'}
-              tone={product.isActive ? 'success' : 'neutral'}
-            />
+            <Stack direction="row" spacing={0.75}>
+              {product.menuAvailability !== 'MENU' && (
+                <StatusChip
+                  label={product.menuAvailability === 'BUILDER' ? 'Solo combo' : 'Menú + combo'}
+                  tone="gold"
+                />
+              )}
+              <StatusChip
+                label={product.isActive ? 'Activo' : 'Inactivo'}
+                tone={product.isActive ? 'success' : 'neutral'}
+              />
+            </Stack>
           </Stack>
           <Typography variant="subtitle1" sx={{ fontWeight: 700, mt: 1.5 }}>
             {product.name}

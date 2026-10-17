@@ -8,6 +8,8 @@ export interface Supplier {
   phone: string | null;
   address: string | null;
   notes: string | null;
+  /** Plazo que da el proveedor, en días: propone el vencimiento de las compras a crédito. */
+  creditDays: number | null;
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
@@ -21,6 +23,7 @@ export interface CreateSupplierPayload {
   phone?: string;
   address?: string;
   notes?: string;
+  creditDays?: number;
 }
 
 export type UpdateSupplierPayload = Partial<CreateSupplierPayload>;

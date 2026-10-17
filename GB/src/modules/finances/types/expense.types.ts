@@ -29,8 +29,35 @@ export interface ExpenseDailyTotal {
 /** De dónde salió el dinero del gasto. Refleja `ExpensePaymentSource` de GB-BE. */
 export type SelectableExpensePaymentSource = 'CASH_OPERATIONAL' | 'CASH_RESERVE' | 'BANK_ACCOUNT' | 'PERSONAL_MONEY';
 
-/** `UNSPECIFIED_HISTORICAL` solo existe en gastos anteriores a que la fuente fuera obligatoria; no se puede elegir. */
-export type ExpensePaymentSource = SelectableExpensePaymentSource | 'UNSPECIFIED_HISTORICAL';
+/**
+ * `UNSPECIFIED_HISTORICAL` solo existe en gastos anteriores a que la fuente fuera obligatoria; no se puede elegir.
+ * `SUPPLIER_CREDIT` es una compra a crédito (o pagada en parte): el dinero sale con cada pago al proveedor.
+ */
+export type ExpensePaymentSource = SelectableExpensePaymentSource | 'UNSPECIFIED_HISTORICAL' | 'SUPPLIER_CREDIT';
+
+/** Las tres cajas de dinero propio del negocio, de donde sale un pago a proveedor. */
+export type SupplierPaymentSource = 'CASH_OPERATIONAL' | 'CASH_RESERVE' | 'BANK_ACCOUNT';
+
+export type SupplierPayableStatus = 'PENDING' | 'PARTIALLY_PAID' | 'PAID' | 'VOIDED';
+
+/** De una compra a crédito: lo que costó, lo pagado y lo que se debe. */
+export interface ExpensePayableSummary {
+  id: string;
+  originalAmount: number;
+  paidAmount: number;
+  pendingAmount: number;
+  dueDate: string | null;
+  status: SupplierPayableStatus;
+}
+
+export interface SupplierPaymentInput {
+  amount: number;
+  source: SupplierPaymentSource;
+  /** YYYY-MM-DD; si no viene, hoy. */
+  paymentDate?: string;
+  cashSessionId?: string;
+  notes?: string;
+}
 
 export interface Expense {
   id: string;
@@ -44,6 +71,11 @@ export interface Expense {
   expenseDate: string;
   paymentSource: ExpensePaymentSource;
   payerName: string | null;
+  supplierId: string | null;
+  supplierName?: string | null;
+  payable?: ExpensePayableSummary | null;
+  /** Cuántos comprobantes tiene adjuntos. */
+  attachmentCount?: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -56,13 +88,26 @@ export interface CreateExpensePayload {
   amount: number;
   expenseDate: string;
   branchId?: string;
-  paymentSource: SelectableExpensePaymentSource;
+  paymentSource: SelectableExpensePaymentSource | 'SUPPLIER_CREDIT';
   /** Quién puso el dinero; obligatorio cuando la fuente es `PERSONAL_MONEY`. */
   payerName?: string;
+  /** A quién se le compró; obligatorio para `SUPPLIER_CREDIT`. */
+  supplierId?: string;
+  /** Un proveedor escrito en vez de elegido: se reutiliza si ya hay uno con ese nombre, si no se crea. */
+  newSupplierName?: string;
+  /** Solo `SUPPLIER_CREDIT`: cuándo vence lo que queda. */
+  dueDate?: string;
+  /** Solo `SUPPLIER_CREDIT`: lo pagado en el momento (pago parcial). */
+  initialPayment?: SupplierPaymentInput;
 }
 
 /** La fuente no se cambia editando el gasto: el backend la corrige con una reclasificación auditada. */
-export type UpdateExpensePayload = Partial<Omit<CreateExpensePayload, 'paymentSource' | 'payerName'>>;
+export type UpdateExpensePayload = Partial<
+  Omit<
+    CreateExpensePayload,
+    'paymentSource' | 'payerName' | 'supplierId' | 'newSupplierName' | 'dueDate' | 'initialPayment'
+  >
+>;
 
 export interface ExpenseFilters {
   page?: number;

@@ -7,10 +7,11 @@ import {
   CreateProductCategoryData,
   ProductCategoryQuery,
   UpdateProductCategoryData,
+  CategoryOrderScope,
 } from '../domain/product-category.types';
 import { IProductCategoriesRepository } from './product-categories.repository.interface';
 
-const SELECT_COLUMNS = `id, business_id, name, description, display_order, is_active, created_at, updated_at`;
+const SELECT_COLUMNS = `id, business_id, name, description, display_order, builder_display_order, is_active, created_at, updated_at`;
 
 interface CountRow {
   count: string;
@@ -25,8 +26,14 @@ export class ProductCategoriesRepository implements IProductCategoriesRepository
     client?: DbClient,
   ): Promise<ProductCategoryRow> {
     const result = await this.db.query<ProductCategoryRow>(
-      `INSERT INTO product_categories (business_id, name, description, display_order)
-       VALUES ($1, $2, $3, COALESCE($4, 0))
+      // A new category goes last in both the menu and "Arma tu combo" (unless given a menu position):
+      // landing first would push the sections the administrator already arranged.
+      `INSERT INTO product_categories (business_id, name, description, display_order, builder_display_order)
+       VALUES (
+         $1, $2, $3,
+         COALESCE($4::int, (SELECT COALESCE(MAX(display_order), 0) + 1 FROM product_categories WHERE business_id = $1)),
+         (SELECT COALESCE(MAX(builder_display_order), 0) + 1 FROM product_categories WHERE business_id = $1)
+       )
        RETURNING ${SELECT_COLUMNS}`,
       [
         data.businessId,
@@ -143,5 +150,26 @@ export class ProductCategoriesRepository implements IProductCategoriesRepository
       [businessId, name, excludeId ?? null],
     );
     return result.rows.length > 0;
+  }
+
+  /** How many of these ids are categories of this business (to reject foreign or unknown ones). */
+  async countOwned(businessId: string, ids: string[]): Promise<number> {
+    const result = await this.db.query<{ count: string }>(
+      `SELECT COUNT(*)::text AS count FROM product_categories WHERE business_id = $1 AND id = ANY($2::uuid[])`,
+      [businessId, ids],
+    );
+    return parseInt(result.rows[0].count, 10);
+  }
+
+  /** Each category takes its position in `ids` (1, 2, 3…) as its order in the given list, in one statement. */
+  async setOrder(businessId: string, scope: CategoryOrderScope, ids: string[]): Promise<void> {
+    const column = scope === CategoryOrderScope.BUILDER ? 'builder_display_order' : 'display_order';
+    await this.db.query(
+      `UPDATE product_categories c
+       SET ${column} = o.position
+       FROM unnest($2::uuid[]) WITH ORDINALITY AS o(id, position)
+       WHERE c.id = o.id AND c.business_id = $1`,
+      [businessId, ids],
+    );
   }
 }

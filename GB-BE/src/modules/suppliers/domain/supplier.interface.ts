@@ -8,6 +8,8 @@ export interface Supplier {
   phone: string | null;
   address: string | null;
   notes: string | null;
+  /** Payment term the supplier gives, in days; proposes the due date of a purchase on credit. */
+  creditDays: number | null;
   isActive: boolean;
   createdAt: Date;
   updatedAt: Date;
@@ -23,6 +25,7 @@ export interface SupplierRow {
   phone: string | null;
   address: string | null;
   notes: string | null;
+  credit_days: number | null;
   is_active: boolean;
   created_at: Date;
   updated_at: Date;

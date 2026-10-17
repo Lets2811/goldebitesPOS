@@ -7,14 +7,13 @@ import IconButton from '@mui/material/IconButton';
 import Divider from '@mui/material/Divider';
 import { Minus, Plus, ShoppingCart, Trash2, X } from 'lucide-react';
 import { formatCOP } from '../../../utils/format';
-import type { PublicMenuOption } from '../../../modules/public-menu/types/public-menu.types';
-import type { PublicCartLine } from '../hooks/use-public-cart';
+import type { PublicMenuOptionGroup } from '../../../modules/public-menu/types/public-menu.types';
+import { describeSelection, type PublicCartLine } from '../hooks/use-public-cart';
 
 interface PublicCartDrawerProps {
   open: boolean;
   cart: PublicCartLine[];
-  sauces: PublicMenuOption[];
-  sides: PublicMenuOption[];
+  optionGroups: PublicMenuOptionGroup[];
   total: number;
   onIncrement: (id: string) => void;
   onDecrement: (id: string) => void;
@@ -25,12 +24,11 @@ interface PublicCartDrawerProps {
   submitting?: boolean;
 }
 
-/** Customization is decided in ProductDetailDialog — this view only edits quantity or removes a line, never re-opens the sauce/side choice. */
+/** Customization is decided in ProductDetailDialog — this view only edits quantity or removes a line, never re-opens the option choice. */
 export default function PublicCartDrawer({
   open,
   cart,
-  sauces,
-  sides,
+  optionGroups,
   total,
   onIncrement,
   onDecrement,
@@ -39,14 +37,9 @@ export default function PublicCartDrawer({
   onSubmit,
   submitting,
 }: PublicCartDrawerProps) {
-  const nameOf = (options: PublicMenuOption[], id: string) => options.find((o) => o.id === id)?.name ?? id;
-
   function describeLine(line: PublicCartLine): string {
-    const parts: string[] = [];
-    if (line.noSauces) parts.push('Sin salsas');
-    else if (line.sauceIds.length > 0) parts.push(line.sauceIds.map((id) => nameOf(sauces, id)).join(', '));
-    if (line.noSides) parts.push('Sin acompañamiento');
-    else if (line.sideIds.length > 0) parts.push(line.sideIds.map((id) => nameOf(sides, id)).join(', '));
+    const parts = describeSelection(line, optionGroups);
+    if (line.comboNumber) parts.unshift(`Arma tu combo ${line.comboNumber}`);
     return parts.join(' · ');
   }
 

@@ -46,8 +46,7 @@ describe('OrdersService', () => {
   };
   let businessesService: { getTaxRate: jest.Mock; getTimezone: jest.Mock };
   let loyaltyService: { awardPointsForOrder: jest.Mock };
-  let saucesService: { findByIds: jest.Mock };
-  let sidesService: { findByIds: jest.Mock };
+  let optionGroupsService: { findAll: jest.Mock; getProductGroups: jest.Mock };
   let transactionService: { execute: jest.Mock };
   let auditService: { record: jest.Mock };
   let service: OrdersService;
@@ -101,10 +100,7 @@ describe('OrdersService', () => {
       discount_amount: '0.00',
       total_price: '10000.00',
       notes: null,
-      sauce_ids: [],
-      sauce_names: [],
-      side_ids: [],
-      side_names: [],
+      option_selections: [],
       created_at: new Date(),
       ...overrides,
     };
@@ -135,7 +131,9 @@ describe('OrdersService', () => {
       getTopProducts: jest.fn().mockResolvedValue([]),
     };
     branchesService = {
-      findOne: jest.fn().mockResolvedValue({ id: branchId, paymentPolicy: 'PAY_AT_END' }),
+      findOne: jest
+        .fn()
+        .mockResolvedValue({ id: branchId, paymentPolicy: 'PAY_AT_END' }),
     };
     productsService = {
       getOwnedOrFail: jest.fn().mockResolvedValue({
@@ -145,8 +143,6 @@ describe('OrdersService', () => {
         current_cost: '2000.00',
         is_active: true,
         track_inventory: false,
-        max_sauces: 0,
-        max_sides: 0,
       }),
     };
     recipesService = { findByProductOrNull: jest.fn().mockResolvedValue(null) };
@@ -163,8 +159,10 @@ describe('OrdersService', () => {
       getTimezone: jest.fn().mockResolvedValue('America/Bogota'),
     };
     loyaltyService = { awardPointsForOrder: jest.fn() };
-    saucesService = { findByIds: jest.fn().mockResolvedValue([]) };
-    sidesService = { findByIds: jest.fn().mockResolvedValue([]) };
+    optionGroupsService = {
+      findAll: jest.fn().mockResolvedValue([]),
+      getProductGroups: jest.fn().mockResolvedValue(new Map()),
+    };
     transactionService = {
       execute: jest.fn((work: (client: unknown) => Promise<unknown>) =>
         work({}),
@@ -181,8 +179,7 @@ describe('OrdersService', () => {
       movementsService as never,
       businessesService as never,
       loyaltyService as never,
-      saucesService as never,
-      sidesService as never,
+      optionGroupsService as never,
       transactionService as never,
       auditService as never,
     );
@@ -206,17 +203,88 @@ describe('OrdersService', () => {
         current_cost: '2000.00',
         is_active: false,
         track_inventory: false,
-        max_sauces: 0,
-        max_sides: 0,
       });
 
       await expect(
-        service.create(
-          { businessId, branchId, orderType: OrderType.DINE_IN },
-          [{ productId, quantity: 1 }],
-        ),
+        service.create({ businessId, branchId, orderType: OrderType.DINE_IN }, [
+          { productId, quantity: 1 },
+        ]),
       ).rejects.toThrow(BusinessRuleException);
       expect(repository.create).not.toHaveBeenCalled();
+    });
+
+    describe('option groups', () => {
+      const salsas = {
+        id: 'g-salsas',
+        name: 'Salsas',
+        singularName: 'Salsa',
+        isActive: true,
+        isRequired: false,
+        defaultMax: 1,
+        displayOrder: 0,
+        items: [
+          { id: 'bbq', groupId: 'g-salsas', name: 'BBQ', isActive: true },
+          { id: 'ajo', groupId: 'g-salsas', name: 'Ajo', isActive: true },
+        ],
+      };
+      const order = (item: Record<string, unknown> = {}): Promise<unknown> =>
+        service.create({ businessId, branchId, orderType: OrderType.DINE_IN }, [
+          { productId, quantity: 1, ...item },
+        ]);
+
+      beforeEach(() => {
+        repository.create.mockResolvedValue(makeOrderRow());
+        optionGroupsService.findAll.mockResolvedValue([salsas]);
+        optionGroupsService.getProductGroups.mockResolvedValue(
+          new Map([[productId, [{ groupId: 'g-salsas', maxChoices: 2 }]]]),
+        );
+      });
+
+      it('loads the catalog once per order and stores the picks grouped, with their names', async () => {
+        await service.create(
+          { businessId, branchId, orderType: OrderType.DINE_IN },
+          [
+            { productId, quantity: 1, optionItemIds: ['bbq', 'ajo'] },
+            { productId, quantity: 1 },
+          ],
+        );
+
+        expect(optionGroupsService.findAll).toHaveBeenCalledTimes(1);
+        const [, items] = repository.addItems.mock.calls[0] as [
+          string,
+          { optionSelections: unknown[] }[],
+        ];
+        expect(items[0].optionSelections).toEqual([
+          {
+            groupId: 'g-salsas',
+            groupName: 'Salsas',
+            itemIds: ['bbq', 'ajo'],
+            itemNames: ['BBQ', 'Ajo'],
+          },
+        ]);
+        expect(items[1].optionSelections).toEqual([]);
+      });
+
+      it('still reads the sauceIds older clients send, since migrated options kept their ids', async () => {
+        await order({ sauceIds: ['bbq'] });
+
+        const [, items] = repository.addItems.mock.calls[0] as [
+          string,
+          { optionSelections: { itemNames: string[] }[] }[],
+        ];
+        expect(items[0].optionSelections[0].itemNames).toEqual(['BBQ']);
+      });
+
+      it('rejects more picks than the product allows', async () => {
+        optionGroupsService.getProductGroups.mockResolvedValue(
+          new Map([[productId, [{ groupId: 'g-salsas', maxChoices: 1 }]]]),
+        );
+
+        await expect(
+          order({ optionItemIds: ['bbq', 'ajo'] }),
+        ).rejects.toMatchObject({ code: 'ORDER_ITEM_TOO_MANY_OPTIONS' });
+        expect(repository.create).not.toHaveBeenCalled();
+      });
     });
 
     it('computes subtotal/total from unit price * quantity with a 0 tax rate', async () => {
@@ -240,7 +308,10 @@ describe('OrdersService', () => {
 
     it("copies the branch's current payment policy onto the order at creation time", async () => {
       repository.create.mockResolvedValue(makeOrderRow());
-      branchesService.findOne.mockResolvedValue({ id: branchId, paymentPolicy: 'PREPAY_REQUIRED' });
+      branchesService.findOne.mockResolvedValue({
+        id: branchId,
+        paymentPolicy: 'PREPAY_REQUIRED',
+      });
 
       await service.create(
         { businessId, branchId, orderType: OrderType.DINE_IN },
@@ -368,8 +439,6 @@ describe('OrdersService', () => {
         current_cost: '2000.00',
         is_active: true,
         track_inventory: true,
-        max_sauces: 0,
-        max_sides: 0,
       });
       recipesService.findByProductOrNull.mockResolvedValue({
         items: [{ inventoryItemId: 'flour-1', quantity: 0.2 }],
@@ -410,9 +479,9 @@ describe('OrdersService', () => {
 
   describe('addItems', () => {
     it('rejects an empty item list', async () => {
-      await expect(
-        service.addItems(businessId, 'order-1', []),
-      ).rejects.toThrow(BusinessRuleException);
+      await expect(service.addItems(businessId, 'order-1', [])).rejects.toThrow(
+        BusinessRuleException,
+      );
     });
 
     it('rejects adding items to a delivered order', async () => {
@@ -421,9 +490,7 @@ describe('OrdersService', () => {
       );
 
       await expect(
-        service.addItems(businessId, 'order-1', [
-          { productId, quantity: 1 },
-        ]),
+        service.addItems(businessId, 'order-1', [{ productId, quantity: 1 }]),
       ).rejects.toThrow(BusinessRuleException);
     });
 
@@ -433,9 +500,7 @@ describe('OrdersService', () => {
       );
 
       await expect(
-        service.addItems(businessId, 'order-1', [
-          { productId, quantity: 1 },
-        ]),
+        service.addItems(businessId, 'order-1', [{ productId, quantity: 1 }]),
       ).rejects.toThrow(BusinessRuleException);
     });
 
@@ -465,7 +530,9 @@ describe('OrdersService', () => {
       );
       repository.getTotalPaid.mockResolvedValue(10000);
 
-      await service.addItems(businessId, 'order-1', [{ productId, quantity: 1 }]);
+      await service.addItems(businessId, 'order-1', [
+        { productId, quantity: 1 },
+      ]);
 
       expect(repository.addItems).toHaveBeenCalled();
     });
@@ -539,8 +606,6 @@ describe('OrdersService', () => {
         current_cost: '2000.00',
         is_active: true,
         track_inventory: true,
-        max_sauces: 0,
-        max_sides: 0,
       });
       recipesService.findByProductOrNull.mockResolvedValue({
         items: [{ inventoryItemId: 'flour-1', quantity: 0.2 }],
@@ -596,12 +661,18 @@ describe('OrdersService', () => {
       );
       expect(result.paymentStatus).toBe('PARTIALLY_PAID');
       // The payment itself is never touched — only read and re-compared against the new total.
-      expect(repository.getTotalPaid).toHaveBeenCalledWith('order-1', expect.anything());
+      expect(repository.getTotalPaid).toHaveBeenCalledWith(
+        'order-1',
+        expect.anything(),
+      );
     });
 
     it('leaves payment_status PENDING when the order still has no payments at all', async () => {
       repository.findById.mockResolvedValue(
-        makeOrderRow({ status: OrderStatus.CONFIRMED, payment_status: 'PENDING' as never }),
+        makeOrderRow({
+          status: OrderStatus.CONFIRMED,
+          payment_status: 'PENDING' as never,
+        }),
       );
       repository.getTotalPaid.mockResolvedValue(0);
 
@@ -619,7 +690,10 @@ describe('OrdersService', () => {
 
     it('stays PAID when the amount already paid still covers the new, larger total', async () => {
       repository.findById.mockResolvedValue(
-        makeOrderRow({ status: OrderStatus.CONFIRMED, payment_status: 'PAID' as never }),
+        makeOrderRow({
+          status: OrderStatus.CONFIRMED,
+          payment_status: 'PAID' as never,
+        }),
       );
       repository.getTotalPaid.mockResolvedValue(60000); // overpaid relative to the new 15000 total
 
@@ -647,7 +721,7 @@ describe('OrdersService', () => {
       ).rejects.toThrow(InvalidOrderStatusTransitionException);
     });
 
-    it('rejects confirming a PREPAY_REQUIRED order that is not fully paid — the ticket\'s own AC', async () => {
+    it("rejects confirming a PREPAY_REQUIRED order that is not fully paid — the ticket's own AC", async () => {
       repository.findById.mockResolvedValue(
         makeOrderRow({
           status: OrderStatus.PENDING,
@@ -683,7 +757,10 @@ describe('OrdersService', () => {
 
     it('never gates a PAY_AT_END order regardless of how much is paid', async () => {
       repository.findById.mockResolvedValue(
-        makeOrderRow({ status: OrderStatus.PENDING, payment_policy: 'PAY_AT_END' as never }),
+        makeOrderRow({
+          status: OrderStatus.PENDING,
+          payment_policy: 'PAY_AT_END' as never,
+        }),
       );
       repository.getTotalPaid.mockResolvedValue(0);
       repository.setStatus.mockResolvedValue(
@@ -849,7 +926,10 @@ describe('OrdersService', () => {
   describe('tryAutoConfirm', () => {
     it('confirms normally when payment allows it', async () => {
       repository.findById.mockResolvedValue(
-        makeOrderRow({ status: OrderStatus.PENDING, payment_policy: 'PAY_AT_END' as never }),
+        makeOrderRow({
+          status: OrderStatus.PENDING,
+          payment_policy: 'PAY_AT_END' as never,
+        }),
       );
       repository.setStatus.mockResolvedValue(
         makeOrderRow({ status: OrderStatus.CONFIRMED }),
@@ -881,9 +961,9 @@ describe('OrdersService', () => {
         makeOrderRow({ status: OrderStatus.DELIVERED }),
       );
 
-      await expect(service.tryAutoConfirm(businessId, 'order-1')).rejects.toThrow(
-        InvalidOrderStatusTransitionException,
-      );
+      await expect(
+        service.tryAutoConfirm(businessId, 'order-1'),
+      ).rejects.toThrow(InvalidOrderStatusTransitionException);
     });
   });
 
@@ -903,11 +983,17 @@ describe('OrdersService', () => {
 
   describe('findActiveIdForTable', () => {
     it('returns the id of the active order for that table', async () => {
-      repository.findActiveByTable.mockResolvedValue(makeOrderRow({ id: 'order-9' }));
+      repository.findActiveByTable.mockResolvedValue(
+        makeOrderRow({ id: 'order-9' }),
+      );
 
       const id = await service.findActiveIdForTable(businessId, branchId, '5');
 
-      expect(repository.findActiveByTable).toHaveBeenCalledWith(businessId, branchId, '5');
+      expect(repository.findActiveByTable).toHaveBeenCalledWith(
+        businessId,
+        branchId,
+        '5',
+      );
       expect(id).toBe('order-9');
     });
 

@@ -18,8 +18,8 @@ export const rolesApi = {
     return data.data;
   },
 
-  async createRole(payload: CreateRolePayload): Promise<Role> {
-    const { data } = await apiClient.post<ApiResponse<Role>>('/roles', payload);
+  async createRole(payload: CreateRolePayload): Promise<RoleWithPermissions> {
+    const { data } = await apiClient.post<ApiResponse<RoleWithPermissions>>('/roles', payload);
     return data.data;
   },
 

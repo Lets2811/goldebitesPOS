@@ -3,8 +3,8 @@ export interface PublicNfcOrderItem {
   quantity: number;
   unitPrice: number;
   totalPrice: number;
-  sauceNames: string[];
-  sideNames: string[];
+  /** Lo elegido, por grupo: [{ groupName: "Salsas", itemNames: ["BBQ"] }]. */
+  optionSelections: { groupName: string; itemNames: string[] }[];
   notes: string | null;
 }
 
@@ -22,8 +22,7 @@ export interface PublicNfcOrder {
 export interface SubmitNfcOrderItemPayload {
   productId: string;
   quantity: number;
-  sauceIds?: string[];
-  sideIds?: string[];
+  optionItemIds?: string[];
 }
 
 export interface SubmitNfcOrderPayload {

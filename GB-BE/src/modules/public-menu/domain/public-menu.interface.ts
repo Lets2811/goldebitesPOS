@@ -4,10 +4,8 @@ export interface PublicMenuProduct {
   salePrice: number;
   description: string | null;
   imageUrl: string | null;
-  /** How many of `sauces` (below) the customer may pick for this product — 0 means sauces don't apply. */
-  maxSauces: number;
-  /** How many of `sides` (below) the customer may pick for this product — 0 means sides don't apply. */
-  maxSides: number;
+  /** Which of the menu's `optionGroups` the product offers, and how many of each can be picked. */
+  optionGroups: { groupId: string; maxChoices: number }[];
 }
 
 export interface PublicMenuCategory {
@@ -22,11 +20,26 @@ export interface PublicMenuOption {
   name: string;
 }
 
+/** A group of options the customer can pick from ("Salsas", "Tamaño"...), with its active options. */
+export interface PublicMenuOptionGroup {
+  id: string;
+  name: string;
+  singularName: string;
+  /** At least one must be picked wherever a product offers the group. */
+  isRequired: boolean;
+  items: PublicMenuOption[];
+}
+
 export interface PublicMenu {
   businessName: string;
+  /** The regular menu: products offered there (MENU or BOTH). */
   categories: PublicMenuCategory[];
-  /** The business's active sauces — shared across every product with maxSauces > 0, not duplicated per product. */
-  sauces: PublicMenuOption[];
-  /** The business's active sides — shared across every product with maxSides > 0, not duplicated per product. */
-  sides: PublicMenuOption[];
+  /**
+   * "Arma tu combo": products offered for building a combo (BUILDER or BOTH),
+   * grouped by category. Empty when the business offers none — the option
+   * simply doesn't show.
+   */
+  builderCategories: PublicMenuCategory[];
+  /** The business's active option groups, in display order, each with its active options. */
+  optionGroups: PublicMenuOptionGroup[];
 }

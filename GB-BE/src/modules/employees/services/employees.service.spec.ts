@@ -1,4 +1,8 @@
-import { BusinessRuleException, EntityNotFoundException } from '../../../common/exceptions';
+import {
+  BusinessRuleException,
+  ConflictException,
+  EntityNotFoundException,
+} from '../../../common/exceptions';
 import { DEFAULT_EMPLOYEE_PASSWORD } from '../../../common/constants/default-password.constant';
 import { UserStatus } from '../../users/domain/user.types';
 import { DEFAULT_EMPLOYEE_SHIFTS } from '../domain/default-shifts.constant';
@@ -11,6 +15,7 @@ describe('EmployeesService', () => {
     create: jest.Mock;
     findById: jest.Mock;
     findByUserId: jest.Mock;
+    findByDocumentNumber: jest.Mock;
     findAll: jest.Mock;
     update: jest.Mock;
     updatePayFrequency: jest.Mock;
@@ -29,6 +34,7 @@ describe('EmployeesService', () => {
   };
   let transactionService: { execute: jest.Mock };
   let auditService: { record: jest.Mock };
+  let branchesService: { findOne: jest.Mock };
   let service: EmployeesService;
 
   const businessId = 'business-1';
@@ -44,6 +50,8 @@ describe('EmployeesService', () => {
       user_id: null,
       first_name: 'Juan',
       last_name: 'Perez',
+      document_type: null,
+      document_number: null,
       phone: null,
       email: null,
       position: null,
@@ -66,6 +74,7 @@ describe('EmployeesService', () => {
       day_of_week: 1,
       start_time: '15:00',
       end_time: '22:00',
+      branch_id: null,
       ...overrides,
     };
   }
@@ -93,6 +102,7 @@ describe('EmployeesService', () => {
       create: jest.fn(),
       findById: jest.fn(),
       findByUserId: jest.fn(),
+      findByDocumentNumber: jest.fn().mockResolvedValue(null),
       findAll: jest.fn(),
       update: jest.fn(),
       updatePayFrequency: jest.fn(),
@@ -113,11 +123,13 @@ describe('EmployeesService', () => {
       execute: jest.fn((fn: (client: unknown) => unknown) => fn(undefined)),
     };
     auditService = { record: jest.fn() };
+    branchesService = { findOne: jest.fn() };
     service = new EmployeesService(
       employeesRepository as never,
       usersService as never,
       transactionService as never,
       auditService as never,
+      branchesService as never,
     );
   });
 
@@ -195,6 +207,106 @@ describe('EmployeesService', () => {
           newValues: expect.objectContaining({ loginEmail: 'jupe1@personal.local' }),
         }),
       );
+    });
+
+    it('registers the employee without a login account when createAccess is false', async () => {
+      employeesRepository.create.mockResolvedValue(makeEmployeeRow());
+
+      const result = await service.create(
+        {
+          businessId,
+          branchId,
+          roleId: 'role-1',
+          firstName: 'Juan',
+          lastName: 'Perez',
+          createAccess: false,
+        },
+        actorUserId,
+      );
+
+      expect(usersService.create).not.toHaveBeenCalled();
+      expect(employeesRepository.setUserId).not.toHaveBeenCalled();
+      expect(employeesRepository.create).toHaveBeenCalledWith(
+        expect.not.objectContaining({ createAccess: expect.anything() }),
+        undefined,
+      );
+      expect(employeesRepository.replaceShifts).toHaveBeenCalledWith(
+        'employee-1',
+        DEFAULT_EMPLOYEE_SHIFTS,
+        undefined,
+      );
+      expect(result.userAccount).toBeNull();
+    });
+
+    it('rejects a document number another employee already has', async () => {
+      employeesRepository.findByDocumentNumber.mockResolvedValue(
+        makeEmployeeRow({ id: 'employee-2', document_number: '1020304050' }),
+      );
+
+      await expect(
+        service.create(
+          {
+            businessId,
+            roleId: 'role-1',
+            firstName: 'Juan',
+            lastName: 'Perez',
+            documentNumber: '1020304050',
+          },
+          actorUserId,
+        ),
+      ).rejects.toThrow(ConflictException);
+      expect(employeesRepository.create).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('update', () => {
+    it('lets an employee keep their own document number', async () => {
+      employeesRepository.findById.mockResolvedValue(makeEmployeeRow());
+      employeesRepository.findByDocumentNumber.mockResolvedValue(
+        makeEmployeeRow({ document_number: '1020304050' }),
+      );
+      employeesRepository.update.mockResolvedValue(
+        makeEmployeeRow({ document_number: '1020304050' }),
+      );
+
+      const result = await service.update(businessId, 'employee-1', {
+        documentNumber: '1020304050',
+      });
+
+      expect(result.documentNumber).toBe('1020304050');
+    });
+  });
+
+  describe('replaceShifts', () => {
+    it('checks that every shift branch belongs to the business', async () => {
+      employeesRepository.findById.mockResolvedValue(makeEmployeeRow());
+      employeesRepository.replaceShifts.mockResolvedValue([
+        makeShiftRow({ branch_id: 'branch-2' }),
+      ]);
+      branchesService.findOne.mockRejectedValue(
+        new EntityNotFoundException('Branch', 'branch-2'),
+      );
+
+      await expect(
+        service.replaceShifts(businessId, 'employee-1', [
+          { dayOfWeek: 1, startTime: '08:00', endTime: '16:00', branchId: 'branch-2' },
+        ]),
+      ).rejects.toThrow(EntityNotFoundException);
+      expect(employeesRepository.replaceShifts).not.toHaveBeenCalled();
+    });
+
+    it('saves the branch of each shift', async () => {
+      employeesRepository.findById.mockResolvedValue(makeEmployeeRow());
+      employeesRepository.replaceShifts.mockResolvedValue([
+        makeShiftRow({ branch_id: 'branch-2' }),
+      ]);
+
+      const result = await service.replaceShifts(businessId, 'employee-1', [
+        { dayOfWeek: 1, startTime: '08:00', endTime: '16:00', branchId: 'branch-2' },
+      ]);
+
+      expect(branchesService.findOne).toHaveBeenCalledWith(businessId, 'branch-2');
+      expect(result.shifts[0].branchId).toBe('branch-2');
     });
   });
 

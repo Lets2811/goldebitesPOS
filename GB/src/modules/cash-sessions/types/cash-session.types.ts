@@ -2,7 +2,16 @@ import type { PaymentMethod } from '../../orders/types/payment.types';
 
 export type CashSessionStatus = 'OPEN' | 'CLOSED' | 'RECTIFYING';
 
-export type CashMovementType = 'OPENING' | 'SALE' | 'INCOME' | 'EXPENSE' | 'WITHDRAWAL' | 'CLOSING';
+export type CashMovementType =
+  | 'OPENING'
+  | 'SALE'
+  | 'INCOME'
+  | 'EXPENSE'
+  | 'WITHDRAWAL'
+  | 'CLOSING'
+  | 'REIMBURSEMENT'
+  | 'EXPENSE_REVERSAL'
+  | 'INCOME_REVERSAL';
 
 /** Movement types a user can submit manually — SALE/OPENING/CLOSING are system-generated. */
 export type ManualCashMovementType = 'INCOME' | 'EXPENSE' | 'WITHDRAWAL';

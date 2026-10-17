@@ -15,6 +15,8 @@ export class EmployeeMapper {
       userId: row.user_id,
       firstName: row.first_name,
       lastName: row.last_name,
+      documentType: row.document_type,
+      documentNumber: row.document_number,
       phone: row.phone,
       email: row.email,
       position: row.position,
@@ -35,6 +37,7 @@ export class EmployeeMapper {
       dayOfWeek: row.day_of_week,
       startTime: row.start_time,
       endTime: row.end_time,
+      branchId: row.branch_id,
     };
   }
 }

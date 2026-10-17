@@ -1,4 +1,8 @@
 import { useMemo } from 'react';
+import { useOtherIncomes } from '../../../modules/finances/hooks/use-other-incomes';
+import { useSupplierPayablesSummary } from '../../../modules/finances/hooks/use-supplier-payables';
+import type { SupplierPayablesSummary } from '../../../modules/finances/types/supplier-payable.types';
+import type { OtherIncome } from '../../../modules/finances/types/other-income.types';
 import dayjs from 'dayjs';
 import { useSalesByDay } from '../../../modules/analytics/hooks/use-sales-by-day';
 import { useTopProducts } from '../../../modules/analytics/hooks/use-top-products';
@@ -47,6 +51,12 @@ export interface FinanceData {
   /** Gastos del período en total; la lista trae como máximo los 100 más recientes. */
   expenseCount: number;
   topProducts: TopProduct[];
+  /** Otros ingresos del período, los anulados incluidos (se ven marcados). */
+  otherIncomeList: OtherIncome[];
+  /** Suma de los otros ingresos vigentes. No entra en la utilidad: aportes y reembolsos no son ganancia del negocio. */
+  otherIncomeTotal: number;
+  /** Lo que se les debe hoy a los proveedores. No depende del período: es la deuda viva. */
+  payables: SupplierPayablesSummary | null;
 }
 
 export function useFinanceData(period: Period): FinanceData {
@@ -59,6 +69,8 @@ export function useFinanceData(period: Period): FinanceData {
   const expenseSummary = useExpenseSummary(period.from, period.to);
   const expenseList = useExpenses({ dateFrom: period.from, dateTo: period.to, limit: 100 });
   const { categories } = useExpenseCategories();
+  const otherIncomes = useOtherIncomes(period.from, period.to);
+  const payablesSummary = useSupplierPayablesSummary();
 
   return useMemo(() => {
     const salesDays = salesByDay.data ?? [];
@@ -122,6 +134,11 @@ export function useFinanceData(period: Period): FinanceData {
       expenseList: expenseList.data?.data ?? [],
       expenseCount: expenseList.data?.meta?.total ?? expenseList.data?.data.length ?? 0,
       topProducts: topProducts.data ?? [],
+      otherIncomeList: otherIncomes.data ?? [],
+      otherIncomeTotal: (otherIncomes.data ?? [])
+        .filter((income) => !income.voidedAt)
+        .reduce((sum, income) => sum + income.amount, 0),
+      payables: payablesSummary.data ?? null,
     };
-  }, [period, salesByDay, expenseDays, expenseSummary, expenseList, topProducts, categories]);
+  }, [period, salesByDay, expenseDays, expenseSummary, expenseList, topProducts, categories, otherIncomes, payablesSummary.data]);
 }

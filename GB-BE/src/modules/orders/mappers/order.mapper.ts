@@ -52,10 +52,7 @@ export class OrderMapper {
       discountAmount: parseFloat(row.discount_amount),
       totalPrice: parseFloat(row.total_price),
       notes: row.notes,
-      sauceIds: row.sauce_ids,
-      sauceNames: row.sauce_names,
-      sideIds: row.side_ids,
-      sideNames: row.side_names,
+      optionSelections: row.option_selections,
       createdAt: row.created_at,
     };
   }

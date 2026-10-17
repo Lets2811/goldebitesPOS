@@ -6,6 +6,7 @@
     "POS": "node scripts/dev.mjs pos",
     "pos": "node scripts/dev.mjs pos",
     "tura": "node scripts/dev.mjs tura",
-    "deploy": "node scripts/deploy.mjs"
+    "deploy": "node scripts/deploy.mjs",
+    "deploy:staging": "node scripts/deploy.mjs --staging"
   }
 }

@@ -12,21 +12,31 @@ import Divider from '@mui/material/Divider';
 import { Ban, ShoppingCart, UtensilsCrossed, X } from 'lucide-react';
 import { formatCOP } from '../../../utils/format';
 import { brand } from '../../../theme/palette';
-import type { PublicMenuOption, PublicMenuProduct } from '../../../modules/public-menu/types/public-menu.types';
-import type { CartSelection } from '../hooks/use-public-cart';
+import { noneLabel } from '../../../modules/option-groups/utils/option-group-utils';
+import type { PublicMenuOptionGroup, PublicMenuProduct } from '../../../modules/public-menu/types/public-menu.types';
+import { describeSelection, type CartSelection } from '../hooks/use-public-cart';
 
 interface ProductDetailDialogProps {
   product: PublicMenuProduct | null;
-  sauces: PublicMenuOption[];
-  sides: PublicMenuOption[];
+  /** Los grupos de opciones del negocio ("Salsas", "Tamaño"...), con sus opciones activas. */
+  optionGroups: PublicMenuOptionGroup[];
   onAdd: (product: PublicMenuProduct, selection: CartSelection) => void;
   onClose: () => void;
   /** Solo muestra el producto: sin personalización ni "Agregar al carrito" (mesa sin autoservicio). */
   readOnly?: boolean;
+  /** Texto del botón de agregar; "Arma tu combo" lo usa para agregar al combo en vez de al carrito. */
+  addLabel?: string;
 }
 
 /** Configures and adds one unit of a product to the cart. Each open/add cycle produces exactly one line — adding a second, differently-configured unit means reopening this dialog. */
-export default function ProductDetailDialog({ product, sauces, sides, onAdd, onClose, readOnly }: ProductDetailDialogProps) {
+export default function ProductDetailDialog({
+  product,
+  optionGroups,
+  onAdd,
+  onClose,
+  readOnly,
+  addLabel,
+}: ProductDetailDialogProps) {
   return (
     <Dialog open={Boolean(product)} onClose={onClose} maxWidth="sm" fullWidth>
       {/* Keyed by product id so selection state starts fresh for each product, without an effect. */}
@@ -34,11 +44,11 @@ export default function ProductDetailDialog({ product, sauces, sides, onAdd, onC
         <ProductDetailContent
           key={product.id}
           product={product}
-          sauces={sauces}
-          sides={sides}
+          optionGroups={optionGroups}
           onAdd={onAdd}
           onClose={onClose}
           readOnly={readOnly}
+          addLabel={addLabel}
         />
       )}
     </Dialog>
@@ -47,60 +57,69 @@ export default function ProductDetailDialog({ product, sauces, sides, onAdd, onC
 
 interface ProductDetailContentProps {
   product: PublicMenuProduct;
-  sauces: PublicMenuOption[];
-  sides: PublicMenuOption[];
+  optionGroups: PublicMenuOptionGroup[];
   onAdd: (product: PublicMenuProduct, selection: CartSelection) => void;
   onClose: () => void;
   readOnly?: boolean;
+  addLabel?: string;
 }
 
-function ProductDetailContent({ product, sauces, sides, onAdd, onClose, readOnly }: ProductDetailContentProps) {
-  const [selectedSauceIds, setSelectedSauceIds] = useState<string[]>([]);
-  const [selectedSideIds, setSelectedSideIds] = useState<string[]>([]);
-  const [noSauces, setNoSauces] = useState(false);
-  const [noSides, setNoSides] = useState(false);
+function ProductDetailContent({
+  product,
+  optionGroups,
+  onAdd,
+  onClose,
+  readOnly,
+  addLabel = 'Agregar al carrito',
+}: ProductDetailContentProps) {
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [noneGroupIds, setNoneGroupIds] = useState<string[]>([]);
 
-  const toggleSauce = (sauceId: string) => {
-    setNoSauces(false);
-    setSelectedSauceIds((current) => {
-      if (current.includes(sauceId)) return current.filter((id) => id !== sauceId);
-      if (current.length >= product.maxSauces) return current;
-      return [...current, sauceId];
+  // Los grupos que ofrece este producto, en el orden del negocio.
+  const maxByGroup = new Map(product.optionGroups.map((o) => [o.groupId, o.maxChoices]));
+  const offered = optionGroups
+    .filter((group) => maxByGroup.has(group.id))
+    .map((group) => ({ group, max: maxByGroup.get(group.id)! }));
+
+  const pickedIn = (group: PublicMenuOptionGroup) =>
+    group.items.filter((item) => selectedIds.includes(item.id)).map((item) => item.id);
+
+  const toggle = (group: PublicMenuOptionGroup, max: number, itemId: string) => {
+    setNoneGroupIds((current) => current.filter((id) => id !== group.id));
+    setSelectedIds((current) => {
+      if (current.includes(itemId)) return current.filter((id) => id !== itemId);
+      const inGroup = group.items.filter((item) => current.includes(item.id)).map((item) => item.id);
+      if (inGroup.length < max) return [...current, itemId];
+      // Con máximo 1, tocar otra la cambia.
+      if (max === 1) return [...current.filter((id) => !inGroup.includes(id)), itemId];
+      return current;
     });
   };
 
-  const toggleSide = (sideId: string) => {
-    setNoSides(false);
-    setSelectedSideIds((current) => {
-      if (current.includes(sideId)) return current.filter((id) => id !== sideId);
-      if (current.length >= product.maxSides) return current;
-      return [...current, sideId];
-    });
+  // "Sin..." excludes any real selection in its group — it's a visual cart choice, never a catalog id.
+  const chooseNone = (group: PublicMenuOptionGroup) => {
+    setSelectedIds((current) => current.filter((id) => !group.items.some((item) => item.id === id)));
+    setNoneGroupIds((current) =>
+      current.includes(group.id) ? current.filter((id) => id !== group.id) : [...current, group.id],
+    );
   };
 
-  // "Sin..." excludes any real selection — it's a visual cart choice, never a catalog id.
-  const chooseNoSauces = () => {
-    setSelectedSauceIds([]);
-    setNoSauces((current) => !current);
-  };
-  const chooseNoSides = () => {
-    setSelectedSideIds([]);
-    setNoSides((current) => !current);
-  };
-
-  const sauceDecided = product.maxSauces === 0 || selectedSauceIds.length > 0 || noSauces;
-  const sideDecided = product.maxSides === 0 || selectedSideIds.length > 0 || noSides;
-  const canAdd = sauceDecided && sideDecided;
-  const hasCustomization = !readOnly && (product.maxSauces > 0 || product.maxSides > 0);
+  // Cada grupo se decide eligiendo algo o marcando "Sin ..."; uno obligatorio solo eligiendo.
+  const canAdd = offered.every(
+    ({ group }) => pickedIn(group).length > 0 || (!group.isRequired && noneGroupIds.includes(group.id)),
+  );
+  const hasCustomization = !readOnly && offered.length > 0;
+  const selection: CartSelection = { optionItemIds: selectedIds, noneGroupIds };
+  const summary = describeSelection(
+    selection,
+    offered.map(({ group }) => group),
+  );
 
   const handleAdd = () => {
     if (!canAdd) return;
-    onAdd(product, { sauceIds: selectedSauceIds, sideIds: selectedSideIds, noSauces, noSides });
+    onAdd(product, selection);
     onClose();
   };
-
-  const selectedSauceNames = noSauces ? ['Sin salsas'] : sauces.filter((s) => selectedSauceIds.includes(s.id)).map((s) => s.name);
-  const selectedSideNames = noSides ? ['Sin acompañamiento'] : sides.filter((s) => selectedSideIds.includes(s.id)).map((s) => s.name);
 
   return (
     <>
@@ -161,79 +180,52 @@ function ProductDetailContent({ product, sauces, sides, onAdd, onClose, readOnly
               Personaliza tu unidad
             </Typography>
 
-            {product.maxSauces > 0 && (
-              <Box sx={{ mb: 2 }}>
-                <Typography variant="caption" color="text.secondary">
-                  Salsas (máx. {product.maxSauces}) — elige o marca "Sin salsas"
-                </Typography>
-                <Stack direction="row" spacing={1} useFlexGap sx={{ mt: 0.5, flexWrap: 'wrap' }}>
-                  <Chip
-                    icon={<Ban size={14} />}
-                    label="Sin salsas"
-                    clickable
-                    onClick={chooseNoSauces}
-                    color={noSauces ? 'secondary' : 'default'}
-                    variant={noSauces ? 'filled' : 'outlined'}
-                    sx={{ fontWeight: 600, fontStyle: 'italic' }}
-                  />
-                  {sauces.map((sauce) => {
-                    const selected = selectedSauceIds.includes(sauce.id);
-                    const disabled = !selected && selectedSauceIds.length >= product.maxSauces;
-                    return (
+            {offered.map(({ group, max }) => {
+              const picked = pickedIn(group);
+              const isNone = noneGroupIds.includes(group.id);
+              const none = noneLabel(group.name);
+              return (
+                <Box key={group.id} sx={{ mb: 2 }}>
+                  <Typography variant="caption" color="text.secondary">
+                    {group.name} (máx. {max}) —{' '}
+                    {group.isRequired ? 'elige al menos una opción' : `elige o marca "${none}"`}
+                  </Typography>
+                  <Stack direction="row" spacing={1} useFlexGap sx={{ mt: 0.5, flexWrap: 'wrap' }}>
+                    {!group.isRequired && (
                       <Chip
-                        key={sauce.id}
-                        label={sauce.name}
-                        clickable={!disabled}
-                        disabled={disabled}
-                        onClick={() => toggleSauce(sauce.id)}
-                        color={selected ? 'primary' : 'default'}
-                        variant={selected ? 'filled' : 'outlined'}
-                        sx={{ fontWeight: 600 }}
+                        icon={<Ban size={14} />}
+                        label={none}
+                        clickable
+                        onClick={() => chooseNone(group)}
+                        color={isNone ? 'secondary' : 'default'}
+                        variant={isNone ? 'filled' : 'outlined'}
+                        sx={{ fontWeight: 600, fontStyle: 'italic' }}
                       />
-                    );
-                  })}
-                </Stack>
-              </Box>
-            )}
+                    )}
+                    {group.items.map((item) => {
+                      const selected = picked.includes(item.id);
+                      const disabled = !selected && max > 1 && picked.length >= max;
+                      return (
+                        <Chip
+                          key={item.id}
+                          label={item.name}
+                          clickable={!disabled}
+                          disabled={disabled}
+                          onClick={() => toggle(group, max, item.id)}
+                          color={selected ? 'primary' : 'default'}
+                          variant={selected ? 'filled' : 'outlined'}
+                          sx={{ fontWeight: 600 }}
+                        />
+                      );
+                    })}
+                  </Stack>
+                </Box>
+              );
+            })}
 
-            {product.maxSides > 0 && (
-              <Box sx={{ mb: 1 }}>
-                <Typography variant="caption" color="text.secondary">
-                  Acompañantes (máx. {product.maxSides}) — elige o marca "Sin acompañamiento"
-                </Typography>
-                <Stack direction="row" spacing={1} useFlexGap sx={{ mt: 0.5, flexWrap: 'wrap' }}>
-                  <Chip
-                    icon={<Ban size={14} />}
-                    label="Sin acompañamiento"
-                    clickable
-                    onClick={chooseNoSides}
-                    color={noSides ? 'secondary' : 'default'}
-                    variant={noSides ? 'filled' : 'outlined'}
-                    sx={{ fontWeight: 600, fontStyle: 'italic' }}
-                  />
-                  {sides.map((side) => {
-                    const selected = selectedSideIds.includes(side.id);
-                    const disabled = !selected && selectedSideIds.length >= product.maxSides;
-                    return (
-                      <Chip
-                        key={side.id}
-                        label={side.name}
-                        clickable={!disabled}
-                        disabled={disabled}
-                        onClick={() => toggleSide(side.id)}
-                        color={selected ? 'primary' : 'default'}
-                        variant={selected ? 'filled' : 'outlined'}
-                        sx={{ fontWeight: 600 }}
-                      />
-                    );
-                  })}
-                </Stack>
-              </Box>
-            )}
-
-            {(selectedSauceNames.length > 0 || selectedSideNames.length > 0) && (
+            {summary.length > 0 && (
               <Typography variant="body2" sx={{ mt: 1.5, fontStyle: 'italic' }}>
-                Tu selección: {[...selectedSauceNames, ...selectedSideNames].join(', ')}
+                Tu selección: {summary.join(' · ')}
               </Typography>
             )}
           </>
@@ -252,7 +244,7 @@ function ProductDetailContent({ product, sauces, sides, onAdd, onClose, readOnly
             startIcon={<ShoppingCart size={18} />}
             sx={{ fontWeight: 700, flex: 1 }}
           >
-            Agregar al carrito
+            {addLabel}
           </Button>
         )}
       </DialogActions>

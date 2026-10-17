@@ -185,6 +185,16 @@ export const PERMISSIONS: PermissionDefinition[] = [
     module: 'hr',
     description: 'Configurar normas de RH por sede',
   },
+  {
+    code: 'tasks.manage',
+    module: 'tasks',
+    description: 'Crear, asignar y administrar las tareas del equipo',
+  },
+  {
+    code: 'leave.approve',
+    module: 'leave',
+    description: 'Aprobar o rechazar solicitudes de permiso del personal',
+  },
 
   {
     code: 'checklists.read',
@@ -313,6 +323,8 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<SystemRoleName, string[]> = {
     'employees.manage',
     'hr.read',
     'hr.manage',
+    'tasks.manage',
+    'leave.approve',
     'checklists.read',
     'checklists.manage',
     'checklists.execute',

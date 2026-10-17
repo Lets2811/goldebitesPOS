@@ -9,6 +9,11 @@ export const supplierSchema = z.object({
   phone: z.string().max(30).optional(),
   address: z.string().max(500).optional(),
   notes: z.string().max(2000).optional(),
+  /** Vacío: el proveedor no da crédito fijo. */
+  creditDays: z
+    .string()
+    .refine((value) => value === '' || (/^\d+$/.test(value) && Number(value) <= 365), 'Entre 0 y 365 días')
+    .optional(),
 });
 
 export type SupplierFormValues = z.infer<typeof supplierSchema>;

@@ -13,8 +13,8 @@ import {
 } from '../domain/employee.types';
 import { IEmployeesRepository } from './employees.repository.interface';
 
-const SELECT_COLUMNS = `id, business_id, branch_id, role_id, user_id, first_name, last_name, phone, email, position, status, hire_date, notes, pay_rate, pay_frequency, created_at, updated_at, deleted_at`;
-const SHIFT_COLUMNS = `id, employee_id, day_of_week, start_time, end_time`;
+const SELECT_COLUMNS = `id, business_id, branch_id, role_id, user_id, first_name, last_name, document_type, document_number, phone, email, position, status, hire_date, notes, pay_rate, pay_frequency, created_at, updated_at, deleted_at`;
+const SHIFT_COLUMNS = `id, employee_id, day_of_week, start_time, end_time, branch_id`;
 
 interface CountRow {
   count: string;
@@ -29,8 +29,8 @@ export class EmployeesRepository implements IEmployeesRepository {
     client?: DbClient,
   ): Promise<EmployeeRow> {
     const result = await this.db.query<EmployeeRow>(
-      `INSERT INTO employees (business_id, branch_id, role_id, first_name, last_name, phone, email, position, hire_date, notes, pay_rate, pay_frequency)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+      `INSERT INTO employees (business_id, branch_id, role_id, first_name, last_name, phone, email, position, hire_date, notes, pay_rate, pay_frequency, document_type, document_number, status)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, COALESCE($15, 'ACTIVE'))
        RETURNING ${SELECT_COLUMNS}`,
       [
         data.businessId,
@@ -45,10 +45,27 @@ export class EmployeesRepository implements IEmployeesRepository {
         data.notes ?? null,
         data.payRate ?? null,
         data.payFrequency ?? null,
+        data.documentType ?? null,
+        data.documentNumber ?? null,
+        data.status ?? null,
       ],
       client,
     );
     return result.rows[0];
+  }
+
+  async findByDocumentNumber(
+    businessId: string,
+    documentNumber: string,
+    client?: DbClient,
+  ): Promise<EmployeeRow | null> {
+    const result = await this.db.query<EmployeeRow>(
+      `SELECT ${SELECT_COLUMNS} FROM employees
+       WHERE business_id = $1 AND document_number = $2 AND deleted_at IS NULL`,
+      [businessId, documentNumber],
+      client,
+    );
+    return result.rows[0] ?? null;
   }
 
   async findById(
@@ -97,7 +114,7 @@ export class EmployeesRepository implements IEmployeesRepository {
       params.push(`%${query.search}%`);
       const idx = params.length;
       conditions.push(
-        `(first_name ILIKE $${idx} OR last_name ILIKE $${idx} OR position ILIKE $${idx})`,
+        `(first_name ILIKE $${idx} OR last_name ILIKE $${idx} OR position ILIKE $${idx} OR document_number ILIKE $${idx})`,
       );
     }
 
@@ -144,7 +161,10 @@ export class EmployeesRepository implements IEmployeesRepository {
            hire_date = COALESCE($10, hire_date),
            notes = COALESCE($11, notes),
            pay_rate = COALESCE($12, pay_rate),
-           pay_frequency = COALESCE($13, pay_frequency)
+           pay_frequency = COALESCE($13, pay_frequency),
+           document_type = COALESCE($14, document_type),
+           document_number = COALESCE($15, document_number),
+           status = COALESCE($16, status)
        WHERE id = $1 AND business_id = $2 AND deleted_at IS NULL
        RETURNING ${SELECT_COLUMNS}`,
       [
@@ -161,6 +181,9 @@ export class EmployeesRepository implements IEmployeesRepository {
         data.notes ?? null,
         data.payRate ?? null,
         data.payFrequency ?? null,
+        data.documentType ?? null,
+        data.documentNumber ?? null,
+        data.status ?? null,
       ],
       client,
     );
@@ -253,10 +276,16 @@ export class EmployeesRepository implements IEmployeesRepository {
     const inserted: EmployeeShiftRow[] = [];
     for (const shift of shifts) {
       const result = await this.db.query<EmployeeShiftRow>(
-        `INSERT INTO employee_shifts (employee_id, day_of_week, start_time, end_time)
-         VALUES ($1, $2, $3, $4)
+        `INSERT INTO employee_shifts (employee_id, day_of_week, start_time, end_time, branch_id)
+         VALUES ($1, $2, $3, $4, $5)
          RETURNING ${SHIFT_COLUMNS}`,
-        [employeeId, shift.dayOfWeek, shift.startTime, shift.endTime],
+        [
+          employeeId,
+          shift.dayOfWeek,
+          shift.startTime,
+          shift.endTime,
+          shift.branchId ?? null,
+        ],
         client,
       );
       inserted.push(result.rows[0]);

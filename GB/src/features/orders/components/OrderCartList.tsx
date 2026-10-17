@@ -2,11 +2,9 @@ import Box from '@mui/material/Box';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import IconButton from '@mui/material/IconButton';
-import Chip from '@mui/material/Chip';
 import { Minus, Plus, Trash2 } from 'lucide-react';
 import { formatCOP } from '../../../utils/format';
-import { useSauces } from '../../../modules/sauces/hooks/use-sauces';
-import { useSides } from '../../../modules/sides/hooks/use-sides';
+import CartLineOptionPicker from '../../../modules/option-groups/components/CartLineOptionPicker';
 import type { CartLine } from '../../kiosk-waiter/components/CartPanel';
 
 interface OrderCartListProps {
@@ -14,26 +12,19 @@ interface OrderCartListProps {
   onIncrement: (id: string) => void;
   onDecrement: (id: string) => void;
   onRemove: (id: string) => void;
-  onToggleSauce: (id: string, sauceId: string) => void;
-  onToggleSide: (id: string, sideId: string) => void;
+  onToggleOption: (id: string, groupId: string, itemId: string) => void;
   emptyMessage?: string;
 }
 
-/** Cart line list with quantity steppers and sauce/side chips — same behavior as the waiter kiosk's cart. */
+/** Cart line list with quantity steppers and option chips — same behavior as the waiter kiosk's cart. */
 export default function OrderCartList({
   cart,
   onIncrement,
   onDecrement,
   onRemove,
-  onToggleSauce,
-  onToggleSide,
+  onToggleOption,
   emptyMessage = 'Toca un producto para agregarlo.',
 }: OrderCartListProps) {
-  const { data: saucesData } = useSauces({ isActive: true, limit: 100 });
-  const { data: sidesData } = useSides({ isActive: true, limit: 100 });
-  const sauces = saucesData?.data ?? [];
-  const sides = sidesData?.data ?? [];
-
   if (cart.length === 0) {
     return (
       <Typography variant="body2" color="text.secondary" sx={{ p: 2, textAlign: 'center' }}>
@@ -75,59 +66,7 @@ export default function OrderCartList({
             </IconButton>
           </Stack>
 
-          {line.maxSauces > 0 && (
-            <Box sx={{ mt: 0.75 }}>
-              <Typography variant="caption" color="text.secondary">
-                Salsas (máx. {line.maxSauces})
-              </Typography>
-              <Stack direction="row" spacing={0.75} useFlexGap sx={{ mt: 0.25, flexWrap: 'wrap' }}>
-                {sauces.map((sauce) => {
-                  const selected = line.sauceIds.includes(sauce.id);
-                  const disabled = !selected && line.sauceIds.length >= line.maxSauces;
-                  return (
-                    <Chip
-                      key={sauce.id}
-                      label={sauce.name}
-                      size="small"
-                      clickable={!disabled}
-                      disabled={disabled}
-                      onClick={() => onToggleSauce(line.id, sauce.id)}
-                      color={selected ? 'primary' : 'default'}
-                      variant={selected ? 'filled' : 'outlined'}
-                      sx={{ fontWeight: 600 }}
-                    />
-                  );
-                })}
-              </Stack>
-            </Box>
-          )}
-
-          {line.maxSides > 0 && (
-            <Box sx={{ mt: 0.75 }}>
-              <Typography variant="caption" color="text.secondary">
-                Acompañantes (máx. {line.maxSides})
-              </Typography>
-              <Stack direction="row" spacing={0.75} useFlexGap sx={{ mt: 0.25, flexWrap: 'wrap' }}>
-                {sides.map((side) => {
-                  const selected = line.sideIds.includes(side.id);
-                  const disabled = !selected && line.sideIds.length >= line.maxSides;
-                  return (
-                    <Chip
-                      key={side.id}
-                      label={side.name}
-                      size="small"
-                      clickable={!disabled}
-                      disabled={disabled}
-                      onClick={() => onToggleSide(line.id, side.id)}
-                      color={selected ? 'primary' : 'default'}
-                      variant={selected ? 'filled' : 'outlined'}
-                      sx={{ fontWeight: 600 }}
-                    />
-                  );
-                })}
-              </Stack>
-            </Box>
-          )}
+          <CartLineOptionPicker line={line} onToggle={(groupId, itemId) => onToggleOption(line.id, groupId, itemId)} />
         </Box>
       ))}
     </Stack>

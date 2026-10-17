@@ -2,6 +2,8 @@ export type EmployeeStatus = 'ACTIVE' | 'INACTIVE' | 'ON_VACATION' | 'ON_LEAVE';
 
 export type EmployeePayFrequency = 'SHIFT' | 'WEEK' | 'BIWEEKLY' | 'MONTH';
 
+export type EmployeeDocumentType = 'CC' | 'CE' | 'TI' | 'PPT' | 'PASSPORT' | 'NIT' | 'OTHER';
+
 /** The subset an employee may self-select for their own payroll cadence — SHIFT stays an admin-only classification. */
 export const SELF_SERVICE_PAY_FREQUENCIES: EmployeePayFrequency[] = ['WEEK', 'BIWEEKLY', 'MONTH'];
 
@@ -24,6 +26,8 @@ export interface EmployeeShift {
   dayOfWeek: number;
   startTime: string;
   endTime: string;
+  /** Null: the employee's own branch. */
+  branchId: string | null;
 }
 
 export interface Employee {
@@ -33,6 +37,8 @@ export interface Employee {
   roleId: string | null;
   firstName: string;
   lastName: string;
+  documentType: EmployeeDocumentType | null;
+  documentNumber: string | null;
   phone: string | null;
   email: string | null;
   position: string | null;
@@ -53,6 +59,11 @@ export interface EmployeeWithShifts extends Employee {
 export interface CreateEmployeePayload {
   firstName: string;
   lastName: string;
+  documentType?: EmployeeDocumentType;
+  documentNumber?: string;
+  status?: EmployeeStatus;
+  /** False registers the employee without a login account; it can be generated later. */
+  createAccess?: boolean;
   phone?: string;
   email?: string;
   position?: string;
@@ -65,12 +76,14 @@ export interface CreateEmployeePayload {
   payFrequency?: EmployeePayFrequency;
 }
 
-export type UpdateEmployeePayload = Partial<CreateEmployeePayload>;
+export type UpdateEmployeePayload = Partial<Omit<CreateEmployeePayload, 'createAccess'>>;
 
 export interface ShiftInput {
   dayOfWeek: number;
   startTime: string;
   endTime: string;
+  /** Omitted or null: the employee's own branch. */
+  branchId?: string | null;
 }
 
 export interface GenerateEmployeeCredentialsPayload {

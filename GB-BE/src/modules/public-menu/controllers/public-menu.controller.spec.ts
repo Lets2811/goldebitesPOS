@@ -11,7 +11,7 @@ describe('PublicMenuController', () => {
   });
 
   it('getMenu() forwards the businessId path param', async () => {
-    service.getMenu.mockResolvedValue({ businessName: 'Golden Bites', categories: [], sauces: [], sides: [] });
+    service.getMenu.mockResolvedValue({ businessName: 'Golden Bites', categories: [], builderCategories: [], optionGroups: [] });
     await controller.getMenu('business-1');
     expect(service.getMenu).toHaveBeenCalledWith('business-1');
   });

@@ -10,8 +10,9 @@ export const productSchema = z.object({
   trackInventory: z.boolean(),
   inventoryItemId: z.string().optional(),
   inventoryQuantity: z.coerce.number().min(0.001).optional(),
-  maxSauces: z.coerce.number().int().min(0),
-  maxSides: z.coerce.number().int().min(0),
+  /** Los grupos de opciones que ofrece y cuántas de cada uno se eligen. */
+  optionGroups: z.array(z.object({ groupId: z.string(), maxChoices: z.coerce.number().int().min(1).max(20) })),
+  menuAvailability: z.enum(['MENU', 'BUILDER', 'BOTH']),
 });
 
 export type ProductFormValues = z.infer<typeof productSchema>;

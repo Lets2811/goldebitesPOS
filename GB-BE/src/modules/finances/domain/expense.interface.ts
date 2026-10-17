@@ -1,4 +1,15 @@
 import { ExpenseCategory, ExpensePaymentSource } from './expense.types';
+import { SupplierPayableStatus } from './supplier-payable.types';
+
+/** For a purchase on credit: what it cost, what's been paid and what's still owed. */
+export interface ExpensePayableSummary {
+  id: string;
+  originalAmount: number;
+  paidAmount: number;
+  pendingAmount: number;
+  dueDate: string | null;
+  status: SupplierPayableStatus;
+}
 
 export interface Expense {
   id: string;
@@ -13,6 +24,12 @@ export interface Expense {
   paymentSource: ExpensePaymentSource;
   payerEmployeeId: string | null;
   payerName: string | null;
+  supplierId: string | null;
+  /** Filled in by the list: the supplier's name, and the payable of a purchase on credit. */
+  supplierName?: string | null;
+  payable?: ExpensePayableSummary | null;
+  /** Filled in by the list: how many receipts are attached. */
+  attachmentCount?: number;
   /** Pointer to this expense's current effect in the ledger — see 059_evolve_expense_payment_source.sql. */
   cashSessionId: string | null;
   cashMovementId: string | null;
@@ -34,6 +51,7 @@ export interface ExpenseRow {
   payment_source: ExpensePaymentSource;
   payer_employee_id: string | null;
   payer_name: string | null;
+  supplier_id: string | null;
   cash_session_id: string | null;
   cash_movement_id: string | null;
   fund_movement_id: string | null;

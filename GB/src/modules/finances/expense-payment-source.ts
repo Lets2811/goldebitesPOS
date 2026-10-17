@@ -4,6 +4,8 @@ import type {
   Expense,
   ExpensePaymentSource,
   SelectableExpensePaymentSource,
+  SupplierPayableStatus,
+  SupplierPaymentSource,
   UpdateExpensePayload,
 } from './types/expense.types';
 
@@ -13,6 +15,20 @@ export const EXPENSE_PAYMENT_SOURCE_LABELS: Record<ExpensePaymentSource, string>
   BANK_ACCOUNT: 'Cuenta bancaria',
   PERSONAL_MONEY: 'Dinero personal',
   UNSPECIFIED_HISTORICAL: 'Sin especificar',
+  SUPPLIER_CREDIT: 'Crédito de proveedor',
+};
+
+export const SUPPLIER_PAYMENT_SOURCE_LABELS: Record<SupplierPaymentSource, string> = {
+  CASH_OPERATIONAL: 'Caja del turno',
+  CASH_RESERVE: 'Reserva de efectivo',
+  BANK_ACCOUNT: 'Cuenta bancaria',
+};
+
+export const SUPPLIER_PAYABLE_STATUS_LABELS: Record<SupplierPayableStatus, string> = {
+  PENDING: 'Pendiente',
+  PARTIALLY_PAID: 'Pago parcial',
+  PAID: 'Pagada',
+  VOIDED: 'Anulada',
 };
 
 export const SELECTABLE_EXPENSE_PAYMENT_SOURCES: SelectableExpensePaymentSource[] = [
@@ -34,21 +50,46 @@ interface ExpenseFormLike {
   responsible: string;
   amount: number;
   expenseDate: string;
-  paymentSource: ExpensePaymentSource;
+  paymentSource: string;
   payerName?: string;
+  supplierId?: string;
+  paymentMode?: 'CASH_PAID' | 'CREDIT' | 'PARTIAL';
+  dueDate?: string;
+  initialAmount?: number;
+  initialSource?: string;
 }
 
+/**
+ * De contado, la fuente elegida mueve el dinero como siempre. A crédito o con
+ * pago parcial, la compra queda como crédito de proveedor y lo pagado en el
+ * momento viaja como su primer pago.
+ */
 export function toCreateExpensePayload(
   values: ExpenseFormLike,
   branchId?: string,
 ): CreateExpensePayload {
-  const { paymentSource, payerName, ...rest } = values;
+  const { paymentSource, payerName, supplierId, paymentMode = 'CASH_PAID', dueDate, initialAmount, initialSource, ...rest } =
+    values;
+  if (paymentMode === 'CASH_PAID') {
+    return {
+      ...rest,
+      branchId,
+      // El formulario no deja enviar sin una fuente elegible.
+      paymentSource: paymentSource as SelectableExpensePaymentSource,
+      payerName: paymentSource === 'PERSONAL_MONEY' ? payerName?.trim() : undefined,
+      supplierId: supplierId || undefined,
+    };
+  }
   return {
     ...rest,
     branchId,
-    // El formulario no deja enviar sin una fuente elegible.
-    paymentSource: paymentSource as SelectableExpensePaymentSource,
-    payerName: paymentSource === 'PERSONAL_MONEY' ? payerName?.trim() : undefined,
+    paymentSource: 'SUPPLIER_CREDIT',
+    supplierId,
+    dueDate: dueDate || undefined,
+    initialPayment:
+      paymentMode === 'PARTIAL'
+        ? { amount: initialAmount ?? 0, source: initialSource as SupplierPaymentSource, paymentDate: values.expenseDate }
+        : undefined,
   };
 }
 
@@ -75,11 +116,20 @@ const SOURCE_ERROR_MESSAGES: Record<string, string> = {
   PAYER_REQUIRED: 'Indica quién pagó con su dinero.',
   BRANCH_REQUIRED: 'No se pudo determinar la sede del gasto. Cierra sesión y vuelve a entrar.',
   INVALID_AMOUNT: 'La cantidad debe ser mayor que cero.',
+  SUPPLIER_REQUIRED: 'Una compra a crédito necesita el proveedor.',
+  INITIAL_PAYMENT_NOT_PARTIAL: 'Lo pagado cubre toda la compra: regístrala de contado.',
+  PURCHASE_HAS_PAYMENTS: 'Esta compra ya tiene pagos al proveedor, así que no se puede eliminar.',
+  PAYMENT_EXCEEDS_PENDING: 'El pago es mayor que lo que se debe.',
+  PAYABLE_VOIDED: 'Esta cuenta por pagar fue anulada.',
+  SUPPLIER_CREDIT_NOT_RECLASSIFIABLE: 'Una compra a crédito no cambia de fuente: registra pagos contra ella.',
   AMOUNT_LOCKED_BY_SOURCE:
     'No se puede cambiar la cantidad de este gasto. Elimínalo y regístralo de nuevo.',
 };
 
-export function expenseErrorMessage(error: unknown, paymentSource?: ExpensePaymentSource): string {
+export function expenseErrorMessage(
+  error: unknown,
+  paymentSource?: ExpensePaymentSource | SupplierPaymentSource,
+): string {
   const normalized = normalizeApiError(error);
   const known = normalized.code ? SOURCE_ERROR_MESSAGES[normalized.code] : undefined;
   if (known) return known;

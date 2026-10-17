@@ -17,8 +17,8 @@ import { InventoryMovementsService } from '../../inventory-movements/services/in
 import { LoyaltyService } from '../../loyalty/services/loyalty.service';
 import { ProductsService } from '../../products/services/products.service';
 import { RecipesService } from '../../recipes/services/recipes.service';
-import { SaucesService } from '../../sauces/services/sauces.service';
-import { SidesService } from '../../sides/services/sides.service';
+import { OptionGroupsService } from '../../option-groups/services/option-groups.service';
+import { resolveOptionSelections } from '../../option-groups/domain/resolve-option-selections';
 import {
   DailySales,
   Order,
@@ -72,8 +72,7 @@ export class OrdersService {
     private readonly movementsService: InventoryMovementsService,
     private readonly businessesService: BusinessesService,
     private readonly loyaltyService: LoyaltyService,
-    private readonly saucesService: SaucesService,
-    private readonly sidesService: SidesService,
+    private readonly optionGroupsService: OptionGroupsService,
     private readonly transactionService: TransactionService,
     private readonly auditService: AuditService,
   ) {}
@@ -716,6 +715,13 @@ export class OrdersService {
     businessId: string,
     items: OrderItemInput[],
   ): Promise<OrderItemComputed[]> {
+    const productIds = [...new Set(items.map((item) => item.productId))];
+    // The business's whole option catalog and what each product offers, once
+    // per order — not per item.
+    const [optionGroups, offeredByProduct] = await Promise.all([
+      this.optionGroupsService.findAll(businessId),
+      this.optionGroupsService.getProductGroups(productIds),
+    ]);
     const computed: OrderItemComputed[] = [];
     for (const item of items) {
       const product = await this.productsService.getOwnedOrFail(
@@ -744,72 +750,34 @@ export class OrdersService {
         );
       }
 
-      const sauceIds = item.sauceIds ?? [];
-      if (sauceIds.length > product.max_sauces) {
-        throw new BusinessRuleException(
-          `Product "${product.name}" allows at most ${product.max_sauces} sauce(s)`,
-          'ORDER_ITEM_TOO_MANY_SAUCES',
-        );
-      }
-      const sauceNames = await this.resolveSelectionNames(
-        sauceIds,
-        (ids) => this.saucesService.findByIds(businessId, ids),
-        'sauce',
-      );
-
-      const sideIds = item.sideIds ?? [];
-      if (sideIds.length > product.max_sides) {
-        throw new BusinessRuleException(
-          `Product "${product.name}" allows at most ${product.max_sides} side(s)`,
-          'ORDER_ITEM_TOO_MANY_SIDES',
-        );
-      }
-      const sideNames = await this.resolveSelectionNames(
-        sideIds,
-        (ids) => this.sidesService.findByIds(businessId, ids),
-        'side',
+      // sauceIds/sideIds are what clients sent before option groups existed;
+      // the migrated options kept their ids, so they're simply more picks.
+      const pickedIds = [
+        ...(item.optionItemIds ?? []),
+        ...(item.sauceIds ?? []),
+        ...(item.sideIds ?? []),
+      ];
+      const optionSelections = resolveOptionSelections(
+        optionGroups,
+        offeredByProduct.get(product.id) ?? [],
+        pickedIds,
+        product.name,
       );
 
       computed.push({
-        ...item,
+        productId: item.productId,
+        quantity: item.quantity,
+        discountAmount: item.discountAmount,
+        notes: item.notes,
         productNameSnapshot: product.name,
         productDescriptionSnapshot: product.description,
         unitPrice,
         unitCostSnapshot: parseFloat(product.current_cost),
         totalPrice,
-        sauceIds,
-        sauceNames,
-        sideIds,
-        sideNames,
+        optionSelections,
       });
     }
     return computed;
-  }
-
-  private async resolveSelectionNames(
-    ids: string[],
-    findByIds: (
-      ids: string[],
-    ) => Promise<{ id: string; name: string; isActive: boolean }[]>,
-    label: 'sauce' | 'side',
-  ): Promise<string[]> {
-    if (ids.length === 0) {
-      return [];
-    }
-    const rows = await findByIds(ids);
-    const byId = new Map(rows.map((row) => [row.id, row]));
-    return ids.map((id) => {
-      const row = byId.get(id);
-      if (!row || !row.isActive) {
-        throw new BusinessRuleException(
-          `Unknown or inactive ${label} selected`,
-          label === 'sauce'
-            ? 'ORDER_ITEM_INVALID_SAUCE'
-            : 'ORDER_ITEM_INVALID_SIDE',
-        );
-      }
-      return row.name;
-    });
   }
 
   private computeTotals(

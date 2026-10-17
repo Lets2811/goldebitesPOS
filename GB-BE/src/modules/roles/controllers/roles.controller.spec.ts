@@ -26,10 +26,24 @@ describe('RolesController', () => {
 
     await controller.create('business-1', { name: 'SHIFT_LEAD' });
 
-    expect(service.create).toHaveBeenCalledWith({
-      businessId: 'business-1',
+    expect(service.create).toHaveBeenCalledWith(
+      { businessId: 'business-1', name: 'SHIFT_LEAD' },
+      undefined,
+    );
+  });
+
+  it('create() passes the initial permissions apart from the role data', async () => {
+    service.create.mockResolvedValue({ id: 'role-1' } as never);
+
+    await controller.create('business-1', {
       name: 'SHIFT_LEAD',
+      permissionCodes: ['orders.read'],
     });
+
+    expect(service.create).toHaveBeenCalledWith(
+      { businessId: 'business-1', name: 'SHIFT_LEAD' },
+      ['orders.read'],
+    );
   });
 
   it('findAll() lists roles for the current business', async () => {

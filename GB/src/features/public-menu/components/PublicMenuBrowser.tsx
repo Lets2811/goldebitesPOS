@@ -7,7 +7,7 @@ import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import Divider from '@mui/material/Divider';
 import { useSnackbar } from 'notistack';
-import { ShoppingCart, UtensilsCrossed } from 'lucide-react';
+import { ChevronRight, ShoppingCart, Sparkles, UtensilsCrossed } from 'lucide-react';
 import LoadingSkeleton from '../../../components/common/LoadingSkeleton';
 import ErrorState from '../../../components/common/ErrorState';
 import StatusChip from '../../../components/common/StatusChip';
@@ -20,6 +20,7 @@ import { ORDER_STATUS_LABELS, ORDER_STATUS_TONE } from '../../../modules/orders/
 import type { OrderStatus } from '../../../modules/orders/types/order.types';
 import { formatCOP } from '../../../utils/format';
 import { brand } from '../../../theme/palette';
+import ComboBuilderDialog from './ComboBuilderDialog';
 import ProductDetailDialog from './ProductDetailDialog';
 import PublicCartDrawer from './PublicCartDrawer';
 import { usePublicCart } from '../hooks/use-public-cart';
@@ -57,7 +58,8 @@ export default function PublicMenuBrowser({
   const [selectedProduct, setSelectedProduct] = useState<PublicMenuProduct | null>(null);
   const [cartOpen, setCartOpen] = useState(false);
   const [activeOrder, setActiveOrder] = useState<PublicNfcOrder | null>(null);
-  const { cart, addToCart, increment, decrement, remove, clear, itemCount, total, idempotencyKey } =
+  const [builderOpen, setBuilderOpen] = useState(false);
+  const { cart, addToCart, addComboToCart, increment, decrement, remove, clear, itemCount, total, idempotencyKey } =
     usePublicCart();
   const submitOrder = useSubmitNfcOrder(token);
 
@@ -70,8 +72,9 @@ export default function PublicMenuBrowser({
         items: cart.map((line) => ({
           productId: line.productId,
           quantity: line.quantity,
-          sauceIds: line.sauceIds.length > 0 ? line.sauceIds : undefined,
-          sideIds: line.sideIds.length > 0 ? line.sideIds : undefined,
+          optionItemIds: line.optionItemIds.length > 0 ? line.optionItemIds : undefined,
+          // Cocina ve qué productos van juntos en un mismo combo armado.
+          notes: line.comboNumber ? `Arma tu combo ${line.comboNumber}` : undefined,
         })),
       },
       {
@@ -137,6 +140,36 @@ export default function PublicMenuBrowser({
                   {formatCOP(activeOrder.totalAmount)}
                 </Typography>
               </Stack>
+            )}
+
+            {!readOnly && menu.builderCategories.some((category) => category.products.length > 0) && (
+              <ButtonBase
+                onClick={() => setBuilderOpen(true)}
+                sx={{
+                  width: '100%',
+                  mb: 4,
+                  p: 2,
+                  gap: 2,
+                  borderRadius: 2,
+                  justifyContent: 'flex-start',
+                  textAlign: 'left',
+                  border: '1px solid',
+                  borderColor: brand.gold,
+                  background: `linear-gradient(135deg, ${brand.gold}22, transparent 70%)`,
+                  '&:hover': { background: `linear-gradient(135deg, ${brand.gold}33, transparent 70%)` },
+                }}
+              >
+                <Sparkles size={28} color={brand.gold} />
+                <Box sx={{ flex: 1 }}>
+                  <Typography variant="subtitle1" sx={{ fontWeight: 800 }}>
+                    Arma tu combo
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Escoge lo que quieras, a tu gusto y a tu estilo.
+                  </Typography>
+                </Box>
+                <ChevronRight size={22} color={brand.gold} />
+              </ButtonBase>
             )}
 
             {menu.categories.length === 0 && (
@@ -243,18 +276,28 @@ export default function PublicMenuBrowser({
 
       <ProductDetailDialog
         product={selectedProduct}
-        sauces={menu?.sauces ?? []}
-        sides={menu?.sides ?? []}
+        optionGroups={menu?.optionGroups ?? []}
         onAdd={addToCart}
         onClose={() => setSelectedProduct(null)}
         readOnly={readOnly}
       />
 
+      <ComboBuilderDialog
+        open={builderOpen && !readOnly}
+        categories={menu?.builderCategories ?? []}
+        optionGroups={menu?.optionGroups ?? []}
+        onClose={() => setBuilderOpen(false)}
+        onAddCombo={(units) => {
+          addComboToCart(units);
+          // El carrito abierto es la confirmación: se ve el combo dentro del pedido, listo para enviar.
+          setCartOpen(true);
+        }}
+      />
+
       <PublicCartDrawer
         open={cartOpen && !readOnly}
         cart={cart}
-        sauces={menu?.sauces ?? []}
-        sides={menu?.sides ?? []}
+        optionGroups={menu?.optionGroups ?? []}
         total={total}
         onIncrement={increment}
         onDecrement={decrement}

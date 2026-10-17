@@ -172,6 +172,7 @@ describe('OrdersRepository (integration)', () => {
         unitPrice: 25000,
         unitCostSnapshot: 8000,
         totalPrice: 62500,
+        optionSelections: [],
       },
     ]);
 
@@ -195,6 +196,7 @@ describe('OrdersRepository (integration)', () => {
         unitPrice: 25000,
         unitCostSnapshot: 8000,
         totalPrice: 25000,
+        optionSelections: [],
       },
     ]);
 
@@ -207,6 +209,7 @@ describe('OrdersRepository (integration)', () => {
         unitPrice: 25000,
         unitCostSnapshot: 8000,
         totalPrice: 75000,
+        optionSelections: [],
       },
     ]);
 
@@ -377,6 +380,7 @@ describe('OrdersRepository (integration)', () => {
           unitPrice,
           unitCostSnapshot: 8000,
           totalPrice: quantity * unitPrice,
+          optionSelections: [],
         },
       ]);
       await repository.updateTotals(
@@ -545,6 +549,7 @@ describe('OrdersRepository (integration)', () => {
           unitPrice: 1000,
           unitCostSnapshot: 500,
           totalPrice: 20000,
+          optionSelections: [],
         },
       ]);
       await repository.updateTotals(cheapOrder.id, 20000, 0, 0, 0, 20000);
@@ -695,6 +700,7 @@ describe('OrdersRepository (integration)', () => {
             unitPrice: 100,
             unitCostSnapshot: 50,
             totalPrice: 5000,
+            optionSelections: [],
           },
         ]);
         await repository.setStatus(

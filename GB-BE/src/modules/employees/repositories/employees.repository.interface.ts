@@ -21,6 +21,11 @@ export interface IEmployeesRepository {
     userId: string,
     client?: DbClient,
   ): Promise<EmployeeRow | null>;
+  findByDocumentNumber(
+    businessId: string,
+    documentNumber: string,
+    client?: DbClient,
+  ): Promise<EmployeeRow | null>;
   findAll(
     query: EmployeeQuery,
   ): Promise<{ rows: EmployeeRow[]; total: number }>;

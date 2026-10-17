@@ -3,13 +3,11 @@ import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import ButtonBase from '@mui/material/ButtonBase';
 import Button from '@mui/material/Button';
-import Chip from '@mui/material/Chip';
 import TextField from '@mui/material/TextField';
 import Divider from '@mui/material/Divider';
 import { Minus, Plus, Trash2, ShoppingCart, CreditCard } from 'lucide-react';
 import { formatCOP } from '../../../utils/format';
-import { useSauces } from '../../../modules/sauces/hooks/use-sauces';
-import { useSides } from '../../../modules/sides/hooks/use-sides';
+import CartLineOptionPicker from '../../../modules/option-groups/components/CartLineOptionPicker';
 import type { CartLine } from '../../kiosk-waiter/components/CartPanel';
 
 interface CarServiceCartPanelProps {
@@ -17,8 +15,7 @@ interface CarServiceCartPanelProps {
   onIncrement: (id: string) => void;
   onDecrement: (id: string) => void;
   onRemove: (id: string) => void;
-  onToggleSauce: (id: string, sauceId: string) => void;
-  onToggleSide: (id: string, sideId: string) => void;
+  onToggleOption: (id: string, groupId: string, itemId: string) => void;
   vehicleTag: string;
   onVehicleTagChange: (value: string) => void;
   customerName: string;
@@ -32,8 +29,7 @@ export default function CarServiceCartPanel({
   onIncrement,
   onDecrement,
   onRemove,
-  onToggleSauce,
-  onToggleSide,
+  onToggleOption,
   vehicleTag,
   onVehicleTagChange,
   customerName,
@@ -41,10 +37,6 @@ export default function CarServiceCartPanel({
   onSubmit,
   submitting,
 }: CarServiceCartPanelProps) {
-  const { data: saucesData } = useSauces({ isActive: true, limit: 100 });
-  const { data: sidesData } = useSides({ isActive: true, limit: 100 });
-  const sauces = saucesData?.data ?? [];
-  const sides = sidesData?.data ?? [];
   const total = cart.reduce((sum, line) => sum + line.unitPrice * line.quantity, 0);
   const itemCount = cart.reduce((sum, line) => sum + line.quantity, 0);
   const canSubmit = cart.length > 0 && !submitting;
@@ -119,57 +111,7 @@ export default function CarServiceCartPanel({
                 </Stack>
               </Box>
 
-              {line.maxSauces > 0 && (
-                <Box sx={{ mt: 1 }}>
-                  <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 700 }}>
-                    Salsas (máx. {line.maxSauces})
-                  </Typography>
-                  <Stack direction="row" spacing={0.75} useFlexGap sx={{ mt: 0.5, flexWrap: 'wrap' }}>
-                    {sauces.map((sauce) => {
-                      const selected = line.sauceIds.includes(sauce.id);
-                      const disabled = !selected && line.sauceIds.length >= line.maxSauces;
-                      return (
-                        <Chip
-                          key={sauce.id}
-                          label={sauce.name}
-                          clickable={!disabled}
-                          disabled={disabled}
-                          onClick={() => onToggleSauce(line.id, sauce.id)}
-                          color={selected ? 'primary' : 'default'}
-                          variant={selected ? 'filled' : 'outlined'}
-                          sx={{ fontWeight: 700 }}
-                        />
-                      );
-                    })}
-                  </Stack>
-                </Box>
-              )}
-
-              {line.maxSides > 0 && (
-                <Box sx={{ mt: 1 }}>
-                  <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 700 }}>
-                    Acompañantes (máx. {line.maxSides})
-                  </Typography>
-                  <Stack direction="row" spacing={0.75} useFlexGap sx={{ mt: 0.5, flexWrap: 'wrap' }}>
-                    {sides.map((side) => {
-                      const selected = line.sideIds.includes(side.id);
-                      const disabled = !selected && line.sideIds.length >= line.maxSides;
-                      return (
-                        <Chip
-                          key={side.id}
-                          label={side.name}
-                          clickable={!disabled}
-                          disabled={disabled}
-                          onClick={() => onToggleSide(line.id, side.id)}
-                          color={selected ? 'primary' : 'default'}
-                          variant={selected ? 'filled' : 'outlined'}
-                          sx={{ fontWeight: 700 }}
-                        />
-                      );
-                    })}
-                  </Stack>
-                </Box>
-              )}
+              <CartLineOptionPicker large line={line} onToggle={(groupId, itemId) => onToggleOption(line.id, groupId, itemId)} />
             </Box>
           ))
         )}

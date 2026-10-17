@@ -14,6 +14,7 @@ import { normalizeApiError } from '../../../lib/api/api-error';
 import { decodeAccessToken } from '../utils/decode-access-token';
 import { brand } from '../../../theme/palette';
 import { FORCE_PASSWORD_CHANGE_PATH } from '../components/protected-route';
+import EnvironmentChip from '../../../components/common/EnvironmentChip';
 
 export default function LoginPage() {
   const navigate = useNavigate();
@@ -61,6 +62,7 @@ export default function LoginPage() {
       <Paper sx={{ p: 4, width: '100%', maxWidth: 400 }} elevation={4}>
         <Stack spacing={3} component="form" onSubmit={handleSubmit(onSubmit)} noValidate>
           <Box sx={{ textAlign: 'center' }}>
+            <EnvironmentChip />
             <Typography variant="h5" sx={{ fontWeight: 800, color: brand.gold }}>
               Golden Bites
             </Typography>

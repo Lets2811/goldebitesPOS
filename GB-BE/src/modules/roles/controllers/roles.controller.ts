@@ -19,7 +19,8 @@ export class RolesController {
   @Permissions('roles.manage')
   @ApiOperation({ summary: 'Create a custom role for the current business' })
   create(@CurrentBusiness() businessId: string, @Body() dto: CreateRoleDto) {
-    return this.rolesService.create({ businessId, ...dto });
+    const { permissionCodes, ...role } = dto;
+    return this.rolesService.create({ businessId, ...role }, permissionCodes);
   }
 
   @Get()

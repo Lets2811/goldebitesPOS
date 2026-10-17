@@ -55,6 +55,7 @@ export default function SuppliersPage() {
       phone: values.phone || undefined,
       address: values.address || undefined,
       notes: values.notes || undefined,
+      creditDays: values.creditDays ? Number(values.creditDays) : undefined,
     };
 
     if (editingSupplier) {

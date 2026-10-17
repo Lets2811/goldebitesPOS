@@ -5,8 +5,8 @@ export interface PublicOrderItemView {
   quantity: number;
   unitPrice: number;
   totalPrice: number;
-  sauceNames: string[];
-  sideNames: string[];
+  /** What was picked, per group: [{ groupName: "Salsas", itemNames: ["BBQ"] }]. */
+  optionSelections: { groupName: string; itemNames: string[] }[];
   notes: string | null;
 }
 
@@ -38,8 +38,12 @@ export function toPublicOrderView(order: OrderWithItems): PublicOrderView {
       quantity: item.quantity,
       unitPrice: item.unitPrice,
       totalPrice: item.totalPrice,
-      sauceNames: item.sauceNames,
-      sideNames: item.sideNames,
+      optionSelections: item.optionSelections.map(
+        ({ groupName, itemNames }) => ({
+          groupName,
+          itemNames,
+        }),
+      ),
       notes: item.notes,
     })),
     totalAmount: order.totalAmount,

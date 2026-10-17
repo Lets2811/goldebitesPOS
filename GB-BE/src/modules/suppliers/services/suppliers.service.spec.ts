@@ -9,6 +9,7 @@ describe('SuppliersService', () => {
     findAll: jest.Mock;
     update: jest.Mock;
     setActive: jest.Mock;
+    findActiveByName: jest.Mock;
   };
   let auditService: { record: jest.Mock };
   let service: SuppliersService;
@@ -26,6 +27,7 @@ describe('SuppliersService', () => {
       phone: null,
       address: null,
       notes: null,
+      credit_days: null,
       is_active: true,
       created_at: new Date(),
       updated_at: new Date(),
@@ -40,9 +42,29 @@ describe('SuppliersService', () => {
       findAll: jest.fn(),
       update: jest.fn(),
       setActive: jest.fn(),
+      findActiveByName: jest.fn().mockResolvedValue(null),
     };
     auditService = { record: jest.fn() };
     service = new SuppliersService(repository, auditService as never);
+  });
+
+  describe('findOrCreateByName()', () => {
+    it('reuses the active supplier already called that, without creating another', async () => {
+      repository.findActiveByName.mockResolvedValue(makeRow({ name: 'Acme Foods' }));
+
+      const supplier = await service.findOrCreateByName(businessId, '  acme foods ');
+
+      expect(supplier.name).toBe('Acme Foods');
+      expect(repository.create).not.toHaveBeenCalled();
+    });
+
+    it('creates the supplier when none has that name', async () => {
+      repository.create.mockResolvedValue(makeRow({ name: 'Nuevo Proveedor' }));
+
+      await service.findOrCreateByName(businessId, '  Nuevo Proveedor ');
+
+      expect(repository.create).toHaveBeenCalledWith({ businessId, name: 'Nuevo Proveedor' });
+    });
   });
 
   it('create() does not check for name uniqueness (schema allows duplicates)', async () => {

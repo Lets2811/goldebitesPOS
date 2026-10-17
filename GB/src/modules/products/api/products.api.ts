@@ -47,4 +47,20 @@ export const productsApi = {
   async deleteProduct(id: string): Promise<void> {
     await apiClient.delete(`/products/${id}`);
   },
+
+  async uploadImage(id: string, file: File): Promise<Product> {
+    const formData = new FormData();
+    formData.append('file', file);
+    // Clearing the instance's default JSON Content-Type lets the browser set the multipart boundary.
+    const { data } = await apiClient.post<ApiResponse<Product>>(`/products/${id}/image`, formData, {
+      headers: { 'Content-Type': undefined },
+      timeout: 60_000,
+    });
+    return data.data;
+  },
+
+  async removeImage(id: string): Promise<Product> {
+    const { data } = await apiClient.delete<ApiResponse<Product>>(`/products/${id}/image`);
+    return data.data;
+  },
 };

@@ -12,6 +12,7 @@ export class SupplierMapper {
       phone: row.phone,
       address: row.address,
       notes: row.notes,
+      creditDays: row.credit_days,
       isActive: row.is_active,
       createdAt: row.created_at,
       updatedAt: row.updated_at,

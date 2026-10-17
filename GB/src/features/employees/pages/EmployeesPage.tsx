@@ -2,11 +2,10 @@ import { useMemo, useState } from 'react';
 import TextField from '@mui/material/TextField';
 import MenuItem from '@mui/material/MenuItem';
 import Button from '@mui/material/Button';
-import Box from '@mui/material/Box';
 import type { ColumnDef } from '@tanstack/react-table';
 import { Plus } from 'lucide-react';
 import { useSnackbar } from 'notistack';
-import PageHeader from '../../../components/common/PageHeader';
+import HrSectionHeader from '../../hr/components/HrSectionHeader';
 import FilterBar from '../../../components/common/FilterBar';
 import SearchInput from '../../../components/common/SearchInput';
 import DataTable from '../../../components/common/DataTable';
@@ -21,13 +20,16 @@ import { useDeleteEmployee } from '../../../modules/employees/hooks/use-delete-e
 import { useRoles } from '../../../modules/roles/hooks/use-roles';
 import { getRoleLabel } from '../../../modules/roles/role-labels';
 import { normalizeApiError } from '../../../lib/api/api-error';
-import { EMPLOYEE_STATUS_LABELS, EMPLOYEE_STATUS_TONE } from '../../../modules/employees/employee-status';
+import {
+  EMPLOYEE_DOCUMENT_TYPE_SHORT,
+  EMPLOYEE_STATUS_LABELS,
+  EMPLOYEE_STATUS_TONE,
+} from '../../../modules/employees/employee-status';
 import type { Employee, EmployeeStatus } from '../../../modules/employees/types/employee.types';
 import type { EmployeeFormValues } from '../schemas/employeeSchema';
 import EmployeeDetailDrawer from '../components/EmployeeDetailDrawer';
 import EmployeeFormDrawer from '../components/EmployeeFormDrawer';
 import NewAccountInfoDialog from '../components/NewAccountInfoDialog';
-import ShiftCalendar from '../components/ShiftCalendar';
 
 export default function EmployeesPage() {
   const { enqueueSnackbar } = useSnackbar();
@@ -64,9 +66,13 @@ export default function EmployeesPage() {
     const payload = {
       firstName: values.firstName,
       lastName: values.lastName,
+      documentType: values.documentNumber ? values.documentType : undefined,
+      documentNumber: values.documentNumber?.trim() || undefined,
       phone: values.phone || undefined,
       email: values.email || undefined,
       roleId: values.roleId,
+      branchId: values.branchId || undefined,
+      status: values.status,
       hireDate: values.hireDate || undefined,
       notes: values.notes || undefined,
       payRate: values.payRate,
@@ -85,7 +91,7 @@ export default function EmployeesPage() {
         },
       );
     } else {
-      createEmployee.mutate(payload, {
+      createEmployee.mutate({ ...payload, createAccess: values.createAccess }, {
         onSuccess: (employee) => {
           enqueueSnackbar('Empleado creado correctamente', { variant: 'success' });
           setFormOpen(false);
@@ -114,6 +120,14 @@ export default function EmployeesPage() {
       cell: ({ row }) => `${row.original.firstName} ${row.original.lastName}`,
     },
     {
+      id: 'document',
+      header: 'Documento',
+      cell: ({ row }) =>
+        row.original.documentNumber
+          ? `${row.original.documentType ? EMPLOYEE_DOCUMENT_TYPE_SHORT[row.original.documentType] : ''} ${row.original.documentNumber}`.trim()
+          : '—',
+    },
+    {
       id: 'position',
       header: 'Cargo',
       cell: ({ row }) => (row.original.roleId ? (roleNameById.get(row.original.roleId) ?? '—') : '—'),
@@ -138,10 +152,8 @@ export default function EmployeesPage() {
 
   return (
     <>
-      <PageHeader
-        title="Personal"
-        subtitle="Equipo de trabajo y turnos semanales."
-        breadcrumbs={[{ label: 'Personal' }]}
+      <HrSectionHeader
+        description="Equipo de trabajo y turnos semanales."
         actions={
           <Can permission="employees.manage">
             <Button
@@ -165,7 +177,7 @@ export default function EmployeesPage() {
         }}
         hasActiveFilters={Boolean(search) || status !== 'todos'}
       >
-        <SearchInput value={search} onChange={setSearch} placeholder="Buscar empleado..." />
+        <SearchInput value={search} onChange={setSearch} placeholder="Buscar por nombre o documento..." />
         <TextField
           select
           size="small"
@@ -195,10 +207,6 @@ export default function EmployeesPage() {
           pageSize={10}
         />
       )}
-
-      <Box sx={{ mt: 3 }}>
-        <ShiftCalendar employees={employees} />
-      </Box>
 
       <EmployeeDetailDrawer
         employeeId={selectedId}

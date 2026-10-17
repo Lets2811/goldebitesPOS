@@ -15,6 +15,15 @@ describe('ExpensesService', () => {
     softDelete: jest.Mock;
     getSummaryByCategory: jest.Mock;
     getDailyTotals: jest.Mock;
+    findSupplierNames: jest.Mock;
+  };
+  let suppliersService: { findOne: jest.Mock; findOrCreateByName: jest.Mock };
+  let attachmentsService: { countByExpenseIds: jest.Mock };
+  let supplierPayablesService: {
+    resolvePaymentSession: jest.Mock;
+    createForPurchase: jest.Mock;
+    findByExpenseIds: jest.Mock;
+    voidInTransaction: jest.Mock;
   };
   let categoriesService: { assertUsable: jest.Mock };
   let employeesService: { findOne: jest.Mock };
@@ -47,6 +56,7 @@ describe('ExpensesService', () => {
       payment_source: ExpensePaymentSource.UNSPECIFIED_HISTORICAL,
       payer_employee_id: null,
       payer_name: null,
+      supplier_id: null,
       cash_session_id: null,
       cash_movement_id: null,
       fund_movement_id: null,
@@ -67,6 +77,18 @@ describe('ExpensesService', () => {
       softDelete: jest.fn(),
       getSummaryByCategory: jest.fn(),
       getDailyTotals: jest.fn().mockResolvedValue([]),
+      findSupplierNames: jest.fn().mockResolvedValue(new Map([['supplier-1', 'Pollos El Campo']])),
+    };
+    suppliersService = {
+      findOne: jest.fn().mockResolvedValue({ id: 'supplier-1', name: 'Pollos El Campo', creditDays: 30 }),
+      findOrCreateByName: jest.fn().mockResolvedValue({ id: 'supplier-9', name: 'Carnes Don Pepe', creditDays: null }),
+    };
+    attachmentsService = { countByExpenseIds: jest.fn().mockResolvedValue(new Map()) };
+    supplierPayablesService = {
+      resolvePaymentSession: jest.fn().mockResolvedValue(null),
+      createForPurchase: jest.fn(),
+      findByExpenseIds: jest.fn().mockResolvedValue([]),
+      voidInTransaction: jest.fn(),
     };
     employeesService = { findOne: jest.fn() };
     reimbursementsService = {
@@ -97,6 +119,9 @@ describe('ExpensesService', () => {
       transactionService as never,
       auditService as never,
       categoriesService as never,
+      suppliersService as never,
+      supplierPayablesService as never,
+      attachmentsService as never,
     );
   });
 
@@ -257,6 +282,135 @@ describe('ExpensesService', () => {
         ),
       ).rejects.toThrow(EntityNotFoundException);
       expect(expensesRepository.create).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('create — SUPPLIER_CREDIT (compras a crédito)', () => {
+    it('records a purchase on credit without moving money, and a payable due on the supplier credit days', async () => {
+      await service.create(
+        baseCreateData({
+          amount: 800000,
+          paymentSource: ExpensePaymentSource.SUPPLIER_CREDIT,
+          supplierId: 'supplier-1',
+        }) as never,
+        actorUserId,
+      );
+
+      expect(cashSessionsService.recordMovementInTransaction).not.toHaveBeenCalled();
+      expect(fundsService.debit).not.toHaveBeenCalled();
+      expect(supplierPayablesService.createForPurchase).toHaveBeenCalledWith(
+        expect.objectContaining({
+          supplierId: 'supplier-1',
+          originalAmount: 800000,
+          // 2026-09-18 + 30 días de crédito del proveedor.
+          dueDate: '2026-10-18',
+          initialPayment: undefined,
+        }),
+        expect.anything(),
+      );
+    });
+
+    it('passes a partial payment through, with the session it comes from', async () => {
+      const session = { id: 'session-1', branchId };
+      supplierPayablesService.resolvePaymentSession.mockResolvedValue(session);
+      const initialPayment = { amount: 300000, source: 'CASH_OPERATIONAL' };
+
+      await service.create(
+        baseCreateData({
+          amount: 800000,
+          paymentSource: ExpensePaymentSource.SUPPLIER_CREDIT,
+          supplierId: 'supplier-1',
+          dueDate: '2026-10-01',
+          initialPayment,
+        }) as never,
+        actorUserId,
+      );
+
+      expect(supplierPayablesService.createForPurchase).toHaveBeenCalledWith(
+        expect.objectContaining({ dueDate: '2026-10-01', initialPayment, initialPaymentSession: session }),
+        expect.anything(),
+      );
+    });
+
+    it('refuses credit without a supplier', async () => {
+      await expect(
+        service.create(baseCreateData({ paymentSource: ExpensePaymentSource.SUPPLIER_CREDIT }) as never, actorUserId),
+      ).rejects.toThrow(BusinessRuleException);
+      expect(expensesRepository.create).not.toHaveBeenCalled();
+    });
+
+    it('refuses a "partial" payment that covers the whole purchase', async () => {
+      await expect(
+        service.create(
+          baseCreateData({
+            amount: 800000,
+            paymentSource: ExpensePaymentSource.SUPPLIER_CREDIT,
+            supplierId: 'supplier-1',
+            initialPayment: { amount: 800000, source: 'BANK_ACCOUNT' },
+          }) as never,
+          actorUserId,
+        ),
+      ).rejects.toThrow(BusinessRuleException);
+      expect(expensesRepository.create).not.toHaveBeenCalled();
+    });
+
+    it('creates (or reuses) a supplier typed in by name, and buys on credit from it', async () => {
+      await service.create(
+        baseCreateData({
+          amount: 120000,
+          paymentSource: ExpensePaymentSource.SUPPLIER_CREDIT,
+          newSupplierName: 'Carnes Don Pepe',
+        }) as never,
+        actorUserId,
+      );
+
+      expect(suppliersService.findOrCreateByName).toHaveBeenCalledWith(businessId, 'Carnes Don Pepe', actorUserId);
+      expect(expensesRepository.create).toHaveBeenCalledWith(
+        expect.objectContaining({ supplierId: 'supplier-9' }),
+        expect.anything(),
+      );
+      expect(supplierPayablesService.createForPurchase).toHaveBeenCalledWith(
+        expect.objectContaining({ supplierId: 'supplier-9', supplierName: 'Carnes Don Pepe' }),
+        expect.anything(),
+      );
+    });
+
+    it('keeps the supplier of a purchase paid in cash', async () => {
+      await service.create(baseCreateData({ supplierId: 'supplier-1' }) as never, actorUserId);
+
+      expect(suppliersService.findOne).toHaveBeenCalledWith(businessId, 'supplier-1');
+      expect(supplierPayablesService.createForPurchase).not.toHaveBeenCalled();
+    });
+
+    it('does not reclassify a purchase on credit', async () => {
+      expensesRepository.findById.mockResolvedValue(
+        makeExpenseRow({ payment_source: ExpensePaymentSource.SUPPLIER_CREDIT, supplier_id: 'supplier-1' }),
+      );
+
+      await expect(
+        service.reclassifySource(businessId, 'expense-1', {
+          paymentSource: ExpensePaymentSource.BANK_ACCOUNT,
+          reason: 'cambio',
+          actorUserId,
+        }),
+      ).rejects.toThrow(BusinessRuleException);
+    });
+
+    it('voids the payable when a purchase on credit is deleted', async () => {
+      expensesRepository.findById.mockResolvedValue(
+        makeExpenseRow({ payment_source: ExpensePaymentSource.SUPPLIER_CREDIT, supplier_id: 'supplier-1' }),
+      );
+      expensesRepository.softDelete.mockResolvedValue(makeExpenseRow());
+
+      await service.softDelete(businessId, 'expense-1', actorUserId);
+
+      expect(supplierPayablesService.voidInTransaction).toHaveBeenCalledWith(
+        businessId,
+        'expense-1',
+        expect.any(String),
+        actorUserId,
+        expect.anything(),
+      );
     });
   });
 

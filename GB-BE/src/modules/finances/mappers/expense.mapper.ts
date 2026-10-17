@@ -20,6 +20,7 @@ export class ExpenseMapper {
       paymentSource: row.payment_source,
       payerEmployeeId: row.payer_employee_id,
       payerName: row.payer_name,
+      supplierId: row.supplier_id,
       cashSessionId: row.cash_session_id,
       cashMovementId: row.cash_movement_id,
       fundMovementId: row.fund_movement_id,

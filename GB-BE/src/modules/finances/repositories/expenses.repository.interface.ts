@@ -35,7 +35,8 @@ export interface IExpensesRepository {
     data: UpdateExpenseSourceData,
     client: DbClient,
   ): Promise<ExpenseRow>;
-  softDelete(id: string, businessId: string): Promise<ExpenseRow | null>;
+  softDelete(id: string, businessId: string, client?: DbClient): Promise<ExpenseRow | null>;
+  findSupplierNames(supplierIds: string[]): Promise<Map<string, string>>;
   /** Total spent on each day of the range that has expenses, oldest first. */
   getDailyTotals(query: ExpenseSummaryQuery): Promise<ExpenseDailyTotalRow[]>;
   getSummaryByCategory(

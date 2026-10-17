@@ -16,6 +16,7 @@ import SearchInput from '../common/SearchInput';
 import NotificationsMenu from './NotificationsMenu';
 import UserMenu from './UserMenu';
 import BackendHealthIndicator from './BackendHealthIndicator';
+import EnvironmentChip from '../common/EnvironmentChip';
 import { searchGlobal } from '../../services/globalSearch';
 
 export default function Header() {
@@ -101,6 +102,7 @@ export default function Header() {
         <Box sx={{ flex: 1 }} />
 
         <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>
+          <EnvironmentChip />
           <BackendHealthIndicator />
           <NotificationsMenu />
           <UserMenu />

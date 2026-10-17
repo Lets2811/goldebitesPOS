@@ -1,5 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 import {
+  BusinessRuleException,
   ConflictException,
   EntityNotFoundException,
 } from '../../../common/exceptions';
@@ -11,6 +12,7 @@ import {
   ProductCategoryRow,
 } from '../domain/product-category.interface';
 import {
+  CategoryOrderScope,
   CreateProductCategoryData,
   ProductCategoryQuery,
   UpdateProductCategoryData,
@@ -140,5 +142,34 @@ export class ProductCategoriesService {
       throw new EntityNotFoundException('ProductCategory', id);
     }
     return row;
+  }
+
+  /**
+   * The order of the sections customers see, in the regular menu or in
+   * "Arma tu combo": `categoryIds` from first to last. Every id must be a
+   * distinct category of this business; categories left out keep their place.
+   */
+  async setOrder(
+    businessId: string,
+    scope: CategoryOrderScope,
+    categoryIds: string[],
+    actorUserId?: string,
+  ): Promise<void> {
+    if (new Set(categoryIds).size !== categoryIds.length) {
+      throw new BusinessRuleException('A category appears twice in the order', 'DUPLICATE_CATEGORY_IN_ORDER');
+    }
+    const owned = await this.categoriesRepository.countOwned(businessId, categoryIds);
+    if (owned !== categoryIds.length) {
+      throw new EntityNotFoundException('ProductCategory', 'one or more of the given ids');
+    }
+    await this.categoriesRepository.setOrder(businessId, scope, categoryIds);
+    await this.auditService.record({
+      businessId,
+      userId: actorUserId,
+      entityType: 'product_category',
+      entityId: businessId,
+      action: scope === CategoryOrderScope.BUILDER ? 'REORDER_BUILDER' : 'REORDER_MENU',
+      newValues: { categoryIds },
+    });
   }
 }

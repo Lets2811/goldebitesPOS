@@ -11,6 +11,10 @@ export function useCreateExpense() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: expenseKeys.all });
       queryClient.invalidateQueries({ queryKey: ['funds'] });
+      // Una compra a crédito abre una cuenta por pagar, y con un proveedor nuevo cambia la lista de proveedores.
+      queryClient.invalidateQueries({ queryKey: ['supplier-payables'] });
+      queryClient.invalidateQueries({ queryKey: ['suppliers'] });
+      queryClient.invalidateQueries({ queryKey: ['cash-sessions'] });
     },
   });
 }

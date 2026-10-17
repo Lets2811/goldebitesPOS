@@ -1,5 +1,5 @@
 import { Suspense, lazy } from 'react';
-import { Routes, Route } from 'react-router-dom';
+import { Navigate, Routes, Route } from 'react-router-dom';
 import AppLayout from '../components/layout/AppLayout';
 import LoadingSkeleton from '../components/common/LoadingSkeleton';
 import ProtectedRoute from './ProtectedRoute';
@@ -7,7 +7,7 @@ import PlatformAdminRoute from './PlatformAdminRoute';
 import AuthProtectedRoute from '../modules/auth/components/protected-route';
 import ForbiddenPage from './ForbiddenPage';
 import NotFoundPage from './NotFoundPage';
-import { MODULE_PATHS, MODULE_PERMISSIONS, isModuleDisabled } from './navConfig';
+import { LEGACY_PATH_REDIRECTS, MODULE_PATHS, MODULE_PERMISSIONS, isModuleDisabled } from './navConfig';
 import { KIOSK_PATHS, KIOSK_PERMISSIONS } from './kioskConfig';
 
 const LoginPage = lazy(() => import('../modules/auth/pages/LoginPage'));
@@ -21,6 +21,9 @@ const OrdersBacklogPage = lazy(() => import('../features/orders/pages/OrdersBack
 const KitchenPage = lazy(() => import('../features/kitchen/pages/KitchenPage'));
 const CashRegisterPage = lazy(() => import('../features/cash-register/pages/CashRegisterPage'));
 const ProductsPage = lazy(() => import('../features/products/pages/ProductsPage'));
+const ProductsHubPage = lazy(() => import('../features/products/pages/ProductsHubPage'));
+const ProductsSectionPage = lazy(() => import('../features/products/pages/ProductsSectionPage'));
+const OptionGroupPage = lazy(() => import('../features/products/pages/OptionGroupPage'));
 const InventoryPage = lazy(() => import('../features/inventory/pages/InventoryPage'));
 const PurchasesPage = lazy(() => import('../features/purchases/pages/PurchasesPage'));
 const SuppliersPage = lazy(() => import('../features/suppliers/pages/SuppliersPage'));
@@ -28,7 +31,11 @@ const CustomersPage = lazy(() => import('../features/customers/pages/CustomersPa
 const LoyaltyPage = lazy(() => import('../features/loyalty/pages/LoyaltyPage'));
 const FinancesPage = lazy(() => import('../features/finances/pages/FinancesPage'));
 const EmployeesPage = lazy(() => import('../features/employees/pages/EmployeesPage'));
+const HumanResourcesLayout = lazy(() => import('../features/hr/pages/HumanResourcesLayout'));
 const HrSettingsPage = lazy(() => import('../features/hr/pages/HrSettingsPage'));
+const RosterPage = lazy(() => import('../features/hr/pages/RosterPage'));
+const TasksBoardPage = lazy(() => import('../features/hr/pages/TasksBoardPage'));
+const LeaveRequestsPage = lazy(() => import('../features/hr/pages/LeaveRequestsPage'));
 const MyProfilePage = lazy(() => import('../features/hr/pages/MyProfilePage'));
 const ChecklistsPage = lazy(() => import('../features/checklists/pages/ChecklistsPage'));
 const WastePage = lazy(() => import('../features/waste/pages/WastePage'));
@@ -142,10 +149,45 @@ export default function AppRoutes() {
               path={MODULE_PATHS.products}
               element={
                 <Loadable>
+                  <ProductsHubPage />
+                </Loadable>
+              }
+            />
+            <Route
+              path={MODULE_PATHS.productsCatalog}
+              element={
+                <Loadable>
                   <ProductsPage />
                 </Loadable>
               }
             />
+            {(
+              [
+                [MODULE_PATHS.productsCategories, 'categorias'],
+                [MODULE_PATHS.productsMenuOrganizer, 'organizar'],
+              ] as const
+            ).map(([path, section]) => (
+              <Route
+                key={path}
+                path={path}
+                element={
+                  <Loadable>
+                    <ProductsSectionPage section={section} />
+                  </Loadable>
+                }
+              />
+            ))}
+            <Route
+              path={MODULE_PATHS.productsOptionGroup}
+              element={
+                <Loadable>
+                  <OptionGroupPage />
+                </Loadable>
+              }
+            />
+            {/* Old addresses of the two fixed option screens, now groups of their own. */}
+            <Route path="/productos/salsas" element={<Navigate to={MODULE_PATHS.products} replace />} />
+            <Route path="/productos/acompanantes" element={<Navigate to={MODULE_PATHS.products} replace />} />
           </Route>
           <Route element={<ProtectedRoute permission={MODULE_PERMISSIONS.inventory} module="inventory" />}>
             <Route
@@ -212,26 +254,78 @@ export default function AppRoutes() {
               }
             />
           </Route>
-          <Route element={<ProtectedRoute permission={MODULE_PERMISSIONS.employees} module="employees" />}>
-            <Route
-              path={MODULE_PATHS.employees}
-              element={
-                <Loadable>
-                  <EmployeesPage />
-                </Loadable>
-              }
-            />
+          <Route
+            path={MODULE_PATHS.hr}
+            element={
+              <Loadable>
+                <HumanResourcesLayout />
+              </Loadable>
+            }
+          >
+            <Route element={<ProtectedRoute permission={MODULE_PERMISSIONS.employees} module="employees" />}>
+              <Route
+                path={MODULE_PATHS.employees}
+                element={
+                  <Loadable>
+                    <EmployeesPage />
+                  </Loadable>
+                }
+              />
+            </Route>
+            <Route element={<ProtectedRoute permission={MODULE_PERMISSIONS.employees} module="employees" />}>
+              <Route
+                path={MODULE_PATHS.hrRoster}
+                element={
+                  <Loadable>
+                    <RosterPage />
+                  </Loadable>
+                }
+              />
+            </Route>
+            <Route element={<ProtectedRoute permission="tasks.manage" module="hr" />}>
+              <Route
+                path={MODULE_PATHS.hrTasks}
+                element={
+                  <Loadable>
+                    <TasksBoardPage />
+                  </Loadable>
+                }
+              />
+            </Route>
+            <Route element={<ProtectedRoute permission="leave.approve" module="hr" />}>
+              <Route
+                path={MODULE_PATHS.hrLeave}
+                element={
+                  <Loadable>
+                    <LeaveRequestsPage />
+                  </Loadable>
+                }
+              />
+            </Route>
+            <Route element={<ProtectedRoute permission={MODULE_PERMISSIONS.roles} module="roles" />}>
+              <Route
+                path={MODULE_PATHS.roles}
+                element={
+                  <Loadable>
+                    <RolesPage />
+                  </Loadable>
+                }
+              />
+            </Route>
+            <Route element={<ProtectedRoute permission={MODULE_PERMISSIONS.hr} module="hr" />}>
+              <Route
+                path={MODULE_PATHS.hrRules}
+                element={
+                  <Loadable>
+                    <HrSettingsPage />
+                  </Loadable>
+                }
+              />
+            </Route>
           </Route>
-          <Route element={<ProtectedRoute permission={MODULE_PERMISSIONS.hr} module="hr" />}>
-            <Route
-              path={MODULE_PATHS.hr}
-              element={
-                <Loadable>
-                  <HrSettingsPage />
-                </Loadable>
-              }
-            />
-          </Route>
+          {Object.entries(LEGACY_PATH_REDIRECTS).map(([from, to]) => (
+            <Route key={from} path={from} element={<Navigate to={to} replace />} />
+          ))}
           <Route element={<ProtectedRoute permission="hr.read" module="hr" />}>
             <Route
               path="/mi-perfil"
@@ -336,16 +430,6 @@ export default function AppRoutes() {
               element={
                 <Loadable>
                   <BranchTablesNfcPage />
-                </Loadable>
-              }
-            />
-          </Route>
-          <Route element={<ProtectedRoute permission={MODULE_PERMISSIONS.roles} module="roles" />}>
-            <Route
-              path={MODULE_PATHS.roles}
-              element={
-                <Loadable>
-                  <RolesPage />
                 </Loadable>
               }
             />

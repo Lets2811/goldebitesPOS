@@ -8,6 +8,7 @@ import Box from '@mui/material/Box';
 import { alpha } from '@mui/material/styles';
 import { ChefHat, PackageCheck } from 'lucide-react';
 import StatusChip from '../../../components/common/StatusChip';
+import OptionSelectionsText from '../../../modules/option-groups/components/OptionSelectionsText';
 import OrderTimer from '../../orders/components/OrderTimer';
 import { useOrder } from '../../../modules/orders/hooks/use-order';
 import {
@@ -78,14 +79,9 @@ export default function KitchenOrderCard({
               <Typography variant="body1" sx={{ fontWeight: 700 }}>
                 {item.quantity}× {item.productNameSnapshot}
               </Typography>
-              {(item.sauceNames.length > 0 || item.sideNames.length > 0) && (
+              {item.optionSelections.length > 0 && (
                 <Typography variant="caption" sx={{ display: 'block' }}>
-                  {[
-                    item.sauceNames.length > 0 && `Salsas: ${item.sauceNames.join(', ')}`,
-                    item.sideNames.length > 0 && `Acompañantes: ${item.sideNames.join(', ')}`,
-                  ]
-                    .filter(Boolean)
-                    .join(' · ')}
+                  <OptionSelectionsText item={item} />
                 </Typography>
               )}
               {item.notes && (

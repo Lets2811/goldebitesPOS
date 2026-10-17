@@ -164,6 +164,79 @@ describe('CashSessionsRepository (integration)', () => {
     expect(expected).toBe(50000);
   });
 
+  it('getExpectedClosingAmount() takes INCOME_REVERSAL back out, undoing a voided other income', async () => {
+    const session = await repository.create(
+      { businessId, branchId, openingAmount: 50000 },
+      userId,
+    );
+
+    await repository.addMovement({
+      cashSessionId: session.id,
+      movementType: CashMovementType.INCOME,
+      amount: 12000,
+    });
+    await repository.addMovement({
+      cashSessionId: session.id,
+      movementType: CashMovementType.INCOME_REVERSAL,
+      amount: 12000,
+    });
+
+    const expected = await repository.getExpectedClosingAmount(session.id);
+    expect(expected).toBe(50000);
+  });
+
+  it('counts an income by transfer toward the expected transfers, not the expected cash', async () => {
+    const session = await repository.create(
+      { businessId, branchId, openingAmount: 50000 },
+      userId,
+    );
+
+    await repository.addMovement({
+      cashSessionId: session.id,
+      movementType: CashMovementType.INCOME,
+      paymentMethod: PaymentMethod.CASH,
+      amount: 10000,
+    });
+    await repository.addMovement({
+      cashSessionId: session.id,
+      movementType: CashMovementType.INCOME,
+      paymentMethod: PaymentMethod.TRANSFER,
+      amount: 30000,
+    });
+    await repository.addMovement({
+      cashSessionId: session.id,
+      movementType: CashMovementType.SALE,
+      paymentMethod: PaymentMethod.TRANSFER,
+      amount: 20000,
+    });
+
+    expect(await repository.getExpectedClosingAmount(session.id)).toBe(60000);
+    expect(await repository.getExpectedTransferAmount(session.id)).toBe(50000);
+  });
+
+  it('takes a voided transfer income back out of the expected transfers', async () => {
+    const session = await repository.create(
+      { businessId, branchId, openingAmount: 50000 },
+      userId,
+    );
+
+    await repository.addMovement({
+      cashSessionId: session.id,
+      movementType: CashMovementType.INCOME,
+      paymentMethod: PaymentMethod.TRANSFER,
+      amount: 30000,
+    });
+    await repository.addMovement({
+      cashSessionId: session.id,
+      movementType: CashMovementType.INCOME_REVERSAL,
+      paymentMethod: PaymentMethod.TRANSFER,
+      amount: 30000,
+    });
+
+    expect(await repository.getExpectedClosingAmount(session.id)).toBe(50000);
+    expect(await repository.getExpectedTransferAmount(session.id)).toBe(0);
+  });
+
   it('findAllOpen() returns only OPEN sessions for the business, optionally scoped to a branch', async () => {
     // Dedicated branches, isolated from the shared `branchId` other tests in
     // this file leave open sessions on — the scoped assertion below needs a

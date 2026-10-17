@@ -4,6 +4,7 @@ import {
   CreateProductCategoryData,
   ProductCategoryQuery,
   UpdateProductCategoryData,
+  CategoryOrderScope,
 } from '../domain/product-category.types';
 
 export interface IProductCategoriesRepository {
@@ -35,6 +36,8 @@ export interface IProductCategoriesRepository {
     name: string,
     excludeId?: string,
   ): Promise<boolean>;
+  countOwned(businessId: string, ids: string[]): Promise<number>;
+  setOrder(businessId: string, scope: CategoryOrderScope, ids: string[]): Promise<void>;
 }
 
 export const PRODUCT_CATEGORIES_REPOSITORY = Symbol(

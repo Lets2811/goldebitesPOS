@@ -1,3 +1,4 @@
+import { ProductMenuAvailability } from '../domain/product.types';
 import {
   ConflictException,
   EntityNotFoundException,
@@ -6,6 +7,11 @@ import { ProductRow } from '../domain/product.interface';
 import { ProductsService } from './products.service';
 
 describe('ProductsService', () => {
+  let optionGroupsService: {
+    getProductGroups: jest.Mock;
+    assertProductGroupsValid: jest.Mock;
+    setProductGroups: jest.Mock;
+  };
   let repository: {
     create: jest.Mock;
     findById: jest.Mock;
@@ -17,6 +23,9 @@ describe('ProductsService', () => {
     setCurrentCost: jest.Mock;
     softDelete: jest.Mock;
     existsBySku: jest.Mock;
+    setImage: jest.Mock;
+    clearImage: jest.Mock;
+    findImageFile: jest.Mock;
   };
   let categoriesService: { findOne: jest.Mock };
   let auditService: { record: jest.Mock };
@@ -35,11 +44,13 @@ describe('ProductsService', () => {
       sale_price: '25000.00',
       current_cost: '0.00',
       image_url: null,
+      image_path: null,
+      image_mime_type: null,
+      image_updated_at: null,
       is_active: true,
       is_visible: true,
       track_inventory: true,
-      max_sauces: 0,
-      max_sides: 0,
+      menu_availability: ProductMenuAvailability.MENU,
       created_at: new Date(),
       updated_at: new Date(),
       deleted_at: null,
@@ -59,13 +70,22 @@ describe('ProductsService', () => {
       setCurrentCost: jest.fn(),
       softDelete: jest.fn(),
       existsBySku: jest.fn(),
+      setImage: jest.fn(),
+      clearImage: jest.fn(),
+      findImageFile: jest.fn(),
     };
     categoriesService = { findOne: jest.fn() };
+    optionGroupsService = {
+      getProductGroups: jest.fn().mockResolvedValue(new Map()),
+      assertProductGroupsValid: jest.fn(),
+      setProductGroups: jest.fn(),
+    };
     auditService = { record: jest.fn() };
     service = new ProductsService(
       repository,
       categoriesService as never,
       auditService as never,
+      optionGroupsService as never,
     );
   });
 
@@ -104,6 +124,90 @@ describe('ProductsService', () => {
 
       expect(product.salePrice).toBe(25000.5);
       expect(typeof product.salePrice).toBe('number');
+    });
+
+    it('validates and saves the option groups the product offers, and returns them', async () => {
+      const groups = [{ groupId: 'g-salsas', maxChoices: 2 }];
+      repository.create.mockResolvedValue(makeRow());
+      optionGroupsService.getProductGroups.mockResolvedValue(
+        new Map([['product-1', groups]]),
+      );
+
+      const product = await service.create({
+        businessId,
+        name: 'Classic Burger',
+        optionGroups: groups,
+      });
+
+      expect(optionGroupsService.assertProductGroupsValid).toHaveBeenCalledWith(
+        businessId,
+        groups,
+      );
+      expect(optionGroupsService.setProductGroups).toHaveBeenCalledWith(
+        'product-1',
+        groups,
+      );
+      expect(product.optionGroups).toEqual(groups);
+    });
+
+    it('does not save anything when a group is not valid', async () => {
+      optionGroupsService.assertProductGroupsValid.mockRejectedValue(
+        new ConflictException('nope', 'PRODUCT_OPTION_GROUP_UNKNOWN'),
+      );
+
+      await expect(
+        service.create({
+          businessId,
+          name: 'Classic Burger',
+          optionGroups: [{ groupId: 'other', maxChoices: 1 }],
+        }),
+      ).rejects.toThrow(ConflictException);
+      expect(repository.create).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('photo', () => {
+    it('serves an uploaded photo from the public, versioned image URL', async () => {
+      const uploadedAt = new Date('2026-10-16T12:00:00Z');
+      repository.findById.mockResolvedValue(makeRow({ image_path: null }));
+      repository.setImage.mockResolvedValue(
+        makeRow({
+          image_url: 'https://old.example.com/a.jpg',
+          image_path: '/uploads/product-images/x.webp',
+          image_mime_type: 'image/webp',
+          image_updated_at: uploadedAt,
+        }),
+      );
+
+      const product = await service.setImage(
+        businessId,
+        'product-1',
+        '/uploads/product-images/x.webp',
+        'image/webp',
+      );
+
+      expect(product.imageUrl).toBe(
+        `/api/v1/public/product-images/product-1?v=${uploadedAt.getTime()}`,
+      );
+    });
+
+    it('keeps a linked photo when nothing was uploaded', async () => {
+      repository.findById.mockResolvedValue(
+        makeRow({ image_url: 'https://cdn.example.com/a.jpg' }),
+      );
+
+      const product = await service.findOne(businessId, 'product-1');
+
+      expect(product.imageUrl).toBe('https://cdn.example.com/a.jpg');
+    });
+
+    it("doesn't save a photo for a product of another business", async () => {
+      repository.findById.mockResolvedValue(null);
+
+      await expect(
+        service.setImage(businessId, 'other', '/tmp/x.webp', 'image/webp'),
+      ).rejects.toThrow(EntityNotFoundException);
+      expect(repository.setImage).not.toHaveBeenCalled();
     });
   });
 
@@ -171,9 +275,18 @@ describe('ProductsService', () => {
       repository.findById.mockResolvedValue(makeRow());
       repository.setVisible.mockResolvedValue(makeRow({ is_visible: false }));
 
-      const product = await service.setVisible(businessId, 'product-1', false, 'user-1');
+      const product = await service.setVisible(
+        businessId,
+        'product-1',
+        false,
+        'user-1',
+      );
 
-      expect(repository.setVisible).toHaveBeenCalledWith('product-1', businessId, false);
+      expect(repository.setVisible).toHaveBeenCalledWith(
+        'product-1',
+        businessId,
+        false,
+      );
       expect(product.isVisible).toBe(false);
       expect(product.isActive).toBe(true);
       expect(auditService.record).toHaveBeenCalledWith(
@@ -196,9 +309,9 @@ describe('ProductsService', () => {
       repository.findById.mockResolvedValue(makeRow());
       repository.setVisible.mockResolvedValue(null);
 
-      await expect(service.setVisible(businessId, 'product-1', false)).rejects.toThrow(
-        EntityNotFoundException,
-      );
+      await expect(
+        service.setVisible(businessId, 'product-1', false),
+      ).rejects.toThrow(EntityNotFoundException);
     });
   });
 });

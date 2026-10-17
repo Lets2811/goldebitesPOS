@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react';
 import Box from '@mui/material/Box';
 import Stack from '@mui/material/Stack';
+import { useSnackbar } from 'notistack';
 import FormDrawer from '../../../components/common/FormDrawer';
 import CategoryTabs from '../../kiosk-waiter/components/CategoryTabs';
 import ProductGrid from '../../kiosk-waiter/components/ProductGrid';
 import OrderCartList from './OrderCartList';
-import { useCartLines } from '../../../modules/orders/hooks/use-cart-lines';
+import { cartLineToOrderItem, useCartLines } from '../../../modules/orders/hooks/use-cart-lines';
+import { useRequiredOptionCheck } from '../../../modules/option-groups/hooks/use-required-option-check';
 import { formatCOP } from '../../../utils/format';
 import type { OrderWithItems, CreateOrderItemPayload } from '../../../modules/orders/types/order.types';
 
@@ -26,7 +28,9 @@ export default function AddOrderItemsDrawer({
   onSubmit,
 }: AddOrderItemsDrawerProps) {
   const [categoryId, setCategoryId] = useState<string | null>(null);
-  const { cart, addToCart, toggleSauce, toggleSide, increment, decrement, remove, clear } = useCartLines();
+  const { cart, addToCart, toggleOption, increment, decrement, remove, clear } = useCartLines();
+  const { enqueueSnackbar } = useSnackbar();
+  const checkRequiredOptions = useRequiredOptionCheck();
 
   useEffect(() => {
     if (open) clear();
@@ -37,14 +41,12 @@ export default function AddOrderItemsDrawer({
   const canSubmit = cart.length > 0 && !loading;
 
   function handleSubmit() {
-    onSubmit(
-      cart.map((line) => ({
-        productId: line.productId,
-        quantity: line.quantity,
-        sauceIds: line.sauceIds.length ? line.sauceIds : undefined,
-        sideIds: line.sideIds.length ? line.sideIds : undefined,
-      })),
-    );
+    const missingOption = checkRequiredOptions(cart);
+    if (missingOption) {
+      enqueueSnackbar(missingOption, { variant: 'error' });
+      return;
+    }
+    onSubmit(cart.map(cartLineToOrderItem));
   }
 
   if (!order) return null;
@@ -92,8 +94,7 @@ export default function AddOrderItemsDrawer({
             onIncrement={increment}
             onDecrement={decrement}
             onRemove={remove}
-            onToggleSauce={toggleSauce}
-            onToggleSide={toggleSide}
+            onToggleOption={toggleOption}
           />
         </Box>
       </Stack>

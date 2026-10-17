@@ -88,7 +88,12 @@ export function useAutoPrintKitchenTickets(
           } else if (knownItemState) {
             const newItems = fullOrder.items.filter((item) => !knownItemState.itemIds.includes(item.id));
             if (newItems.length > 0) {
-              printKitchenTicket(fullOrder, { businessName, businessLogo, addedItems: newItems, tableNames });
+              printKitchenTicket(fullOrder, {
+                businessName,
+                businessLogo,
+                addedItems: newItems,
+                tableNames,
+              });
               playOrderNotificationSound();
             }
           }

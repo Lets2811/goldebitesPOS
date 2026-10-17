@@ -11,6 +11,7 @@ import IconButton from '@mui/material/IconButton';
 import Tooltip from '@mui/material/Tooltip';
 import { ArrowLeft, BookOpen, ClipboardList, LogOut, MapPin, Plus, Share2, X } from 'lucide-react';
 import { useSnackbar } from 'notistack';
+import { useRequiredOptionCheck } from '../../../modules/option-groups/hooks/use-required-option-check';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../../modules/auth/store/auth.store';
 import { useLogout } from '../../../modules/auth/hooks/use-logout';
@@ -18,7 +19,7 @@ import { useCurrentBusiness } from '../../../modules/businesses/hooks/use-curren
 import { useBranch } from '../../../modules/branches/hooks/use-branch';
 import { useCreateOrder } from '../../../modules/orders/hooks/use-create-order';
 import { useUpdateOrderStatus } from '../../../modules/orders/hooks/use-update-order-status';
-import { useCartLines } from '../../../modules/orders/hooks/use-cart-lines';
+import { cartLineToOrderItem, useCartLines } from '../../../modules/orders/hooks/use-cart-lines';
 import { useOccupiedTables } from '../../../modules/orders/hooks/use-occupied-tables';
 import { getOrderIdentifierLabel } from '../../../modules/orders/order-status';
 import { useTableNameMap } from '../../../modules/table-names/hooks/use-table-name-map';
@@ -41,6 +42,7 @@ type Screen = 'menu' | 'order' | 'tables' | 'showMenu';
 
 export default function WaiterKioskPage() {
   const { enqueueSnackbar, closeSnackbar } = useSnackbar();
+  const checkRequiredOptions = useRequiredOptionCheck();
   const navigate = useNavigate();
   const business = useCurrentBusiness();
   const branchId = useAuthStore((s) => s.user?.branchId);
@@ -52,7 +54,7 @@ export default function WaiterKioskPage() {
 
   const [screen, setScreen] = useState<Screen>('menu');
   const [categoryId, setCategoryId] = useState<string | null>(null);
-  const { cart, addToCart, toggleSauce, toggleSide, increment, decrement, remove, clear } = useCartLines();
+  const { cart, addToCart, toggleOption, increment, decrement, remove, clear } = useCartLines();
   const [tableNumber, setTableNumber] = useState('');
   const [orderType, setOrderType] = useState<OrderType>('DINE_IN');
   const [customerName, setCustomerName] = useState('');
@@ -137,6 +139,11 @@ export default function WaiterKioskPage() {
       });
       return;
     }
+    const missingOption = checkRequiredOptions(cart);
+    if (missingOption) {
+      enqueueSnackbar(missingOption, { variant: 'error' });
+      return;
+    }
     if (orderType === 'DINE_IN' && tableNumber && occupiedTables.has(tableNumber)) {
       enqueueSnackbar('Esa mesa ya tiene un pedido activo. Usa "Agregar productos" desde ese pedido.', {
         variant: 'error',
@@ -151,12 +158,7 @@ export default function WaiterKioskPage() {
         tableNumber: orderType === 'DINE_IN' ? tableNumber || undefined : undefined,
         customerName: customerName || undefined,
         notes: orderNotes || undefined,
-        items: cart.map((line) => ({
-          productId: line.productId,
-          quantity: line.quantity,
-          sauceIds: line.sauceIds.length ? line.sauceIds : undefined,
-          sideIds: line.sideIds.length ? line.sideIds : undefined,
-        })),
+        items: cart.map(cartLineToOrderItem),
       },
       {
         onSuccess: (order) => {
@@ -363,8 +365,7 @@ export default function WaiterKioskPage() {
               onIncrement={increment}
               onDecrement={decrement}
               onRemove={remove}
-              onToggleSauce={toggleSauce}
-              onToggleSide={toggleSide}
+              onToggleOption={toggleOption}
               tableNumber={tableNumber}
               onTableNumberChange={setTableNumber}
               tableCount={branch?.tableCount}

@@ -198,8 +198,7 @@ export default function OrdersPage() {
           productId: item.productId,
           quantity: item.quantity,
           notes: item.notes || undefined,
-          sauceIds: item.sauceIds?.length ? item.sauceIds : undefined,
-          sideIds: item.sideIds?.length ? item.sideIds : undefined,
+          optionItemIds: item.optionItemIds?.length ? item.optionItemIds : undefined,
         })),
       },
       {

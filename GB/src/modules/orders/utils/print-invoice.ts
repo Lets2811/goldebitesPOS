@@ -2,6 +2,7 @@ import { formatCOP } from '../../../utils/format';
 import { ORDER_TYPE_LABELS, PAYMENT_METHOD_LABELS, getOrderIdentifierLabel } from '../order-status';
 import { printThermalDocument } from './print-thermal-document';
 import { escapeHtml } from './escape-html';
+import { formatOptionSelections } from '../../option-groups/utils/option-group-utils';
 import type { OrderWithItems } from '../types/order.types';
 import type { Payment } from '../types/payment.types';
 
@@ -27,12 +28,7 @@ function buildInvoiceHtml(
 
   const itemsHtml = order.items
     .map((item) => {
-      const selections = [
-        item.sauceNames.length > 0 && `Salsas: ${item.sauceNames.join(', ')}`,
-        item.sideNames.length > 0 && `Acompañantes: ${item.sideNames.join(', ')}`,
-      ]
-        .filter(Boolean)
-        .join(' · ');
+      const selections = formatOptionSelections(item).join(' · ');
       return `
         <div class="item">
           <div class="item-line">

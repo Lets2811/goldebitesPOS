@@ -1,3 +1,4 @@
+import { ProductMenuAvailability } from '../../products/domain/product.types';
 import { EntityNotFoundException } from '../../../common/exceptions';
 import { PublicMenuService } from './public-menu.service';
 
@@ -5,8 +6,7 @@ describe('PublicMenuService', () => {
   let businessesService: { findById: jest.Mock };
   let productCategoriesService: { findAll: jest.Mock };
   let productsService: { findAll: jest.Mock };
-  let saucesService: { findAll: jest.Mock };
-  let sidesService: { findAll: jest.Mock };
+  let optionGroupsService: { findAll: jest.Mock };
   let service: PublicMenuService;
 
   const businessId = 'business-1';
@@ -16,8 +16,8 @@ describe('PublicMenuService', () => {
     productCategoriesService = {
       findAll: jest.fn().mockResolvedValue({
         data: [
-          { id: 'cat-drinks', name: 'Bebidas' },
-          { id: 'cat-empty', name: 'Sin productos activos' },
+          { id: 'cat-drinks', name: 'Bebidas', builderDisplayOrder: 2 },
+          { id: 'cat-empty', name: 'Sin productos activos', builderDisplayOrder: 1 },
         ],
       }),
     };
@@ -31,8 +31,8 @@ describe('PublicMenuService', () => {
             description: 'Con hierbabuena',
             categoryId: 'cat-drinks',
             imageUrl: null,
-            maxSauces: 0,
-            maxSides: 0,
+            optionGroups: [],
+            menuAvailability: ProductMenuAvailability.MENU,
           },
           {
             id: 'p2',
@@ -41,8 +41,8 @@ describe('PublicMenuService', () => {
             description: null,
             categoryId: 'cat-drinks',
             imageUrl: null,
-            maxSauces: 0,
-            maxSides: 0,
+            optionGroups: [],
+            menuAvailability: ProductMenuAvailability.BOTH,
           },
           {
             id: 'p3',
@@ -51,24 +51,41 @@ describe('PublicMenuService', () => {
             description: 'Solo por hoy',
             categoryId: null,
             imageUrl: 'https://cdn.example.com/combo.jpg',
-            maxSauces: 2,
-            maxSides: 1,
+            optionGroups: [
+              { groupId: 'g-salsas', maxChoices: 2 },
+              { groupId: 'g-off', maxChoices: 1 },
+              { groupId: 'g-empty', maxChoices: 1 },
+            ],
+            menuAvailability: ProductMenuAvailability.MENU,
           },
         ],
       }),
     };
-    saucesService = {
-      findAll: jest.fn().mockResolvedValue({ data: [{ id: 's1', name: 'BBQ' }, { id: 's2', name: 'Picante' }] }),
-    };
-    sidesService = {
-      findAll: jest.fn().mockResolvedValue({ data: [{ id: 'sd1', name: 'Papas' }] }),
+    optionGroupsService = {
+      findAll: jest.fn().mockResolvedValue([
+        {
+          id: 'g-salsas',
+          name: 'Salsas',
+          singularName: 'Salsa',
+          isActive: true,
+          isRequired: true,
+          items: [
+            { id: 's1', name: 'BBQ', isActive: true },
+            { id: 's-old', name: 'Vieja', isActive: false },
+            { id: 's2', name: 'Picante', isActive: true },
+          ],
+        },
+        // Turned off by the business.
+        { id: 'g-off', name: 'Hielo', singularName: 'Hielo', isActive: false, isRequired: false, items: [{ id: 'h1', name: 'Sin hielo', isActive: true }] },
+        // Nothing active to pick.
+        { id: 'g-empty', name: 'Tamaño', singularName: 'Tamaño', isActive: true, isRequired: false, items: [{ id: 't1', name: 'XL', isActive: false }] },
+      ]),
     };
     service = new PublicMenuService(
       businessesService as never,
       productCategoriesService as never,
       productsService as never,
-      saucesService as never,
-      sidesService as never,
+      optionGroupsService as never,
     );
   });
 
@@ -84,12 +101,6 @@ describe('PublicMenuService', () => {
     );
   });
 
-  it('only fetches active sauces and sides', async () => {
-    await service.getMenu(businessId);
-    expect(saucesService.findAll).toHaveBeenCalledWith(expect.objectContaining({ businessId, isActive: true }));
-    expect(sidesService.findAll).toHaveBeenCalledWith(expect.objectContaining({ businessId, isActive: true }));
-  });
-
   it('groups active products by category, sorted by name within each category', async () => {
     const menu = await service.getMenu(businessId);
 
@@ -98,20 +109,80 @@ describe('PublicMenuService', () => {
     expect(drinks?.products.map((p) => p.name)).toEqual(['Agua', 'Limonada']);
   });
 
-  it('includes image, maxSauces, and maxSides on each product', async () => {
+  it('includes the image and the option groups each product offers, leaving out groups that are off or empty', async () => {
     const menu = await service.getMenu(businessId);
     const combo = menu.categories.flatMap((c) => c.products).find((p) => p.id === 'p3');
 
     expect(combo).toEqual(
-      expect.objectContaining({ imageUrl: 'https://cdn.example.com/combo.jpg', maxSauces: 2, maxSides: 1 }),
+      expect.objectContaining({
+        imageUrl: 'https://cdn.example.com/combo.jpg',
+        optionGroups: [{ groupId: 'g-salsas', maxChoices: 2 }],
+      }),
     );
   });
 
-  it('returns the business-wide active sauces/sides once, not duplicated per product', async () => {
+  it('returns the business-wide groups once, with only their active options', async () => {
     const menu = await service.getMenu(businessId);
 
-    expect(menu.sauces).toEqual([{ id: 's1', name: 'BBQ' }, { id: 's2', name: 'Picante' }]);
-    expect(menu.sides).toEqual([{ id: 'sd1', name: 'Papas' }]);
+    expect(menu.optionGroups).toEqual([
+      {
+        id: 'g-salsas',
+        name: 'Salsas',
+        singularName: 'Salsa',
+        isRequired: true,
+        items: [
+          { id: 's1', name: 'BBQ' },
+          { id: 's2', name: 'Picante' },
+        ],
+      },
+    ]);
+  });
+
+  describe('"Arma tu combo"', () => {
+    it('keeps builder-only products out of the regular menu and shows "both" products in each', async () => {
+      productsService.findAll.mockResolvedValue({
+        data: [
+          { id: 'menu', name: 'Limonada', salePrice: 8000, description: null, categoryId: 'cat-drinks', imageUrl: null, optionGroups: [], menuAvailability: ProductMenuAvailability.MENU },
+          { id: 'both', name: 'Agua', salePrice: 3000, description: null, categoryId: 'cat-drinks', imageUrl: null, optionGroups: [], menuAvailability: ProductMenuAvailability.BOTH },
+          { id: 'builder', name: 'Tenders x3', salePrice: 15000, description: null, categoryId: null, imageUrl: null, optionGroups: [{ groupId: 'g-salsas', maxChoices: 1 }], menuAvailability: ProductMenuAvailability.BUILDER },
+        ],
+      });
+
+      const menu = await service.getMenu('business-1');
+
+      const ids = (categories: typeof menu.categories) => categories.flatMap((c) => c.products.map((p) => p.id)).sort();
+      expect(ids(menu.categories)).toEqual(['both', 'menu']);
+      expect(ids(menu.builderCategories)).toEqual(['both', 'builder']);
+      // Uncategorized builder products still get the "Otros" bucket.
+      expect(menu.builderCategories.map((c) => c.name)).toEqual(['Bebidas', 'Otros']);
+    });
+
+    it('orders the builder sections by their own order, not the menu one', async () => {
+      productCategoriesService.findAll.mockResolvedValue({
+        data: [
+          // The menu order (the list's own order): Bebidas, then Tenders.
+          { id: 'cat-drinks', name: 'Bebidas', builderDisplayOrder: 2 },
+          { id: 'cat-tenders', name: 'Tenders', builderDisplayOrder: 1 },
+        ],
+      });
+      productsService.findAll.mockResolvedValue({
+        data: [
+          { id: 'drink', name: 'Agua', salePrice: 3000, description: null, categoryId: 'cat-drinks', imageUrl: null, optionGroups: [], menuAvailability: ProductMenuAvailability.BOTH },
+          { id: 'tender', name: 'Tenders x3', salePrice: 15000, description: null, categoryId: 'cat-tenders', imageUrl: null, optionGroups: [{ groupId: 'g-salsas', maxChoices: 1 }], menuAvailability: ProductMenuAvailability.BOTH },
+        ],
+      });
+
+      const menu = await service.getMenu('business-1');
+
+      expect(menu.categories.map((c) => c.name)).toEqual(['Bebidas', 'Tenders']);
+      expect(menu.builderCategories.map((c) => c.name)).toEqual(['Tenders', 'Bebidas']);
+    });
+
+    it('offers no builder when no product is marked for it', async () => {
+      const menu = await service.getMenu('business-1');
+
+      expect(menu.builderCategories.flatMap((c) => c.products.map((p) => p.id))).toEqual(['p2']);
+    });
   });
 
   it('omits categories with no active products', async () => {
@@ -128,7 +199,7 @@ describe('PublicMenuService', () => {
 
   it('omits the "Otros" bucket entirely when every active product has a category', async () => {
     productsService.findAll.mockResolvedValue({
-      data: [{ id: 'p1', name: 'Limonada', salePrice: 8000, description: null, categoryId: 'cat-drinks', imageUrl: null, maxSauces: 0, maxSides: 0 }],
+      data: [{ id: 'p1', name: 'Limonada', salePrice: 8000, description: null, categoryId: 'cat-drinks', imageUrl: null, optionGroups: [] }],
     });
 
     const menu = await service.getMenu(businessId);

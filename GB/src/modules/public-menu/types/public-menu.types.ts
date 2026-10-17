@@ -4,10 +4,8 @@ export interface PublicMenuProduct {
   salePrice: number;
   description: string | null;
   imageUrl: string | null;
-  /** How many of the menu's `sauces` this product allows picking — 0 means sauces don't apply. */
-  maxSauces: number;
-  /** How many of the menu's `sides` this product allows picking — 0 means sides don't apply. */
-  maxSides: number;
+  /** Cuáles de los `optionGroups` del menú ofrece el producto, y cuántas opciones de cada uno se eligen. */
+  optionGroups: { groupId: string; maxChoices: number }[];
 }
 
 export interface PublicMenuCategory {
@@ -21,11 +19,22 @@ export interface PublicMenuOption {
   name: string;
 }
 
+/** Un grupo de opciones para elegir ("Salsas", "Tamaño"...), con sus opciones activas. */
+export interface PublicMenuOptionGroup {
+  id: string;
+  name: string;
+  singularName: string;
+  /** Hay que elegir al menos una donde el producto ofrece el grupo. */
+  isRequired: boolean;
+  items: PublicMenuOption[];
+}
+
 export interface PublicMenu {
   businessName: string;
+  /** El menú normal: productos marcados "Solo menú" o "Ambos". */
   categories: PublicMenuCategory[];
-  /** The business's active sauces, shared across every product — not duplicated per product. */
-  sauces: PublicMenuOption[];
-  /** The business's active sides, shared across every product — not duplicated per product. */
-  sides: PublicMenuOption[];
+  /** "Arma tu combo": productos marcados "Solo arma tu combo" o "Ambos", por categoría. Vacío si no se ofrece. */
+  builderCategories: PublicMenuCategory[];
+  /** Los grupos de opciones activos del negocio, en orden, cada uno con sus opciones activas. */
+  optionGroups: PublicMenuOptionGroup[];
 }

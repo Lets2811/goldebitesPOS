@@ -7,8 +7,7 @@ import { InventoryMovementsModule } from '../inventory-movements/inventory-movem
 import { LoyaltyModule } from '../loyalty/loyalty.module';
 import { ProductsModule } from '../products/products.module';
 import { RecipesModule } from '../recipes/recipes.module';
-import { SaucesModule } from '../sauces/sauces.module';
-import { SidesModule } from '../sides/sides.module';
+import { OptionGroupsModule } from '../option-groups/option-groups.module';
 import { OrdersController } from './controllers/orders.controller';
 import { OrdersRepository } from './repositories/orders.repository';
 import { ORDERS_REPOSITORY } from './repositories/orders.repository.interface';
@@ -23,8 +22,7 @@ import { OrdersService } from './services/orders.service';
     InventoryMovementsModule,
     BusinessesModule,
     LoyaltyModule,
-    SaucesModule,
-    SidesModule,
+    OptionGroupsModule,
     AuditModule,
   ],
   controllers: [OrdersController],

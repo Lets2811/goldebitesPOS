@@ -14,6 +14,7 @@ import ErrorState from '../../../components/common/ErrorState';
 import EmptyState from '../../../components/common/EmptyState';
 import CurrencyDisplay from '../../../components/common/CurrencyDisplay';
 import { useAuthStore } from '../../../modules/auth/store/auth.store';
+import { useBranches } from '../../../modules/branches/hooks/use-branches';
 import { getRoleLabel } from '../../../modules/roles/role-labels';
 import { useMyHrProfile } from '../../../modules/hr/hooks/use-my-hr-profile';
 import { useMyShifts } from '../../../modules/employees/hooks/use-my-shifts';
@@ -28,11 +29,14 @@ import type {
 } from '../../../modules/employees/types/employee.types';
 import { SELF_SERVICE_PAY_FREQUENCIES } from '../../../modules/employees/types/employee.types';
 import WeeklyScheduleEditor from '../../employees/components/WeeklyScheduleEditor';
+import MyLeaveCard from '../components/MyLeaveCard';
+import MyTasksCard from '../components/MyTasksCard';
 
 export default function MyProfilePage() {
   const branchId = useAuthStore((s) => s.user?.branchId);
   const { enqueueSnackbar } = useSnackbar();
   const { data: profile, isLoading, isError, refetch } = useMyHrProfile();
+  const { data: branchPage } = useBranches({ isActive: true, limit: 50 });
   const { data: myShifts, isLoading: shiftsLoading } = useMyShifts();
   const replaceMyShifts = useReplaceMyShifts();
   const { data: myPayroll, isLoading: payrollLoading } = useMyPayroll();
@@ -54,7 +58,7 @@ export default function MyProfilePage() {
 
   return (
     <>
-      <PageHeader title="Mi Perfil" subtitle="Tu rol y las normas de tu sede." breadcrumbs={[{ label: 'Mi Perfil' }]} />
+      <PageHeader title="Mi Perfil" subtitle="Tu rol, tus tareas, tus permisos y las normas de tu sede." breadcrumbs={[{ label: 'Mi Perfil' }]} />
 
       {isLoading && <LoadingSkeleton variant="page" />}
       {isError && <ErrorState onRetry={() => refetch()} />}
@@ -83,6 +87,14 @@ export default function MyProfilePage() {
               </Stack>
             </CardContent>
           </Card>
+
+          {/* Tareas y permisos son de empleados: una cuenta sin ficha de empleado (el dueño, por ejemplo) no los tiene. */}
+          {myShifts !== null && myShifts !== undefined && (
+            <>
+              <MyTasksCard />
+              <MyLeaveCard />
+            </>
+          )}
 
           <Card variant="outlined">
             <CardContent>
@@ -147,6 +159,7 @@ export default function MyProfilePage() {
                     shifts={myShifts}
                     onSave={handleSaveShifts}
                     saving={replaceMyShifts.isPending}
+                    branches={branchPage?.data ?? []}
                   />
                 )}
               </Stack>

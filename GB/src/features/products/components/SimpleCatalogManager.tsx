@@ -7,6 +7,7 @@ import { useSnackbar } from 'notistack';
 import DataTable from '../../../components/common/DataTable';
 import StatusChip from '../../../components/common/StatusChip';
 import ErrorState from '../../../components/common/ErrorState';
+import ConfirmDialog from '../../../components/common/ConfirmDialog';
 import { Can } from '../../../modules/auth/components/can';
 import type { CatalogFormValues } from '../schemas/catalogSchema';
 import CatalogFormDrawer from './CatalogFormDrawer';
@@ -22,7 +23,7 @@ export interface CatalogItem {
 interface SimpleCatalogManagerProps<T extends CatalogItem> {
   entityLabel: string;
   entityLabelPlural: string;
-  /** Grammatical gender of entityLabel, so generated Spanish phrases agree (salsa=f, acompañante/categoría... categoría is f too, but acompañante is m). */
+  /** Grammatical gender of entityLabel, so generated Spanish phrases agree (salsa=f, mezclador=m; option group names are the business's own). */
   gender: 'f' | 'm';
   items: T[];
   isLoading: boolean;
@@ -33,6 +34,11 @@ interface SimpleCatalogManagerProps<T extends CatalogItem> {
   onCreate: (values: CatalogFormValues, onSuccess: () => void) => void;
   onUpdate: (id: string, values: CatalogFormValues, onSuccess: () => void) => void;
   onToggleStatus: (item: T) => void;
+  /** When given, each row can also be deleted for good (after a confirmation). */
+  onDelete?: (item: T, onDone: () => void) => void;
+  deleting?: boolean;
+  /** Extra line for the delete confirmation, e.g. what happens to past orders. */
+  deleteHint?: string;
 }
 
 export default function SimpleCatalogManager<T extends CatalogItem>({
@@ -48,10 +54,14 @@ export default function SimpleCatalogManager<T extends CatalogItem>({
   onCreate,
   onUpdate,
   onToggleStatus,
+  onDelete,
+  deleting,
+  deleteHint,
 }: SimpleCatalogManagerProps<T>) {
   const { enqueueSnackbar } = useSnackbar();
   const [formOpen, setFormOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<T | null>(null);
+  const [deletingItem, setDeletingItem] = useState<T | null>(null);
 
   const newArticle = gender === 'f' ? 'Nueva' : 'Nuevo';
   const suffix = gender === 'f' ? 'a' : 'o';
@@ -97,16 +107,30 @@ export default function SimpleCatalogManager<T extends CatalogItem>({
       header: '',
       cell: ({ row }) => (
         <Can permission="products.update">
-          <Button
-            size="small"
-            color={row.original.isActive ? 'error' : 'success'}
-            onClick={(e) => {
-              e.stopPropagation();
-              onToggleStatus(row.original);
-            }}
-          >
-            {row.original.isActive ? 'Desactivar' : 'Activar'}
-          </Button>
+          <Stack direction="row" spacing={0.5}>
+            <Button
+              size="small"
+              color={row.original.isActive ? 'warning' : 'success'}
+              onClick={(e) => {
+                e.stopPropagation();
+                onToggleStatus(row.original);
+              }}
+            >
+              {row.original.isActive ? 'Desactivar' : 'Activar'}
+            </Button>
+            {onDelete && (
+              <Button
+                size="small"
+                color="error"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setDeletingItem(row.original);
+                }}
+              >
+                Eliminar
+              </Button>
+            )}
+          </Stack>
         </Can>
       ),
     },
@@ -140,8 +164,23 @@ export default function SimpleCatalogManager<T extends CatalogItem>({
             setEditingItem(row);
             setFormOpen(true);
           }}
-          emptyTitle={`No hay ${entityLabelPlural} registradas`}
+          emptyTitle={`No hay ${entityLabelPlural} registrad${suffix}s`}
           pageSize={10}
+        />
+      )}
+
+      {onDelete && (
+        <ConfirmDialog
+          open={Boolean(deletingItem)}
+          title={`¿Eliminar "${deletingItem?.name ?? ''}"?`}
+          description={`Se elimina para siempre y deja de aparecer para elegir.${
+            deleteHint ? ` ${deleteHint}` : ''
+          } Si solo quieres dejar de ofrecerl${suffix} por un tiempo, usa "Desactivar".`}
+          confirmLabel="Eliminar"
+          destructive
+          loading={deleting}
+          onConfirm={() => deletingItem && onDelete(deletingItem, () => setDeletingItem(null))}
+          onClose={() => setDeletingItem(null)}
         />
       )}
 

@@ -4,6 +4,8 @@ export interface ProductCategory {
   name: string;
   description: string | null;
   displayOrder: number;
+  /** Su lugar entre las secciones de "Arma tu combo"; aparte del orden del menú (displayOrder). */
+  builderDisplayOrder: number;
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
@@ -23,3 +25,6 @@ export interface ProductCategoryFilters {
   isActive?: boolean;
   search?: string;
 }
+
+/** Qué lista ordena el cliente ve: el menú normal o "Arma tu combo". */
+export type CategoryOrderScope = 'MENU' | 'BUILDER';

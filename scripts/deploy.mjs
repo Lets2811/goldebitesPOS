@@ -1,4 +1,4 @@
-// Runs deploy/deploy.sh with bash, wherever bash is.
+// Runs deploy/deploy.sh (or deploy/deploy-staging.sh) with bash, wherever bash is.
 //
 // On Windows, `npm run` uses cmd.exe, where bash is usually not on the PATH
 // even though Git for Windows ships one. This finds it, so `npm run deploy`
@@ -41,7 +41,11 @@ if (!bash) {
   process.exit(1);
 }
 
-const result = spawnSync(bash, ['deploy/deploy.sh', ...process.argv.slice(2)], { cwd: root, stdio: 'inherit' });
+// `npm run deploy:staging` passes --staging: same bash lookup, the staging script.
+const args = process.argv.slice(2);
+const staging = args.includes('--staging');
+const script = staging ? 'deploy/deploy-staging.sh' : 'deploy/deploy.sh';
+const result = spawnSync(bash, [script, ...args.filter((arg) => arg !== '--staging')], { cwd: root, stdio: 'inherit' });
 if (result.error) {
   console.error(`No se pudo ejecutar bash (${bash}): ${result.error.message}`);
   process.exit(1);

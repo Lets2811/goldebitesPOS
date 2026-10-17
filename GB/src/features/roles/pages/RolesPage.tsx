@@ -3,7 +3,7 @@ import Button from '@mui/material/Button';
 import type { ColumnDef } from '@tanstack/react-table';
 import { Plus } from 'lucide-react';
 import { useSnackbar } from 'notistack';
-import PageHeader from '../../../components/common/PageHeader';
+import HrSectionHeader from '../../hr/components/HrSectionHeader';
 import DataTable from '../../../components/common/DataTable';
 import ErrorState from '../../../components/common/ErrorState';
 import { Can } from '../../../modules/auth/components/can';
@@ -27,7 +27,7 @@ export default function RolesPage() {
   const [formOpen, setFormOpen] = useState(false);
   const [editingRole, setEditingRole] = useState<Role | null>(null);
 
-  const handleSubmit = (values: RoleFormValues) => {
+  const handleSubmit = (values: RoleFormValues, permissionCodes?: string[]) => {
     if (editingRole) {
       updateRole.mutate(
         { id: editingRole.id, payload: values },
@@ -40,7 +40,7 @@ export default function RolesPage() {
         },
       );
     } else {
-      createRole.mutate(values, {
+      createRole.mutate({ ...values, permissionCodes }, {
         onSuccess: () => {
           enqueueSnackbar('Rol creado correctamente', { variant: 'success' });
           setFormOpen(false);
@@ -57,10 +57,8 @@ export default function RolesPage() {
 
   return (
     <>
-      <PageHeader
-        title="Roles y permisos"
-        subtitle="Crea roles y controla qué puede ver y hacer cada uno en la aplicación."
-        breadcrumbs={[{ label: 'Roles y permisos' }]}
+      <HrSectionHeader
+        description="Crea roles con su descripción y controla qué puede ver y hacer cada uno. Cada empleado ve la descripción de su rol en su perfil."
         actions={
           <Can permission="roles.manage">
             <Button

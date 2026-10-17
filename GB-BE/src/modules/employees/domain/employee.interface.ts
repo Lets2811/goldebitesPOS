@@ -1,4 +1,8 @@
-import { EmployeePayFrequency, EmployeeStatus } from './employee.types';
+import {
+  EmployeeDocumentType,
+  EmployeePayFrequency,
+  EmployeeStatus,
+} from './employee.types';
 import { UserStatus } from '../../users/domain/user.types';
 
 export interface Employee {
@@ -9,6 +13,8 @@ export interface Employee {
   userId: string | null;
   firstName: string;
   lastName: string;
+  documentType: EmployeeDocumentType | null;
+  documentNumber: string | null;
   phone: string | null;
   email: string | null;
   position: string | null;
@@ -29,6 +35,8 @@ export interface EmployeeRow {
   user_id: string | null;
   first_name: string;
   last_name: string;
+  document_type: EmployeeDocumentType | null;
+  document_number: string | null;
   phone: string | null;
   email: string | null;
   position: string | null;
@@ -55,6 +63,8 @@ export interface EmployeeShift {
   dayOfWeek: number;
   startTime: string;
   endTime: string;
+  /** Null: the employee's own branch. */
+  branchId: string | null;
 }
 
 export interface EmployeeShiftRow {
@@ -63,6 +73,7 @@ export interface EmployeeShiftRow {
   day_of_week: number;
   start_time: string;
   end_time: string;
+  branch_id: string | null;
 }
 
 export interface EmployeeWithShifts extends Employee {

@@ -2,18 +2,35 @@ import { useState } from 'react';
 import type { CartLine } from '../../../features/kiosk-waiter/components/CartPanel';
 import type { Product } from '../../products/types/product.types';
 import { generateId } from '../../../utils/generate-id';
+import { useOptionGroups } from '../../option-groups/hooks/use-option-groups';
+import { offeredGroups, toggleOptionId } from '../../option-groups/utils/option-group-utils';
+import type { CreateOrderItemPayload } from '../types/order.types';
 
-/** Cart-line state management shared by the waiter kiosk, "add products" drawer, and the redesigned new-order flow. */
+/** A cart line as an order item. */
+export function cartLineToOrderItem(line: CartLine): CreateOrderItemPayload {
+  return {
+    productId: line.productId,
+    quantity: line.quantity,
+    optionItemIds: line.optionItemIds.length ? line.optionItemIds : undefined,
+  };
+}
+
+/** Cart-line state management shared by the waiter and car-service kiosks, "add products" drawer, and the new-order flow. */
 export function useCartLines() {
   const [cart, setCart] = useState<CartLine[]>([]);
+  const { groups } = useOptionGroups();
 
   function addToCart(product: Product) {
+    // Only the groups the business has on and with something to pick.
+    const optionGroups = offeredGroups(product, groups).map(({ group, maxChoices }) => ({
+      groupId: group.id,
+      maxChoices,
+    }));
     setCart((prev) => {
-      // Products with sauces/sides need one picker per unit, so each tap adds its own
+      // Products with options need one picker per unit, so each tap adds its own
       // independently-configurable line instead of bumping a shared quantity — otherwise two
-      // units of the same product could never get different sauces/sides.
-      const isCustomizable = product.maxSauces > 0 || product.maxSides > 0;
-      if (!isCustomizable) {
+      // units of the same product could never get different choices.
+      if (optionGroups.length === 0) {
         const existing = prev.find((line) => line.productId === product.id);
         if (existing) {
           return prev.map((line) =>
@@ -29,41 +46,21 @@ export function useCartLines() {
           name: product.name,
           unitPrice: product.salePrice,
           quantity: 1,
-          maxSauces: product.maxSauces,
-          maxSides: product.maxSides,
-          sauceIds: [],
-          sideIds: [],
+          optionGroups,
+          optionItemIds: [],
         },
       ];
     });
   }
 
-  function toggleSauce(id: string, sauceId: string) {
+  function toggleOption(id: string, groupId: string, itemId: string) {
+    const group = groups.find((g) => g.id === groupId);
+    if (!group) return;
     setCart((prev) =>
       prev.map((line) => {
         if (line.id !== id) return line;
-        const selected = line.sauceIds.includes(sauceId);
-        if (!selected && line.sauceIds.length >= line.maxSauces) return line;
-        return {
-          ...line,
-          sauceIds: selected
-            ? line.sauceIds.filter((sid) => sid !== sauceId)
-            : [...line.sauceIds, sauceId],
-        };
-      }),
-    );
-  }
-
-  function toggleSide(id: string, sideId: string) {
-    setCart((prev) =>
-      prev.map((line) => {
-        if (line.id !== id) return line;
-        const selected = line.sideIds.includes(sideId);
-        if (!selected && line.sideIds.length >= line.maxSides) return line;
-        return {
-          ...line,
-          sideIds: selected ? line.sideIds.filter((sid) => sid !== sideId) : [...line.sideIds, sideId],
-        };
+        const maxChoices = line.optionGroups.find((o) => o.groupId === groupId)?.maxChoices ?? 0;
+        return { ...line, optionItemIds: toggleOptionId(line.optionItemIds, group, itemId, maxChoices) };
       }),
     );
   }
@@ -73,24 +70,9 @@ export function useCartLines() {
       const line = prev.find((l) => l.id === id);
       if (!line) return prev;
       // Same rule as addToCart: a customizable line can't just grow its quantity, since that
-      // would go back to sharing one sauce/side picker across units — add another independent
-      // unit instead.
-      const isCustomizable = line.maxSauces > 0 || line.maxSides > 0;
-      if (isCustomizable) {
-        return [
-          ...prev,
-          {
-            id: generateId(),
-            productId: line.productId,
-            name: line.name,
-            unitPrice: line.unitPrice,
-            quantity: 1,
-            maxSauces: line.maxSauces,
-            maxSides: line.maxSides,
-            sauceIds: [],
-            sideIds: [],
-          },
-        ];
+      // would go back to sharing one picker across units — add another independent unit instead.
+      if (line.optionGroups.length > 0) {
+        return [...prev, { ...line, id: generateId(), quantity: 1, optionItemIds: [] }];
       }
       return prev.map((l) => (l.id === id ? { ...l, quantity: l.quantity + 1 } : l));
     });
@@ -112,5 +94,5 @@ export function useCartLines() {
     setCart([]);
   }
 
-  return { cart, addToCart, toggleSauce, toggleSide, increment, decrement, remove, clear };
+  return { cart, addToCart, toggleOption, increment, decrement, remove, clear };
 }

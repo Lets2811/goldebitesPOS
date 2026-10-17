@@ -7,6 +7,7 @@ export interface CreateSupplierData {
   phone?: string;
   address?: string;
   notes?: string;
+  creditDays?: number;
 }
 
 export interface UpdateSupplierData {
@@ -17,6 +18,7 @@ export interface UpdateSupplierData {
   phone?: string;
   address?: string;
   notes?: string;
+  creditDays?: number;
 }
 
 export interface SupplierQuery {

@@ -4,6 +4,7 @@ import {
   EntityNotFoundException,
 } from '../../../common/exceptions';
 import { DbClient } from '../../../database/types/database.types';
+import { TransactionService } from '../../../database/transaction.service';
 import { SYSTEM_ROLES } from '../../../common/constants/roles.constants';
 import { DEFAULT_ROLE_PERMISSIONS } from '../../../common/constants/permissions.constants';
 import { PERMISSIONS_REPOSITORY } from '../../permissions/repositories/permissions.repository.interface';
@@ -21,9 +22,18 @@ export class RolesService {
     private readonly rolesRepository: IRolesRepository,
     @Inject(PERMISSIONS_REPOSITORY)
     private readonly permissionsRepository: IPermissionsRepository,
+    private readonly transactionService: TransactionService,
   ) {}
 
-  async create(data: CreateRoleData): Promise<Role> {
+  /**
+   * Creates a custom role and grants it `permissionCodes` in one
+   * transaction, so a failed grant never leaves a role behind without the
+   * permissions it was created with.
+   */
+  async create(
+    data: CreateRoleData,
+    permissionCodes: string[] = [],
+  ): Promise<RoleWithPermissions> {
     const existing = await this.rolesRepository.findByName(
       data.businessId,
       data.name,
@@ -34,8 +44,22 @@ export class RolesService {
         'ROLE_NAME_TAKEN',
       );
     }
-    const row = await this.rolesRepository.create(data);
-    return RoleMapper.toDomain(row);
+    const permissionIds = await this.resolvePermissionIds(permissionCodes);
+
+    const row = await this.transactionService.execute(async (client) => {
+      const created = await this.rolesRepository.create(data, client);
+      if (permissionIds.length > 0) {
+        await this.rolesRepository.replacePermissions(
+          created.id,
+          permissionIds,
+          client,
+        );
+      }
+      return created;
+    });
+
+    const permissions = await this.rolesRepository.getPermissionCodes(row.id);
+    return { ...RoleMapper.toDomain(row), permissions };
   }
 
   async findAllForBusiness(businessId: string): Promise<Role[]> {
@@ -83,20 +107,25 @@ export class RolesService {
   ): Promise<string[]> {
     await this.getOwnedRoleOrFail(businessId, id);
 
-    const uniqueCodes = [...new Set(permissionCodes)];
-    const found = await this.permissionsRepository.findByCodes(uniqueCodes);
+    const permissionIds = await this.resolvePermissionIds(permissionCodes);
+    await this.rolesRepository.replacePermissions(id, permissionIds);
+    return this.rolesRepository.getPermissionCodes(id);
+  }
 
+  /** Maps permission codes to their ids, rejecting any code that is not in the catalog. */
+  private async resolvePermissionIds(
+    permissionCodes: string[],
+  ): Promise<string[]> {
+    const uniqueCodes = [...new Set(permissionCodes)];
+    if (uniqueCodes.length === 0) return [];
+
+    const found = await this.permissionsRepository.findByCodes(uniqueCodes);
     if (found.length !== uniqueCodes.length) {
       const foundCodes = new Set(found.map((p) => p.code));
       const unknown = uniqueCodes.filter((code) => !foundCodes.has(code));
       throw new EntityNotFoundException('Permission', unknown.join(', '));
     }
-
-    await this.rolesRepository.replacePermissions(
-      id,
-      found.map((p) => p.id),
-    );
-    return this.rolesRepository.getPermissionCodes(id);
+    return found.map((p) => p.id);
   }
 
   /**

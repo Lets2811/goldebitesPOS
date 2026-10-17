@@ -1,3 +1,6 @@
+import { ProductOptionGroup } from '../../option-groups/domain/option-group.interface';
+import { ProductMenuAvailability } from './product.types';
+
 export interface Product {
   id: string;
   businessId: string;
@@ -12,8 +15,10 @@ export interface Product {
   /** Independent of isActive — whether this product should appear on customer-facing surfaces like the public menu. */
   isVisible: boolean;
   trackInventory: boolean;
-  maxSauces: number;
-  maxSides: number;
+  /** The option groups the product offers ("Salsas", "Tamaño"...) and how many of each the customer may pick. */
+  optionGroups: ProductOptionGroup[];
+  /** Customer-facing menus only: the regular menu, "Arma tu combo", or both. */
+  menuAvailability: ProductMenuAvailability;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -28,11 +33,14 @@ export interface ProductRow {
   sale_price: string;
   current_cost: string;
   image_url: string | null;
+  /** An uploaded photo on disk; takes precedence over image_url. */
+  image_path: string | null;
+  image_mime_type: string | null;
+  image_updated_at: Date | null;
   is_active: boolean;
   is_visible: boolean;
   track_inventory: boolean;
-  max_sauces: number;
-  max_sides: number;
+  menu_availability: ProductMenuAvailability;
   created_at: Date;
   updated_at: Date;
   deleted_at: Date | null;

@@ -51,15 +51,14 @@ import { PaymentsModule } from './modules/payments/payments.module';
 import { PermissionsModule } from './modules/permissions/permissions.module';
 import { PlatformAdminModule } from './modules/platform-admin/platform-admin.module';
 import { ProductCategoriesModule } from './modules/product-categories/product-categories.module';
+import { OptionGroupsModule } from './modules/option-groups/option-groups.module';
 import { ProductsModule } from './modules/products/products.module';
 import { PublicMenuModule } from './modules/public-menu/public-menu.module';
 import { PublicNfcOrdersModule } from './modules/public-nfc-orders/public-nfc-orders.module';
 import { PurchasesModule } from './modules/purchases/purchases.module';
 import { RecipesModule } from './modules/recipes/recipes.module';
 import { RolesModule } from './modules/roles/roles.module';
-import { SaucesModule } from './modules/sauces/sauces.module';
 import { SettingsModule } from './modules/settings/settings.module';
-import { SidesModule } from './modules/sides/sides.module';
 import { SuppliersModule } from './modules/suppliers/suppliers.module';
 import { TableNamesModule } from './modules/table-names/table-names.module';
 import { TuraLinksModule } from './modules/tura-links/tura-links.module';
@@ -95,8 +94,7 @@ import { WasteModule } from './modules/waste/waste.module';
     AuthModule,
     ProductCategoriesModule,
     ProductsModule,
-    SaucesModule,
-    SidesModule,
+    OptionGroupsModule,
     SuppliersModule,
     TableNamesModule,
     TuraLinksModule,

@@ -1,5 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
+  ArrayMaxSize,
   IsArray,
   IsNumber,
   IsOptional,
@@ -31,15 +32,35 @@ export class OrderItemInputDto {
   @MaxLength(500)
   notes?: string;
 
-  @ApiPropertyOptional({ type: [String] })
+  @ApiPropertyOptional({
+    type: [String],
+    description: "The options picked, from any of the product's option groups",
+  })
   @IsOptional()
   @IsArray()
+  @ArrayMaxSize(100)
+  @IsUUID(undefined, { each: true })
+  optionItemIds?: string[];
+
+  @ApiPropertyOptional({
+    type: [String],
+    deprecated: true,
+    description: 'Clients from before option groups; read as optionItemIds',
+  })
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(100)
   @IsUUID(undefined, { each: true })
   sauceIds?: string[];
 
-  @ApiPropertyOptional({ type: [String] })
+  @ApiPropertyOptional({
+    type: [String],
+    deprecated: true,
+    description: 'Clients from before option groups; read as optionItemIds',
+  })
   @IsOptional()
   @IsArray()
+  @ArrayMaxSize(100)
   @IsUUID(undefined, { each: true })
   sideIds?: string[];
 }

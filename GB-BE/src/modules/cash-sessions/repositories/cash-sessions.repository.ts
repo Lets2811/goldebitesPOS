@@ -198,7 +198,9 @@ export class CashSessionsRepository implements ICashSessionsRepository {
       `SELECT (cs.opening_amount + COALESCE(SUM(
          CASE
            WHEN cm.movement_type = 'SALE' AND cm.payment_method = 'CASH' THEN cm.amount
-           WHEN cm.movement_type = 'INCOME' THEN cm.amount
+           -- An income (and its reversal) without a payment method is a manual one: cash.
+           WHEN cm.movement_type = 'INCOME' AND COALESCE(cm.payment_method, 'CASH') = 'CASH' THEN cm.amount
+           WHEN cm.movement_type = 'INCOME_REVERSAL' AND COALESCE(cm.payment_method, 'CASH') = 'CASH' THEN -cm.amount
            WHEN cm.movement_type = 'EXPENSE_REVERSAL' THEN cm.amount
            WHEN cm.movement_type IN ('EXPENSE', 'WITHDRAWAL', 'REIMBURSEMENT') THEN -cm.amount
            ELSE 0
@@ -219,9 +221,13 @@ export class CashSessionsRepository implements ICashSessionsRepository {
     client?: DbClient,
   ): Promise<number> {
     const result = await this.db.query<ExpectedRow>(
-      `SELECT COALESCE(SUM(amount), 0)::text AS expected
+      `SELECT COALESCE(SUM(
+         CASE WHEN movement_type = 'INCOME_REVERSAL' THEN -amount ELSE amount END
+       ), 0)::text AS expected
        FROM cash_movements
-       WHERE cash_session_id = $1 AND movement_type = 'SALE' AND payment_method = 'TRANSFER'`,
+       WHERE cash_session_id = $1
+         AND movement_type IN ('SALE', 'INCOME', 'INCOME_REVERSAL')
+         AND payment_method = 'TRANSFER'`,
       [cashSessionId],
       client,
     );

@@ -1,3 +1,5 @@
+import { CategoryOrderScope } from '../domain/product-category.types';
+import { BusinessRuleException } from '../../../common/exceptions';
 import {
   ConflictException,
   EntityNotFoundException,
@@ -13,6 +15,8 @@ describe('ProductCategoriesService', () => {
     update: jest.Mock;
     setActive: jest.Mock;
     existsByName: jest.Mock;
+    countOwned: jest.Mock;
+    setOrder: jest.Mock;
   };
   let auditService: { record: jest.Mock };
   let service: ProductCategoriesService;
@@ -28,6 +32,7 @@ describe('ProductCategoriesService', () => {
       name: 'Burgers',
       description: null,
       display_order: 0,
+      builder_display_order: 0,
       is_active: true,
       created_at: new Date(),
       updated_at: new Date(),
@@ -43,9 +48,37 @@ describe('ProductCategoriesService', () => {
       update: jest.fn(),
       setActive: jest.fn(),
       existsByName: jest.fn(),
+      countOwned: jest.fn(),
+      setOrder: jest.fn(),
     };
     auditService = { record: jest.fn() };
     service = new ProductCategoriesService(repository, auditService as never);
+  });
+
+  describe('setOrder', () => {
+    it('saves the order of the "Arma tu combo" sections', async () => {
+      repository.countOwned.mockResolvedValue(3);
+
+      await service.setOrder(businessId, CategoryOrderScope.BUILDER, ['c', 'a', 'b'], 'user-1');
+
+      expect(repository.setOrder).toHaveBeenCalledWith(businessId, CategoryOrderScope.BUILDER, ['c', 'a', 'b']);
+    });
+
+    it('rejects a category of another business (or unknown)', async () => {
+      repository.countOwned.mockResolvedValue(1);
+
+      await expect(service.setOrder(businessId, CategoryOrderScope.MENU, ['a', 'foreign'])).rejects.toThrow(
+        EntityNotFoundException,
+      );
+      expect(repository.setOrder).not.toHaveBeenCalled();
+    });
+
+    it('rejects a category listed twice', async () => {
+      await expect(service.setOrder(businessId, CategoryOrderScope.MENU, ['a', 'a'])).rejects.toThrow(
+        BusinessRuleException,
+      );
+      expect(repository.setOrder).not.toHaveBeenCalled();
+    });
   });
 
   describe('create', () => {

@@ -1,6 +1,7 @@
 import { apiClient } from '../../../lib/api/api-client';
 import type { ApiResponse, PaginatedResponse } from '../../../lib/api/api-types';
 import type {
+  CategoryOrderScope,
   CreateProductCategoryPayload,
   ProductCategory,
   ProductCategoryFilters,
@@ -8,6 +9,11 @@ import type {
 } from '../types/product-category.types';
 
 export const productCategoriesApi = {
+  /** Las secciones de la primera a la última, en el menú o en "Arma tu combo". */
+  async setOrder(scope: CategoryOrderScope, categoryIds: string[]): Promise<void> {
+    await apiClient.put('/product-categories/order', { scope, categoryIds });
+  },
+
   async getCategories(
     filters: ProductCategoryFilters = {},
   ): Promise<PaginatedResponse<ProductCategory>> {

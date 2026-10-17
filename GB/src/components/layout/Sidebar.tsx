@@ -16,6 +16,7 @@ import { useBranches } from '../../modules/branches/hooks/use-branches';
 import { useBusinessLogo } from '../../modules/businesses/hooks/use-business-logo';
 import { useCurrentBusiness } from '../../modules/businesses/hooks/use-current-business';
 import { brand } from '../../theme/palette';
+import { useHrSections } from '../../features/hr/hooks/use-hr-sections';
 import SidebarItem from './SidebarItem';
 
 export const SIDEBAR_WIDTH_EXPANDED = 264;
@@ -120,14 +121,21 @@ function SidebarContent({ collapsed, onNavigate }: { collapsed: boolean; onNavig
   const { hasPermission, hasAnyPermission, hasFeature, isPlatformAdmin } = usePermissions();
   const location = useLocation();
   const toggleCollapsed = useUiStore((s) => s.toggleSidebarCollapsed);
+  const hrSections = useHrSections();
 
   const can = (module: keyof typeof MODULE_PERMISSIONS): boolean => {
+    // Recursos Humanos reúne varios módulos: basta con poder abrir una de sus pestañas.
+    if (module === 'hr') return hrSections.length > 0;
     const required = MODULE_PERMISSIONS[module];
     const hasRequiredPermission = Array.isArray(required)
       ? hasAnyPermission(required)
       : hasPermission(required);
     return hasRequiredPermission && hasFeature(module);
   };
+
+  // Una entrada sigue marcada en sus subrutas (las pestañas de Recursos Humanos).
+  const isActive = (path: string): boolean =>
+    location.pathname === path || (path !== '/' && location.pathname.startsWith(`${path}/`));
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
@@ -168,7 +176,7 @@ function SidebarContent({ collapsed, onNavigate }: { collapsed: boolean; onNavig
                   key={entry.path}
                   item={entry}
                   collapsed={collapsed}
-                  active={location.pathname === entry.path}
+                  active={isActive(entry.path)}
                   onNavigate={onNavigate}
                 />
               );
@@ -191,7 +199,7 @@ function SidebarContent({ collapsed, onNavigate }: { collapsed: boolean; onNavig
                     key={item.path}
                     item={item}
                     collapsed={collapsed}
-                    active={location.pathname === item.path}
+                    active={isActive(item.path)}
                     onNavigate={onNavigate}
                   />
                 ))}

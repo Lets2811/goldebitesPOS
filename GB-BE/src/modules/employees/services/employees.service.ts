@@ -1,6 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common';
 import {
   BusinessRuleException,
+  ConflictException,
   EntityNotFoundException,
 } from '../../../common/exceptions';
 import { DEFAULT_EMPLOYEE_PASSWORD } from '../../../common/constants/default-password.constant';
@@ -9,6 +10,7 @@ import { buildPaginationMeta } from '../../../common/pagination/pagination.util'
 import { generateTemporaryPassword } from '../../../common/utils/generate-password.util';
 import { TransactionService } from '../../../database/transaction.service';
 import { AuditService } from '../../audit/services/audit.service';
+import { BranchesService } from '../../branches/services/branches.service';
 import { UserStatus } from '../../users/domain/user.types';
 import { UsersService } from '../../users/services/users.service';
 import { DEFAULT_EMPLOYEE_SHIFTS } from '../domain/default-shifts.constant';
@@ -45,13 +47,26 @@ export class EmployeesService {
     private readonly usersService: UsersService,
     private readonly transactionService: TransactionService,
     private readonly auditService: AuditService,
+    private readonly branchesService: BranchesService,
   ) {}
 
-  /** Every new employee gets a login account automatically — an auto-generated handle (e.g. "jupe1@personal.local") plus the fixed default password, forced to change on first login. */
+  /**
+   * A new employee gets a login account automatically — an auto-generated
+   * handle (e.g. "jupe1@personal.local") plus the fixed default password,
+   * forced to change on first login — unless `createAccess` is false: then
+   * they're registered without one, and generateCredentials() can add it later.
+   */
   async create(
     data: CreateEmployeeData,
     actorUserId?: string,
   ): Promise<EmployeeWithShifts> {
+    const { createAccess = true, ...employeeData } = data;
+    await this.assertDocumentAvailable(data.businessId, data.documentNumber);
+
+    if (!createAccess) {
+      return this.createWithoutAccess(employeeData, actorUserId);
+    }
+
     const loginEmail = await this.usersService.generateUniqueLoginEmail(
       data.businessId,
       data.firstName,
@@ -60,7 +75,7 @@ export class EmployeesService {
 
     const { employeeRow, user } = await this.transactionService.execute(
       async (client) => {
-        const created = await this.employeesRepository.create(data, client);
+        const created = await this.employeesRepository.create(employeeData, client);
         const user = await this.usersService.create(
           data.businessId,
           {
@@ -113,6 +128,42 @@ export class EmployeesService {
     };
   }
 
+  private async createWithoutAccess(
+    data: CreateEmployeeData,
+    actorUserId?: string,
+  ): Promise<EmployeeWithShifts> {
+    const employeeRow = await this.transactionService.execute(async (client) => {
+      const created = await this.employeesRepository.create(data, client);
+      await this.employeesRepository.replaceShifts(
+        created.id,
+        DEFAULT_EMPLOYEE_SHIFTS,
+        client,
+      );
+      return created;
+    });
+
+    await this.auditService.record({
+      businessId: data.businessId,
+      branchId: data.branchId,
+      userId: actorUserId,
+      entityType: 'employee',
+      entityId: employeeRow.id,
+      action: 'CREATE',
+      newValues: {
+        firstName: employeeRow.first_name,
+        lastName: employeeRow.last_name,
+        withoutAccess: true,
+      },
+    });
+
+    const shiftRows = await this.employeesRepository.findShifts(employeeRow.id);
+    return {
+      ...EmployeeMapper.toDomain(employeeRow),
+      shifts: shiftRows.map((shift) => EmployeeMapper.shiftToDomain(shift)),
+      userAccount: null,
+    };
+  }
+
   async findAll(query: EmployeeQuery): Promise<PaginatedResult<Employee>> {
     const { rows, total } = await this.employeesRepository.findAll(query);
     return {
@@ -139,6 +190,7 @@ export class EmployeesService {
     actorUserId?: string,
   ): Promise<Employee> {
     await this.getOwnedOrFail(businessId, id);
+    await this.assertDocumentAvailable(businessId, data.documentNumber, id);
     const row = await this.employeesRepository.update(id, businessId, data);
     if (!row) {
       throw new EntityNotFoundException('Employee', id);
@@ -205,6 +257,7 @@ export class EmployeesService {
     actorUserId?: string,
   ): Promise<EmployeeWithShifts> {
     const row = await this.getOwnedOrFail(businessId, id);
+    await this.assertShiftBranchesOwned(businessId, shifts);
     const shiftRows = await this.transactionService.execute((client) =>
       this.employeesRepository.replaceShifts(id, shifts, client),
     );
@@ -443,6 +496,38 @@ export class EmployeesService {
     const user = await this.usersService.findRawById(userId, businessId);
     if (!user) return null;
     return { id: user.id, email: user.email, status: user.status };
+  }
+
+  /** The document number identifies one person: no two employees of a business may share it. */
+  private async assertDocumentAvailable(
+    businessId: string,
+    documentNumber: string | undefined,
+    exceptEmployeeId?: string,
+  ): Promise<void> {
+    if (!documentNumber) return;
+    const existing = await this.employeesRepository.findByDocumentNumber(
+      businessId,
+      documentNumber,
+    );
+    if (existing && existing.id !== exceptEmployeeId) {
+      throw new ConflictException(
+        `Another employee already has document number ${documentNumber}`,
+        'EMPLOYEE_DOCUMENT_TAKEN',
+      );
+    }
+  }
+
+  /** A shift may only point at a branch of this same business. */
+  private async assertShiftBranchesOwned(
+    businessId: string,
+    shifts: ShiftInput[],
+  ): Promise<void> {
+    const branchIds = new Set(
+      shifts.map((shift) => shift.branchId).filter((id): id is string => Boolean(id)),
+    );
+    for (const branchId of branchIds) {
+      await this.branchesService.findOne(businessId, branchId);
+    }
   }
 
   private async getOwnedOrFail(

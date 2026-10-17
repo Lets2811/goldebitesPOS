@@ -1,3 +1,4 @@
+import { OptionSelection } from '../../option-groups/domain/option-group.interface';
 import { OrderStatus, OrderType } from './order.interface';
 
 export interface OrderItemInput {
@@ -5,7 +6,11 @@ export interface OrderItemInput {
   quantity: number;
   discountAmount?: number;
   notes?: string;
+  /** The options picked, from any of the product's groups. */
+  optionItemIds?: string[];
+  /** @deprecated Sent by clients from before option groups; read as optionItemIds. */
   sauceIds?: string[];
+  /** @deprecated Sent by clients from before option groups; read as optionItemIds. */
   sideIds?: string[];
 }
 
@@ -36,12 +41,15 @@ export interface OrderQuery {
   dateTo?: string;
 }
 
-export interface OrderItemComputed extends OrderItemInput {
+export interface OrderItemComputed {
+  productId: string;
+  quantity: number;
+  discountAmount?: number;
+  notes?: string;
   productNameSnapshot: string;
   productDescriptionSnapshot: string | null;
   unitPrice: number;
   unitCostSnapshot: number;
   totalPrice: number;
-  sauceNames?: string[];
-  sideNames?: string[];
+  optionSelections: OptionSelection[];
 }

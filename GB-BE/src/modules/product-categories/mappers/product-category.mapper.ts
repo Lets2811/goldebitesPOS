@@ -11,6 +11,7 @@ export class ProductCategoryMapper {
       name: row.name,
       description: row.description,
       displayOrder: row.display_order,
+      builderDisplayOrder: row.builder_display_order,
       isActive: row.is_active,
       createdAt: row.created_at,
       updatedAt: row.updated_at,

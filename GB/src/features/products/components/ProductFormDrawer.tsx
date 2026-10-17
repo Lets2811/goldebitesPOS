@@ -1,4 +1,8 @@
-import { useEffect } from 'react';
+import {
+  PRODUCT_MENU_AVAILABILITY_LABELS,
+  type ProductMenuAvailability,
+} from '../../../modules/products/types/product.types';
+import { useEffect, useState } from 'react';
 import { useForm, useWatch, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import Stack from '@mui/material/Stack';
@@ -14,11 +18,14 @@ import { useProductCategories } from '../../../modules/product-categories/hooks/
 import { useInventoryItems } from '../../../modules/inventory/hooks/use-inventory-items';
 import { useProductRecipe } from '../../../modules/recipes/hooks/use-product-recipe';
 import type { Product } from '../../../modules/products/types/product.types';
+import ProductOptionGroupsField from './ProductOptionGroupsField';
+import ProductImageField, { type ProductImageChange } from './ProductImageField';
 
 interface ProductFormDrawerProps {
   open: boolean;
   onClose: () => void;
-  onSubmit: (values: ProductFormValues) => void;
+  /** imageChange: what to do with the photo once the product is saved. */
+  onSubmit: (values: ProductFormValues, imageChange: ProductImageChange) => void;
   initialProduct?: Product | null;
 }
 
@@ -31,8 +38,8 @@ const emptyValues: ProductFormValues = {
   trackInventory: true,
   inventoryItemId: '',
   inventoryQuantity: 1,
-  maxSauces: 0,
-  maxSides: 0,
+  optionGroups: [],
+  menuAvailability: 'MENU',
 };
 
 export default function ProductFormDrawer({
@@ -47,6 +54,13 @@ export default function ProductFormDrawer({
   const inventoryItems = inventoryItemsData?.data ?? [];
   const { data: recipe, isLoading: recipeLoading } = useProductRecipe(initialProduct?.id ?? null);
   const recipeItemCount = recipe?.items.length ?? 0;
+  const [imageChange, setImageChange] = useState<ProductImageChange>({ kind: 'keep' });
+  // Each opening starts from the product's current photo.
+  const [trackedOpen, setTrackedOpen] = useState({ open, initialProduct });
+  if (trackedOpen.open !== open || trackedOpen.initialProduct !== initialProduct) {
+    setTrackedOpen({ open, initialProduct });
+    if (open) setImageChange({ kind: 'keep' });
+  }
 
   const {
     control,
@@ -76,8 +90,8 @@ export default function ProductFormDrawer({
             trackInventory: initialProduct.trackInventory,
             inventoryItemId: singleItem?.inventoryItemId ?? '',
             inventoryQuantity: singleItem?.quantity ?? 1,
-            maxSauces: initialProduct.maxSauces,
-            maxSides: initialProduct.maxSides,
+            optionGroups: initialProduct.optionGroups,
+            menuAvailability: initialProduct.menuAvailability ?? 'MENU',
           }
         : emptyValues,
     );
@@ -86,7 +100,7 @@ export default function ProductFormDrawer({
   }, [open, initialProduct, recipe, recipeLoading, reset]);
 
   const submit = handleSubmit((values) => {
-    onSubmit(values);
+    onSubmit(values, imageChange);
   });
 
   return (
@@ -101,6 +115,12 @@ export default function ProductFormDrawer({
       width={480}
     >
       <Stack spacing={2.5}>
+        <ProductImageField
+          currentUrl={initialProduct?.imageUrl ?? null}
+          change={imageChange}
+          onChange={setImageChange}
+        />
+
         <Controller
           name="name"
           control={control}
@@ -231,36 +251,37 @@ export default function ProductFormDrawer({
           </Stack>
         )}
 
-        <Stack direction="row" spacing={2}>
-          <Controller
-            name="maxSauces"
-            control={control}
-            render={({ field }) => (
-              <TextField
-                {...field}
-                label="Máx. salsas"
-                type="number"
-                fullWidth
-                helperText="0 = no ofrecer salsas"
-                error={Boolean(errors.maxSauces)}
-              />
-            )}
-          />
-          <Controller
-            name="maxSides"
-            control={control}
-            render={({ field }) => (
-              <TextField
-                {...field}
-                label="Máx. acompañantes"
-                type="number"
-                fullWidth
-                helperText="0 = no ofrecer acompañantes"
-                error={Boolean(errors.maxSides)}
-              />
-            )}
-          />
-        </Stack>
+        <Controller
+          name="optionGroups"
+          control={control}
+          render={({ field }) => <ProductOptionGroupsField value={field.value} onChange={field.onChange} />}
+        />
+
+        <Controller
+          name="menuAvailability"
+          control={control}
+          render={({ field }) => (
+            <TextField
+              {...field}
+              select
+              label="Disponible para el cliente en"
+              fullWidth
+              helperText={
+                field.value === 'BUILDER'
+                  ? 'No aparece en el menú de la mesa: solo se ofrece para armar combos.'
+                  : field.value === 'BOTH'
+                    ? 'Aparece en el menú y también se ofrece para armar combos.'
+                    : 'Aparece en el menú de la mesa, como hasta ahora.'
+              }
+            >
+              {(Object.keys(PRODUCT_MENU_AVAILABILITY_LABELS) as ProductMenuAvailability[]).map((value) => (
+                <MenuItem key={value} value={value}>
+                  {PRODUCT_MENU_AVAILABILITY_LABELS[value]}
+                </MenuItem>
+              ))}
+            </TextField>
+          )}
+        />
       </Stack>
     </FormDrawer>
   );

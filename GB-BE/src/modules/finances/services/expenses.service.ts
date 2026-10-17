@@ -1,16 +1,18 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
-import { BusinessRuleException, CashSessionClosedException, EntityNotFoundException } from '../../../common/exceptions';
+import { BusinessRuleException, EntityNotFoundException } from '../../../common/exceptions';
 import { PaginatedResult } from '../../../common/pagination/paginated-result.interface';
 import { buildPaginationMeta } from '../../../common/pagination/pagination.util';
 import { DbClient } from '../../../database/types/database.types';
 import { TransactionService } from '../../../database/transaction.service';
 import { AuditService } from '../../audit/services/audit.service';
-import { CashSession, CashSessionStatus, CashMovementType } from '../../cash-sessions/domain/cash-session.interface';
+import { CashMovementType } from '../../cash-sessions/domain/cash-session.interface';
 import { CashSessionsService } from '../../cash-sessions/services/cash-sessions.service';
 import { EmployeesService } from '../../employees/services/employees.service';
 import { FundType } from '../../funds/domain/fund.types';
 import { FundsService } from '../../funds/services/funds.service';
+import { Supplier } from '../../suppliers/domain/supplier.interface';
+import { SuppliersService } from '../../suppliers/services/suppliers.service';
 import { Expense } from '../domain/expense.interface';
 import {
   CreateExpenseData,
@@ -23,10 +25,13 @@ import {
   UpdateExpenseData,
 } from '../domain/expense.types';
 import { ExpenseCategoriesService } from './expense-categories.service';
+import { resolveOpenCashSession } from './resolve-open-cash-session';
 import { ExpenseMapper } from '../mappers/expense.mapper';
 import { EXPENSES_REPOSITORY } from '../repositories/expenses.repository.interface';
 import type { IExpensesRepository } from '../repositories/expenses.repository.interface';
 import { ReimbursementsService } from './reimbursements.service';
+import { SupplierPayablesService } from './supplier-payables.service';
+import { ExpenseAttachmentsService } from './expense-attachments.service';
 
 interface SourceEffectPointers {
   cashSessionId: string | null;
@@ -63,6 +68,9 @@ export class ExpensesService {
     private readonly transactionService: TransactionService,
     private readonly auditService: AuditService,
     private readonly categoriesService: ExpenseCategoriesService,
+    private readonly suppliersService: SuppliersService,
+    private readonly supplierPayablesService: SupplierPayablesService,
+    private readonly attachmentsService: ExpenseAttachmentsService,
   ) {}
 
   async create(data: CreateExpenseData, actorUserId: string): Promise<Expense> {
@@ -73,9 +81,15 @@ export class ExpensesService {
       data.payerEmployeeId,
       data.payerName,
     );
+    const supplier = await this.resolveSupplier(data, actorUserId);
+    const credit = data.paymentSource === ExpensePaymentSource.SUPPLIER_CREDIT ? this.creditTerms(data, supplier as Supplier) : null;
+    // Resolved before anything is written: with several open sessions and none chosen, nothing happens.
+    const initialPaymentSession = credit
+      ? await this.supplierPayablesService.resolvePaymentSession(data.businessId, data.branchId, data.initialPayment)
+      : null;
 
     const row = await this.transactionService.execute(async (client) => {
-      const created = await this.expensesRepository.create({ ...data, payerName }, client);
+      const created = await this.expensesRepository.create({ ...data, supplierId: supplier?.id, payerName }, client);
 
       const pointers = await this.applySourceEffect(
         {
@@ -95,6 +109,24 @@ export class ExpensesService {
         client,
       );
 
+      if (credit && supplier) {
+        await this.supplierPayablesService.createForPurchase(
+          {
+            businessId: data.businessId,
+            expenseId: created.id,
+            supplierId: supplier.id,
+            supplierName: supplier.name,
+            branchId: data.branchId ?? null,
+            originalAmount: data.amount,
+            dueDate: credit.dueDate,
+            initialPayment: data.initialPayment,
+            initialPaymentSession,
+            actorUserId,
+          },
+          client,
+        );
+      }
+
       return this.expensesRepository.updateSource(
         created.id,
         { paymentSource: data.paymentSource, payerEmployeeId: data.payerEmployeeId, payerName, ...pointers },
@@ -109,15 +141,22 @@ export class ExpensesService {
       entityType: 'expense',
       entityId: row.id,
       action: 'CREATE',
-      newValues: { category: row.category, amount: row.amount, paymentSource: row.payment_source },
+      newValues: {
+        category: row.category,
+        amount: row.amount,
+        paymentSource: row.payment_source,
+        supplierId: row.supplier_id,
+        ...(credit ? { dueDate: credit.dueDate, initialPayment: data.initialPayment?.amount ?? 0 } : {}),
+      },
     });
-    return ExpenseMapper.toDomain(row);
+    const [enriched] = await this.enrich([ExpenseMapper.toDomain(row)]);
+    return enriched;
   }
 
   async findAll(query: ExpenseQuery): Promise<PaginatedResult<Expense>> {
     const { rows, total } = await this.expensesRepository.findAll(query);
     return {
-      data: rows.map((row) => ExpenseMapper.toDomain(row)),
+      data: await this.enrich(rows.map((row) => ExpenseMapper.toDomain(row))),
       meta: buildPaginationMeta(query.page, query.limit, total),
     };
   }
@@ -178,6 +217,14 @@ export class ExpensesService {
       throw new EntityNotFoundException('Expense', id);
     }
     const expense = ExpenseMapper.toDomain(row);
+
+    if (expense.paymentSource === ExpensePaymentSource.SUPPLIER_CREDIT) {
+      // Its money moves through supplier payments, each with its own source.
+      throw new BusinessRuleException(
+        'A purchase on credit has no single source to change — record payments against it instead',
+        'SUPPLIER_CREDIT_NOT_RECLASSIFIABLE',
+      );
+    }
 
     if (expense.paymentSource === data.paymentSource) {
       throw new BusinessRuleException(
@@ -247,7 +294,23 @@ export class ExpensesService {
     id: string,
     actorUserId?: string,
   ): Promise<void> {
-    const row = await this.expensesRepository.softDelete(id, businessId);
+    const existing = await this.expensesRepository.findById(id, businessId);
+    if (!existing) {
+      throw new EntityNotFoundException('Expense', id);
+    }
+    const row = await this.transactionService.execute(async (client) => {
+      if (existing.payment_source === ExpensePaymentSource.SUPPLIER_CREDIT) {
+        // Refused (whole delete rolls back) once anything was paid on it.
+        await this.supplierPayablesService.voidInTransaction(
+          businessId,
+          id,
+          'Compra eliminada',
+          actorUserId ?? '',
+          client,
+        );
+      }
+      return this.expensesRepository.softDelete(id, businessId, client);
+    });
     if (!row) {
       throw new EntityNotFoundException('Expense', id);
     }
@@ -278,7 +341,8 @@ export class ExpensesService {
   ): Promise<SourceEffectPointers> {
     switch (params.paymentSource) {
       case ExpensePaymentSource.CASH_OPERATIONAL: {
-        const session = await this.resolveCashSessionForExpense(
+        const session = await resolveOpenCashSession(
+          this.cashSessionsService,
           params.businessId,
           params.branchId,
           params.cashSessionId,
@@ -412,34 +476,67 @@ export class ExpensesService {
     }
   }
 
-  private async resolveCashSessionForExpense(
-    businessId: string,
-    branchId: string | undefined,
-    explicitCashSessionId: string | undefined,
-  ): Promise<CashSession> {
-    if (explicitCashSessionId) {
-      const session = await this.cashSessionsService.findOne(businessId, explicitCashSessionId);
-      if (session.status !== CashSessionStatus.OPEN) {
-        throw new CashSessionClosedException(explicitCashSessionId);
+  /** The supplier of the purchase, checked to belong to the business. Required for a purchase on credit. */
+  private async resolveSupplier(data: CreateExpenseData, actorUserId: string): Promise<Supplier | null> {
+    if (!data.supplierId && data.newSupplierName?.trim()) {
+      return this.suppliersService.findOrCreateByName(data.businessId, data.newSupplierName, actorUserId);
+    }
+    if (!data.supplierId) {
+      if (data.paymentSource === ExpensePaymentSource.SUPPLIER_CREDIT) {
+        throw new BusinessRuleException('A purchase on credit needs a supplier', 'SUPPLIER_REQUIRED');
       }
-      return session;
+      return null;
     }
+    return this.suppliersService.findOne(data.businessId, data.supplierId);
+  }
 
-    const openSessions = await this.cashSessionsService.findAllOpen(businessId, branchId);
-    if (openSessions.length === 0) {
+  /**
+   * The due date of a purchase on credit (given, or the purchase date plus the
+   * supplier's credit days), after checking that a payment made right away
+   * leaves something owed — paid in full is a cash purchase, not credit.
+   */
+  private creditTerms(data: CreateExpenseData, supplier: Supplier): { dueDate?: string } {
+    if (data.initialPayment && Math.round(data.initialPayment.amount * 100) >= Math.round(data.amount * 100)) {
       throw new BusinessRuleException(
-        'No open cash session available for this expense',
-        'NO_OPEN_CASH_SESSION',
+        'The payment covers the whole purchase — record it as paid with that source instead of on credit',
+        'INITIAL_PAYMENT_NOT_PARTIAL',
       );
     }
-    if (openSessions.length > 1) {
-      throw new BusinessRuleException(
-        'Multiple open cash sessions — specify which one received the money',
-        'CASH_SESSION_SELECTION_REQUIRED',
-        { candidates: openSessions.map((session) => ({ cashSessionId: session.id, branchId: session.branchId })) },
-      );
-    }
-    return openSessions[0];
+    if (data.dueDate) return { dueDate: data.dueDate };
+    if (supplier.creditDays === null) return {};
+    const purchaseDate = new Date(`${data.expenseDate.slice(0, 10)}T00:00:00Z`);
+    purchaseDate.setUTCDate(purchaseDate.getUTCDate() + supplier.creditDays);
+    return { dueDate: purchaseDate.toISOString().slice(0, 10) };
+  }
+
+  /** Adds each expense's supplier name and, for a purchase on credit, what's paid and owed. */
+  private async enrich(expenses: Expense[]): Promise<Expense[]> {
+    const supplierIds = [...new Set(expenses.map((e) => e.supplierId).filter((id): id is string => Boolean(id)))];
+    const creditIds = expenses.filter((e) => e.paymentSource === ExpensePaymentSource.SUPPLIER_CREDIT).map((e) => e.id);
+    const [names, payables, attachmentCounts] = await Promise.all([
+      this.expensesRepository.findSupplierNames(supplierIds),
+      this.supplierPayablesService.findByExpenseIds(creditIds),
+      this.attachmentsService.countByExpenseIds(expenses.map((e) => e.id)),
+    ]);
+    const payableOf = new Map(payables.map((payable) => [payable.expenseId, payable]));
+    return expenses.map((expense) => {
+      const payable = payableOf.get(expense.id);
+      return {
+        ...expense,
+        supplierName: expense.supplierId ? (names.get(expense.supplierId) ?? null) : null,
+        attachmentCount: attachmentCounts.get(expense.id) ?? 0,
+        payable: payable
+          ? {
+              id: payable.id,
+              originalAmount: payable.originalAmount,
+              paidAmount: payable.paidAmount,
+              pendingAmount: payable.pendingAmount,
+              dueDate: payable.dueDate,
+              status: payable.status,
+            }
+          : null,
+      };
+    });
   }
 
   private async resolvePayerName(

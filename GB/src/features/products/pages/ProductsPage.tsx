@@ -3,10 +3,9 @@ import Grid from '@mui/material/Grid';
 import TextField from '@mui/material/TextField';
 import MenuItem from '@mui/material/MenuItem';
 import Button from '@mui/material/Button';
-import Tabs from '@mui/material/Tabs';
-import Tab from '@mui/material/Tab';
-import Stack from '@mui/material/Stack';
-import { Plus, QrCode } from 'lucide-react';
+import { Plus } from 'lucide-react';
+import { useSearchParams } from 'react-router-dom';
+import { MODULE_PATHS } from '../../../routes/navConfig';
 import { useSnackbar } from 'notistack';
 import PageHeader from '../../../components/common/PageHeader';
 import FilterBar from '../../../components/common/FilterBar';
@@ -23,7 +22,6 @@ import { useDeleteProduct } from '../../../modules/products/hooks/use-delete-pro
 import { useSetProductStatus } from '../../../modules/products/hooks/use-set-product-status';
 import { useSetProductVisibility } from '../../../modules/products/hooks/use-set-product-visibility';
 import { useProductCategories } from '../../../modules/product-categories/hooks/use-product-categories';
-import { useCurrentBusiness } from '../../../modules/businesses/hooks/use-current-business';
 import { useProductRecipe } from '../../../modules/recipes/hooks/use-product-recipe';
 import { useCreateRecipe } from '../../../modules/recipes/hooks/use-create-recipe';
 import { useSetRecipeItems } from '../../../modules/recipes/hooks/use-set-recipe-items';
@@ -31,34 +29,32 @@ import { useDeleteRecipe } from '../../../modules/recipes/hooks/use-delete-recip
 import { normalizeApiError } from '../../../lib/api/api-error';
 import ProductCard from '../components/ProductCard';
 import ProductDetailDrawer from '../components/ProductDetailDrawer';
+import { useRemoveProductImage, useUploadProductImage } from '../../../modules/products/hooks/use-product-image';
+import type { ProductImageChange } from '../components/ProductImageField';
 import ProductFormDrawer from '../components/ProductFormDrawer';
 import ProductRecipeDialog from '../components/ProductRecipeDialog';
-import ProductCategoriesTab from '../components/ProductCategoriesTab';
-import PublicMenuLinkDialog from '../components/PublicMenuLinkDialog';
-import SaucesTab from '../components/SaucesTab';
-import SidesTab from '../components/SidesTab';
 import type { Product } from '../../../modules/products/types/product.types';
 import type { ProductFormValues } from '../schemas/productSchema';
-
-type TabKey = 'productos' | 'categorias' | 'salsas' | 'acompanantes';
 
 export default function ProductsPage() {
   const { enqueueSnackbar } = useSnackbar();
 
-  const [tab, setTab] = useState<TabKey>('productos');
   const [search, setSearch] = useState('');
   const [availability, setAvailability] = useState<'todos' | 'disponible' | 'no_disponible'>(
     'todos',
   );
   const [categoryId, setCategoryId] = useState<string>('todas');
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
-  const [formOpen, setFormOpen] = useState(false);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [formOpen, setFormOpen] = useState(() => searchParams.get('nuevo') === '1');
+  if (searchParams.get('nuevo') === '1') {
+    // Se consume una vez: recargar o volver atrás no lo reabre.
+    setSearchParams({}, { replace: true });
+  }
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [deletingProduct, setDeletingProduct] = useState<Product | null>(null);
   const [recipeProduct, setRecipeProduct] = useState<Product | null>(null);
-  const [menuLinkOpen, setMenuLinkOpen] = useState(false);
 
-  const { data: currentBusiness } = useCurrentBusiness();
 
   const filters = useMemo(
     () => ({
@@ -76,6 +72,8 @@ export default function ProductsPage() {
   const createProduct = useCreateProduct();
   const updateProduct = useUpdateProduct();
   const deleteProduct = useDeleteProduct();
+  const uploadImage = useUploadProductImage();
+  const removeImage = useRemoveProductImage();
   const setProductStatus = useSetProductStatus();
   const setProductVisibility = useSetProductVisibility();
   const { data: editingRecipe } = useProductRecipe(editingProduct?.id ?? null);
@@ -111,7 +109,23 @@ export default function ProductsPage() {
     }
   };
 
-  const handleSubmit = (values: ProductFormValues) => {
+  /** After the product itself is saved: upload the new photo, or remove the old one. */
+  const applyImageChange = (productId: string, change: ProductImageChange) => {
+    const onError = (error: unknown) =>
+      enqueueSnackbar(`Producto guardado, pero no se pudo guardar la foto: ${normalizeApiError(error).message}`, {
+        variant: 'warning',
+      });
+    if (change.kind === 'set') {
+      uploadImage.mutate(
+        { id: productId, file: change.file },
+        { onError, onSettled: () => URL.revokeObjectURL(change.previewUrl) },
+      );
+    } else if (change.kind === 'remove') {
+      removeImage.mutate(productId, { onError });
+    }
+  };
+
+  const handleSubmit = (values: ProductFormValues, imageChange: ProductImageChange) => {
     const payload = {
       name: values.name,
       categoryId: values.categoryId || undefined,
@@ -119,8 +133,8 @@ export default function ProductsPage() {
       sku: values.sku || undefined,
       salePrice: values.salePrice,
       trackInventory: values.trackInventory,
-      maxSauces: values.maxSauces,
-      maxSides: values.maxSides,
+      optionGroups: values.optionGroups,
+      menuAvailability: values.menuAvailability,
     };
 
     if (editingProduct) {
@@ -131,6 +145,7 @@ export default function ProductsPage() {
           onSuccess: () => {
             enqueueSnackbar('Producto actualizado correctamente', { variant: 'success' });
             syncInventoryLink(editingProduct.id, values, hadRecipe);
+            applyImageChange(editingProduct.id, imageChange);
             setFormOpen(false);
           },
           onError: (error) => {
@@ -143,6 +158,7 @@ export default function ProductsPage() {
         onSuccess: (created) => {
           enqueueSnackbar('Producto creado correctamente', { variant: 'success' });
           syncInventoryLink(created.id, values, false);
+          applyImageChange(created.id, imageChange);
           setFormOpen(false);
         },
         onError: (error) => {
@@ -196,48 +212,24 @@ export default function ProductsPage() {
     <>
       <PageHeader
         title="Productos"
-        subtitle="Gestiona el catálogo de productos del menú, sus categorías, salsas y acompañantes."
-        breadcrumbs={[{ label: 'Productos' }]}
+        subtitle="El catálogo del menú: precio, receta, opciones para elegir y dónde lo ve el cliente."
+        backTo={{ label: 'Productos y recetas', path: MODULE_PATHS.products }}
         actions={
-          <Stack direction="row" spacing={1}>
+          <Can permission="products.create">
             <Button
-              variant="outlined"
-              startIcon={<QrCode size={16} />}
-              onClick={() => setMenuLinkOpen(true)}
+              variant="contained"
+              startIcon={<Plus size={16} />}
+              onClick={() => {
+                setEditingProduct(null);
+                setFormOpen(true);
+              }}
             >
-              Compartir menú
+              Nuevo producto
             </Button>
-            {tab === 'productos' && (
-              <Can permission="products.create">
-                <Button
-                  variant="contained"
-                  startIcon={<Plus size={16} />}
-                  onClick={() => {
-                    setEditingProduct(null);
-                    setFormOpen(true);
-                  }}
-                >
-                  Nuevo producto
-                </Button>
-              </Can>
-            )}
-          </Stack>
+          </Can>
         }
       />
 
-      <Tabs value={tab} onChange={(_, value: TabKey) => setTab(value)} sx={{ mb: 2 }}>
-        <Tab value="productos" label="Productos" />
-        <Tab value="categorias" label="Categorías" />
-        <Tab value="salsas" label="Salsas" />
-        <Tab value="acompanantes" label="Acompañantes" />
-      </Tabs>
-
-      {tab === 'categorias' && <ProductCategoriesTab />}
-      {tab === 'salsas' && <SaucesTab />}
-      {tab === 'acompanantes' && <SidesTab />}
-
-      {tab === 'productos' && (
-        <>
       <FilterBar
         onClear={() => {
           setSearch('');
@@ -299,8 +291,6 @@ export default function ProductsPage() {
           ))}
         </Grid>
       )}
-        </>
-      )}
 
       <ProductDetailDrawer
         product={selectedProduct}
@@ -341,12 +331,6 @@ export default function ProductsPage() {
         onConfirm={handleDelete}
       />
 
-      <PublicMenuLinkDialog
-        open={menuLinkOpen}
-        businessId={currentBusiness?.id}
-        businessName={currentBusiness?.name}
-        onClose={() => setMenuLinkOpen(false)}
-      />
     </>
   );
 }

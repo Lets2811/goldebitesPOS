@@ -1,10 +1,16 @@
+import { Product } from '../../products/domain/product.interface';
+import { ProductMenuAvailability } from '../../products/domain/product.types';
 import { Injectable } from '@nestjs/common';
 import { BusinessesService } from '../../businesses/services/businesses.service';
 import { ProductCategoriesService } from '../../product-categories/services/product-categories.service';
+import { OptionGroupsService } from '../../option-groups/services/option-groups.service';
 import { ProductsService } from '../../products/services/products.service';
-import { SaucesService } from '../../sauces/services/sauces.service';
-import { SidesService } from '../../sides/services/sides.service';
-import { PublicMenu, PublicMenuCategory, PublicMenuOption, PublicMenuProduct } from '../domain/public-menu.interface';
+import {
+  PublicMenu,
+  PublicMenuCategory,
+  PublicMenuOptionGroup,
+  PublicMenuProduct,
+} from '../domain/public-menu.interface';
 
 const UNCATEGORIZED_LABEL = 'Otros';
 
@@ -14,8 +20,7 @@ export class PublicMenuService {
     private readonly businessesService: BusinessesService,
     private readonly productCategoriesService: ProductCategoriesService,
     private readonly productsService: ProductsService,
-    private readonly saucesService: SaucesService,
-    private readonly sidesService: SidesService,
+    private readonly optionGroupsService: OptionGroupsService,
   ) {}
 
   /**
@@ -26,22 +31,56 @@ export class PublicMenuService {
    * internal surcharges the team adds when invoicing) stay usable for staff
    * but are deliberately hidden from this customer-facing view.
    *
-   * Sauces/sides are returned once, business-wide — not a parallel catalog
-   * duplicated per product. Each product only carries its own maxSauces/
-   * maxSides count; the frontend caps selection against the shared lists.
+   * Option groups ("Salsas", "Tamaño"...) are returned once, business-wide,
+   * with their active options — not duplicated per product. Each product only
+   * carries which of them it offers and how many can be picked. A group that's
+   * off or has nothing active to pick is left out everywhere.
    */
   async getMenu(businessId: string): Promise<PublicMenu> {
     const business = await this.businessesService.findById(businessId);
 
-    const [categoriesResult, productsResult, saucesResult, sidesResult] = await Promise.all([
+    const [categoriesResult, productsResult, allGroups] = await Promise.all([
       this.productCategoriesService.findAll({ businessId, isActive: true, page: 1, limit: 200 }),
       this.productsService.findAll({ businessId, isActive: true, isVisible: true, page: 1, limit: 500 }),
-      this.saucesService.findAll({ businessId, isActive: true, page: 1, limit: 200 }),
-      this.sidesService.findAll({ businessId, isActive: true, page: 1, limit: 200 }),
+      this.optionGroupsService.findAll(businessId),
     ]);
+    const optionGroups: PublicMenuOptionGroup[] = allGroups
+      .filter((group) => group.isActive)
+      .map((group) => ({
+        id: group.id,
+        name: group.name,
+        singularName: group.singularName,
+        isRequired: group.isRequired,
+        items: group.items.filter((item) => item.isActive).map((item) => ({ id: item.id, name: item.name })),
+      }))
+      .filter((group) => group.items.length > 0);
+    const offerable = new Set(optionGroups.map((group) => group.id));
 
+    const inMenu = productsResult.data.filter((p) => p.menuAvailability !== ProductMenuAvailability.BUILDER);
+    const inBuilder = productsResult.data.filter((p) => p.menuAvailability !== ProductMenuAvailability.MENU);
+    const categories = this.groupByCategory(inMenu, categoriesResult.data, offerable);
+    // "Arma tu combo" has its own section order; the regular menu keeps display_order (the list's own order).
+    const builderOrder = [...categoriesResult.data].sort(
+      (a, b) => a.builderDisplayOrder - b.builderDisplayOrder || a.name.localeCompare(b.name),
+    );
+    const builderCategories = this.groupByCategory(inBuilder, builderOrder, offerable);
+
+    return {
+      businessName: business.name,
+      categories,
+      builderCategories,
+      optionGroups,
+    };
+  }
+
+  /** Products into their categories (in the categories' display order), plus "Otros" for the uncategorized. */
+  private groupByCategory(
+    products: Product[],
+    orderedCategories: { id: string; name: string }[],
+    offerable: Set<string>,
+  ): PublicMenuCategory[] {
     const productsByCategory = new Map<string | null, PublicMenuProduct[]>();
-    for (const product of productsResult.data) {
+    for (const product of products) {
       const key = product.categoryId;
       const list = productsByCategory.get(key) ?? [];
       list.push({
@@ -50,8 +89,7 @@ export class PublicMenuService {
         salePrice: product.salePrice,
         description: product.description,
         imageUrl: product.imageUrl,
-        maxSauces: product.maxSauces,
-        maxSides: product.maxSides,
+        optionGroups: product.optionGroups.filter((offered) => offerable.has(offered.groupId)),
       });
       productsByCategory.set(key, list);
     }
@@ -59,8 +97,8 @@ export class PublicMenuService {
       list.sort((a, b) => a.name.localeCompare(b.name));
     }
 
-    // categoriesResult.data is already ordered by display_order, name.
-    const categories: PublicMenuCategory[] = categoriesResult.data
+    // The categories come already ordered by display_order, name.
+    const categories: PublicMenuCategory[] = orderedCategories
       .map((category) => ({
         id: category.id,
         name: category.name,
@@ -73,13 +111,6 @@ export class PublicMenuService {
       categories.push({ id: null, name: UNCATEGORIZED_LABEL, products: uncategorized });
     }
 
-    const toOption = (item: { id: string; name: string }): PublicMenuOption => ({ id: item.id, name: item.name });
-
-    return {
-      businessName: business.name,
-      categories,
-      sauces: saucesResult.data.map(toOption),
-      sides: sidesResult.data.map(toOption),
-    };
+    return categories;
   }
 }

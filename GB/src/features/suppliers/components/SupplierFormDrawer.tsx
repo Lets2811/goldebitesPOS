@@ -22,6 +22,7 @@ const emptyValues: SupplierFormValues = {
   phone: '',
   address: '',
   notes: '',
+  creditDays: '',
 };
 
 export default function SupplierFormDrawer({
@@ -52,6 +53,7 @@ export default function SupplierFormDrawer({
               phone: initialSupplier.phone ?? '',
               address: initialSupplier.address ?? '',
               notes: initialSupplier.notes ?? '',
+              creditDays: initialSupplier.creditDays != null ? String(initialSupplier.creditDays) : '',
             }
           : emptyValues,
       );
@@ -123,6 +125,23 @@ export default function SupplierFormDrawer({
           name="address"
           control={control}
           render={({ field }) => <TextField {...field} label="Dirección" fullWidth />}
+        />
+
+        <Controller
+          name="creditDays"
+          control={control}
+          render={({ field }) => (
+            <TextField
+              {...field}
+              label="Días de crédito"
+              inputMode="numeric"
+              fullWidth
+              error={Boolean(errors.creditDays)}
+              helperText={
+                errors.creditDays?.message ?? 'Plazo que da para pagar. Propone el vencimiento de las compras a crédito.'
+              }
+            />
+          )}
         />
 
         <Controller

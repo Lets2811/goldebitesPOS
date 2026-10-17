@@ -26,7 +26,7 @@ const SELECT_COLUMNS = `id, business_id, branch_id, customer_id, customer_name, 
   confirmed_at, prepared_at, delivered_at, cancelled_at, created_at, updated_at`;
 
 const ITEM_COLUMNS = `id, order_id, product_id, product_name_snapshot, product_description_snapshot, quantity, unit_price,
-  unit_cost_snapshot, discount_amount, total_price, notes, sauce_ids, sauce_names, side_ids, side_names, created_at`;
+  unit_cost_snapshot, discount_amount, total_price, notes, option_selections, created_at`;
 
 const HISTORY_COLUMNS = `id, order_id, previous_status, new_status, changed_by, notes, created_at`;
 
@@ -242,8 +242,8 @@ export class OrdersRepository implements IOrdersRepository {
     for (const item of items) {
       await this.db.query(
         `INSERT INTO order_items
-           (order_id, product_id, product_name_snapshot, product_description_snapshot, quantity, unit_price, unit_cost_snapshot, discount_amount, total_price, notes, sauce_ids, sauce_names, side_ids, side_names)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, COALESCE($8::numeric, 0), $9, $10, COALESCE($11::uuid[], '{}'), COALESCE($12::text[], '{}'), COALESCE($13::uuid[], '{}'), COALESCE($14::text[], '{}'))`,
+           (order_id, product_id, product_name_snapshot, product_description_snapshot, quantity, unit_price, unit_cost_snapshot, discount_amount, total_price, notes, option_selections)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, COALESCE($8::numeric, 0), $9, $10, $11::jsonb)`,
         [
           orderId,
           item.productId,
@@ -255,10 +255,7 @@ export class OrdersRepository implements IOrdersRepository {
           item.discountAmount ?? null,
           item.totalPrice,
           item.notes ?? null,
-          item.sauceIds ?? null,
-          item.sauceNames ?? null,
-          item.sideIds ?? null,
-          item.sideNames ?? null,
+          JSON.stringify(item.optionSelections),
         ],
         client,
       );

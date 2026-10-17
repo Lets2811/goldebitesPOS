@@ -1,0 +1,64 @@
+# Staging: a separate copy of Golden Bites for demos, on the same VM as
+# production but sharing nothing with it — its own database, uploads and
+# secrets. Run as its own Compose project (`-p gbstaging`, see
+# deploy/deploy-staging.sh) from /opt/golden-bites/staging.
+#
+# No ports are published: production's nginx (GB/nginx.conf) answers
+# https://staging.goldenbites.net and forwards it, over the shared `gb_edge`
+# network, to this stack's frontend, which serves the app and proxies /api to
+# this stack's backend.
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - staging_pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${DB_USER} -d ${DB_NAME}']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: ./GB-BE
+      target: production
+    env_file: .env.staging
+    environment:
+      DB_HOST: postgres
+    volumes:
+      - staging_uploads:/app/uploads
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./GB
+      args:
+        VITE_API_BASE_URL: /api/v1
+        # Shows the STAGING chip in the app.
+        VITE_APP_ENV: staging
+        NGINX_CONF: nginx.staging.conf
+    networks:
+      default:
+      edge:
+        # The name production's nginx forwards staging.goldenbites.net to.
+        aliases: [gb-staging-web]
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+networks:
+  edge:
+    name: gb_edge
+    external: true
+
+volumes:
+  staging_pg_data:
+  staging_uploads:

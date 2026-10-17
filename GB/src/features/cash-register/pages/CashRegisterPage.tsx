@@ -49,9 +49,12 @@ const MOVEMENT_TYPE_LABELS: Record<CashMovementType, string> = {
   EXPENSE: 'Gasto',
   WITHDRAWAL: 'Retiro',
   CLOSING: 'Cierre',
+  REIMBURSEMENT: 'Reembolso',
+  EXPENSE_REVERSAL: 'Reversión de gasto',
+  INCOME_REVERSAL: 'Anulación de ingreso',
 };
 
-const POSITIVE_MOVEMENT_TYPES: CashMovementType[] = ['OPENING', 'SALE', 'INCOME'];
+const POSITIVE_MOVEMENT_TYPES: CashMovementType[] = ['OPENING', 'SALE', 'INCOME', 'EXPENSE_REVERSAL'];
 
 const PAYMENT_METHOD_ICONS: Record<PaymentMethod, typeof Banknote> = {
   CASH: Banknote,

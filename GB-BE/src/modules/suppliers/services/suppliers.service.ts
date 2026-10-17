@@ -37,6 +37,16 @@ export class SuppliersService {
     return SupplierMapper.toDomain(row);
   }
 
+  /**
+   * The supplier a purchase names in free text: the active one already called
+   * that (so typing it again doesn't duplicate it), or a new one.
+   */
+  async findOrCreateByName(businessId: string, name: string, actorUserId?: string): Promise<Supplier> {
+    const existing = await this.suppliersRepository.findActiveByName(businessId, name);
+    if (existing) return SupplierMapper.toDomain(existing);
+    return this.create({ businessId, name: name.trim() }, actorUserId);
+  }
+
   async findAll(query: SupplierQuery): Promise<PaginatedResult<Supplier>> {
     const { rows, total } = await this.suppliersRepository.findAll(query);
     return {

@@ -5,8 +5,10 @@ import LinearProgress from '@mui/material/LinearProgress';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
-import { Pencil, Trash2 } from 'lucide-react';
+import { Ban, Pencil, Trash2 } from 'lucide-react';
 import type { Expense } from '../../../modules/finances/types/expense.types';
+import type { OtherIncome } from '../../../modules/finances/types/other-income.types';
+import { OTHER_INCOME_TYPE_LABELS, describeIncomeDestination } from '../../../modules/finances/other-income-labels';
 import type { WidgetPlacement } from '../../../store/financeDashboardStore';
 import { brand, chartAxis, chartCategorical, chartGrid } from '../../../theme/palette';
 import { formatCOP, formatDateCO, formatNumber, formatPercent } from '../../../utils/format';
@@ -20,6 +22,8 @@ export interface WidgetContext {
   /** Presentes solo para quien puede administrar gastos. */
   onEditExpense?: (expense: Expense) => void;
   onDeleteExpense?: (expense: Expense) => void;
+  /** Presente solo para quien puede administrar las finanzas. */
+  onVoidIncome?: (income: OtherIncome) => void;
 }
 
 export interface WidgetDefinition {
@@ -142,6 +146,42 @@ export const WIDGETS: WidgetDefinition[] = [
     ),
   },
   {
+    id: 'otherIncomeTotal',
+    title: 'Otros ingresos',
+    description: 'Dinero que entró por fuera de las ventas (devoluciones, reintegros, aportes).',
+    size: { w: 3, h: 2, minW: 2, minH: 2 },
+    render: ({ data }) => {
+      const count = data.otherIncomeList.filter((income) => !income.voidedAt).length;
+      return (
+        <Figure
+          value={formatCOP(data.otherIncomeTotal)}
+          helper={`${formatNumber(count)} ${count === 1 ? 'ingreso' : 'ingresos'} · no suman a la utilidad`}
+        />
+      );
+    },
+  },
+  {
+    id: 'supplierPayables',
+    title: 'Por pagar a proveedores',
+    description: 'Lo que se les debe hoy por compras a crédito, y cuánto ya está vencido.',
+    size: { w: 3, h: 2, minW: 2, minH: 2 },
+    render: ({ data }) => {
+      const payables = data.payables;
+      if (!payables) return <Figure value="—" />;
+      return (
+        <Figure
+          value={formatCOP(payables.pendingTotal)}
+          tone={payables.overdueTotal > 0 ? 'negative' : undefined}
+          helper={
+            payables.overdueTotal > 0
+              ? `${formatCOP(payables.overdueTotal)} vencido`
+              : `${formatNumber(payables.openCount)} ${payables.openCount === 1 ? 'compra' : 'compras'} a crédito`
+          }
+        />
+      );
+    },
+  },
+  {
     id: 'timeline',
     title: 'Ventas y gastos en el tiempo',
     description: 'Gráfica de ventas contra gastos, día a día o mes a mes.',
@@ -236,7 +276,13 @@ export const WIDGETS: WidgetDefinition[] = [
                 </Typography>
                 <Typography variant="caption" color="text.secondary" noWrap sx={{ display: 'block' }}>
                   {formatDateCO(expense.expenseDate)} · {categoryLabel(expense.category)}
+                  {expense.supplierName ? ` · ${expense.supplierName}` : ''}
                   {expense.responsible ? ` · ${expense.responsible}` : ''}
+                  {expense.payable
+                    ? expense.payable.pendingAmount > 0
+                      ? ` · a crédito, debe ${formatCOP(expense.payable.pendingAmount)}`
+                      : ' · a crédito, pagada'
+                    : ''}
                 </Typography>
               </Box>
               <Typography variant="body2" sx={{ fontWeight: 700, whiteSpace: 'nowrap' }}>
@@ -260,6 +306,52 @@ export const WIDGETS: WidgetDefinition[] = [
               los demás.
             </Typography>
           )}
+        </Stack>
+      ),
+  },
+  {
+    id: 'otherIncomes',
+    title: 'Otros ingresos registrados',
+    description: 'Devoluciones de proveedor, reintegros y demás dinero recibido, con el lugar donde quedó.',
+    size: { w: 12, h: 4, minW: 4, minH: 3 },
+    render: ({ data, onVoidIncome }) =>
+      data.otherIncomeList.length === 0 ? (
+        <Empty>No hay otros ingresos en este período. Regístralos con "Registrar ingreso".</Empty>
+      ) : (
+        <Stack divider={<Box sx={{ borderTop: '1px solid', borderColor: 'divider' }} />}>
+          {data.otherIncomeList.map((income) => {
+            const voided = Boolean(income.voidedAt);
+            return (
+              <Stack key={income.id} direction="row" spacing={1.5} sx={{ alignItems: 'center', py: 1, minWidth: 0 }}>
+                <Box sx={{ flex: 1, minWidth: 0, opacity: voided ? 0.6 : 1 }}>
+                  <Typography variant="body2" noWrap sx={{ fontWeight: 600, textDecoration: voided ? 'line-through' : 'none' }}>
+                    {income.description}
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary" noWrap sx={{ display: 'block' }}>
+                    {formatDateCO(`${income.incomeDate}T12:00:00`)} · {OTHER_INCOME_TYPE_LABELS[income.incomeType]}
+                    {income.receivedFrom ? ` · de ${income.receivedFrom}` : ''} · a {describeIncomeDestination(income.destination, income.paymentMethod)}
+                    {voided ? ` · Anulado: ${income.voidReason}` : ''}
+                  </Typography>
+                </Box>
+                <Typography
+                  variant="body2"
+                  sx={{
+                    fontWeight: 700,
+                    whiteSpace: 'nowrap',
+                    color: voided ? 'text.disabled' : 'success.main',
+                    textDecoration: voided ? 'line-through' : 'none',
+                  }}
+                >
+                  +{formatCOP(income.amount)}
+                </Typography>
+                {onVoidIncome && !voided && (
+                  <IconButton size="small" aria-label="Anular ingreso" onClick={() => onVoidIncome(income)}>
+                    <Ban size={14} />
+                  </IconButton>
+                )}
+              </Stack>
+            );
+          })}
         </Stack>
       ),
   },
@@ -308,4 +400,5 @@ export const DEFAULT_LAYOUT: WidgetPlacement[] = [
   { i: 'byCategory', x: 8, y: 2, w: 4, h: 5 },
   { i: 'expensesTable', x: 0, y: 7, w: 8, h: 6 },
   { i: 'topProducts', x: 8, y: 7, w: 4, h: 6 },
+  { i: 'otherIncomes', x: 0, y: 13, w: 12, h: 4 },
 ];

@@ -1,5 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
+  IsBoolean,
   IsDateString,
   IsEmail,
   IsEnum,
@@ -11,7 +12,11 @@ import {
   MaxLength,
   MinLength,
 } from 'class-validator';
-import { EmployeePayFrequency } from '../domain/employee.types';
+import {
+  EmployeeDocumentType,
+  EmployeePayFrequency,
+  EmployeeStatus,
+} from '../domain/employee.types';
 
 export class CreateEmployeeDto {
   @ApiProperty({ maxLength: 100 })
@@ -26,11 +31,28 @@ export class CreateEmployeeDto {
   @MaxLength(100)
   lastName: string;
 
+  @ApiPropertyOptional({ enum: EmployeeDocumentType })
+  @IsOptional()
+  @IsEnum(EmployeeDocumentType)
+  documentType?: EmployeeDocumentType;
+
+  @ApiPropertyOptional({ maxLength: 30, description: 'Unique within the business' })
+  @IsOptional()
+  @IsString()
+  @MinLength(3)
+  @MaxLength(30)
+  documentNumber?: string;
+
   @ApiPropertyOptional({ maxLength: 30 })
   @IsOptional()
   @IsString()
   @MaxLength(30)
   phone?: string;
+
+  @ApiPropertyOptional({ enum: EmployeeStatus, default: EmployeeStatus.ACTIVE })
+  @IsOptional()
+  @IsEnum(EmployeeStatus)
+  status?: EmployeeStatus;
 
   @ApiPropertyOptional()
   @IsOptional()
@@ -80,4 +102,13 @@ export class CreateEmployeeDto {
   @IsOptional()
   @IsEnum(EmployeePayFrequency)
   payFrequency?: EmployeePayFrequency;
+
+  @ApiPropertyOptional({
+    default: true,
+    description:
+      'False registers the employee without a login account; one can be generated later',
+  })
+  @IsOptional()
+  @IsBoolean()
+  createAccess?: boolean;
 }

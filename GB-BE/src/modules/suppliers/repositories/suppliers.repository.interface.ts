@@ -27,6 +27,7 @@ export interface ISuppliersRepository {
     businessId: string,
     isActive: boolean,
   ): Promise<SupplierRow | null>;
+  findActiveByName(businessId: string, name: string): Promise<SupplierRow | null>;
 }
 
 export const SUPPLIERS_REPOSITORY = Symbol('SUPPLIERS_REPOSITORY');

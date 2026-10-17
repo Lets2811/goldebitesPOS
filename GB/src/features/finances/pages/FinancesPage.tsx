@@ -5,7 +5,7 @@ import Stack from '@mui/material/Stack';
 import Tab from '@mui/material/Tab';
 import Tabs from '@mui/material/Tabs';
 import { useSnackbar } from 'notistack';
-import { Check, LayoutDashboard } from 'lucide-react';
+import { Check, LayoutDashboard, Plus } from 'lucide-react';
 import ConfirmDialog from '../../../components/common/ConfirmDialog';
 import PageHeader from '../../../components/common/PageHeader';
 import { usePermissions } from '../../../modules/auth/hooks/use-permissions';
@@ -14,6 +14,11 @@ import { useDeleteExpense } from '../../../modules/finances/hooks/use-delete-exp
 import { useExpenseCategories } from '../../../modules/finances/hooks/use-expense-categories';
 import { useUpdateExpense } from '../../../modules/finances/hooks/use-update-expense';
 import type { Expense } from '../../../modules/finances/types/expense.types';
+import { useCreateOtherIncome, useVoidOtherIncome } from '../../../modules/finances/hooks/use-other-incomes';
+import { otherIncomeErrorMessage } from '../../../modules/finances/other-income-labels';
+import type { OtherIncome } from '../../../modules/finances/types/other-income.types';
+import OtherIncomeFormDrawer from '../components/OtherIncomeFormDrawer';
+import VoidIncomeDialog from '../components/VoidIncomeDialog';
 import ExpenseFormDrawer from '../components/ExpenseFormDrawer';
 import FundsTab from '../components/FundsTab';
 import PeriodPicker from '../components/PeriodPicker';
@@ -41,6 +46,10 @@ export default function FinancesPage() {
   const deleteExpense = useDeleteExpense();
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
   const [deletingExpense, setDeletingExpense] = useState<Expense | null>(null);
+  const createIncome = useCreateOtherIncome();
+  const voidIncome = useVoidOtherIncome();
+  const [incomeFormOpen, setIncomeFormOpen] = useState(false);
+  const [voidingIncome, setVoidingIncome] = useState<OtherIncome | null>(null);
 
   const onError = (error: unknown) => enqueueSnackbar(expenseErrorMessage(error), { variant: 'error' });
 
@@ -63,17 +72,24 @@ export default function FinancesPage() {
     <>
       <PageHeader
         title="Finanzas"
-        subtitle="Ventas, gastos y utilidad del negocio en el período que elijas."
+        subtitle="Ventas, gastos, otros ingresos y utilidad del negocio en el período que elijas."
         breadcrumbs={[{ label: 'Finanzas' }]}
         actions={
           showFunds ? undefined : (
-            <Button
-              variant={customizing ? 'contained' : 'outlined'}
-              startIcon={customizing ? <Check size={16} /> : <LayoutDashboard size={16} />}
-              onClick={() => setCustomizing((current) => !current)}
-            >
-              {customizing ? 'Listo' : 'Personalizar'}
-            </Button>
+            <>
+              <Button
+                variant={customizing ? 'contained' : 'outlined'}
+                startIcon={customizing ? <Check size={16} /> : <LayoutDashboard size={16} />}
+                onClick={() => setCustomizing((current) => !current)}
+              >
+                {customizing ? 'Listo' : 'Personalizar'}
+              </Button>
+              {canManage && (
+                <Button variant="contained" startIcon={<Plus size={16} />} onClick={() => setIncomeFormOpen(true)}>
+                  Registrar ingreso
+                </Button>
+              )}
+            </>
           )
         }
       />
@@ -99,6 +115,7 @@ export default function FinancesPage() {
               categoryLabel,
               onEditExpense: canManage ? setEditingExpense : undefined,
               onDeleteExpense: canManage ? setDeletingExpense : undefined,
+              onVoidIncome: canManage ? setVoidingIncome : undefined,
             }}
           />
         </Stack>
@@ -126,6 +143,42 @@ export default function FinancesPage() {
             onError,
             onSettled: () => setDeletingExpense(null),
           });
+        }}
+      />
+
+      <OtherIncomeFormDrawer
+        open={incomeFormOpen}
+        loading={createIncome.isPending}
+        onClose={() => setIncomeFormOpen(false)}
+        onSubmit={(payload) =>
+          createIncome.mutate(payload, {
+            onSuccess: () => {
+              enqueueSnackbar('Ingreso registrado', { variant: 'success' });
+              setIncomeFormOpen(false);
+            },
+            onError: (error) =>
+              enqueueSnackbar(otherIncomeErrorMessage(error, payload.destination), { variant: 'error' }),
+          })
+        }
+      />
+
+      <VoidIncomeDialog
+        income={voidingIncome}
+        loading={voidIncome.isPending}
+        onClose={() => setVoidingIncome(null)}
+        onConfirm={(reason) => {
+          if (!voidingIncome) return;
+          voidIncome.mutate(
+            { id: voidingIncome.id, reason },
+            {
+              onSuccess: () => {
+                enqueueSnackbar('Ingreso anulado', { variant: 'success' });
+                setVoidingIncome(null);
+              },
+              onError: (error) =>
+                enqueueSnackbar(otherIncomeErrorMessage(error, voidingIncome.destination), { variant: 'error' }),
+            },
+          );
         }}
       />
     </>

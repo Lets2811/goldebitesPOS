@@ -5,6 +5,8 @@ import Typography from '@mui/material/Typography';
 import Button from '@mui/material/Button';
 import { LogOut, Car } from 'lucide-react';
 import { useSnackbar } from 'notistack';
+import { useRequiredOptionCheck } from '../../../modules/option-groups/hooks/use-required-option-check';
+import { cartLineToOrderItem, useCartLines } from '../../../modules/orders/hooks/use-cart-lines';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../../modules/auth/store/auth.store';
 import { useLogout } from '../../../modules/auth/hooks/use-logout';
@@ -13,11 +15,8 @@ import { useCreateOrder } from '../../../modules/orders/hooks/use-create-order';
 import { useUpdateOrderStatus } from '../../../modules/orders/hooks/use-update-order-status';
 import { normalizeApiError } from '../../../lib/api/api-error';
 import { useNotificationsStore } from '../../../store/notificationsStore';
-import { generateId } from '../../../utils/generate-id';
 import type { OrderStatus } from '../../../modules/orders/types/order.types';
-import type { Product } from '../../../modules/products/types/product.types';
 import { useWaiterOrders } from '../../kiosk-waiter/hooks/use-waiter-orders';
-import type { CartLine } from '../../kiosk-waiter/components/CartPanel';
 import CarServiceCategoryStrip from '../components/CarServiceCategoryStrip';
 import CarServiceProductGrid from '../components/CarServiceProductGrid';
 import CarServiceCartPanel from '../components/CarServiceCartPanel';
@@ -31,6 +30,7 @@ interface PayingOrder {
 
 export default function CarServiceKioskPage() {
   const { enqueueSnackbar, closeSnackbar } = useSnackbar();
+  const checkRequiredOptions = useRequiredOptionCheck();
   const navigate = useNavigate();
   const business = useCurrentBusiness();
   const branchId = useAuthStore((s) => s.user?.branchId);
@@ -38,7 +38,7 @@ export default function CarServiceKioskPage() {
   const addNotification = useNotificationsStore((s) => s.addNotification);
 
   const [categoryId, setCategoryId] = useState<string | null>(null);
-  const [cart, setCart] = useState<CartLine[]>([]);
+  const { cart, addToCart, toggleOption, increment, decrement, remove, clear } = useCartLines();
   const [vehicleTag, setVehicleTag] = useState('');
   const [customerName, setCustomerName] = useState('');
   const [payingOrder, setPayingOrder] = useState<PayingOrder | null>(null);
@@ -74,110 +74,16 @@ export default function CarServiceKioskPage() {
     previousStatuses.current = new Map(orders.map((order) => [order.id, order.status]));
   }, [orders, enqueueSnackbar, closeSnackbar, addNotification]);
 
-  function handleAddToCart(product: Product) {
-    setCart((prev) => {
-      // Products with sauces/sides need one picker per unit, so each tap adds its own
-      // independently-configurable line instead of bumping a shared quantity.
-      const isCustomizable = product.maxSauces > 0 || product.maxSides > 0;
-      if (!isCustomizable) {
-        const existing = prev.find((line) => line.productId === product.id);
-        if (existing) {
-          return prev.map((line) =>
-            line.id === existing.id ? { ...line, quantity: line.quantity + 1 } : line,
-          );
-        }
-      }
-      return [
-        ...prev,
-        {
-          id: generateId(),
-          productId: product.id,
-          name: product.name,
-          unitPrice: product.salePrice,
-          quantity: 1,
-          maxSauces: product.maxSauces,
-          maxSides: product.maxSides,
-          sauceIds: [],
-          sideIds: [],
-        },
-      ];
-    });
-  }
-
-  function handleToggleSauce(id: string, sauceId: string) {
-    setCart((prev) =>
-      prev.map((line) => {
-        if (line.id !== id) return line;
-        const selected = line.sauceIds.includes(sauceId);
-        if (!selected && line.sauceIds.length >= line.maxSauces) return line;
-        return {
-          ...line,
-          sauceIds: selected
-            ? line.sauceIds.filter((sid) => sid !== sauceId)
-            : [...line.sauceIds, sauceId],
-        };
-      }),
-    );
-  }
-
-  function handleToggleSide(id: string, sideId: string) {
-    setCart((prev) =>
-      prev.map((line) => {
-        if (line.id !== id) return line;
-        const selected = line.sideIds.includes(sideId);
-        if (!selected && line.sideIds.length >= line.maxSides) return line;
-        return {
-          ...line,
-          sideIds: selected
-            ? line.sideIds.filter((sid) => sid !== sideId)
-            : [...line.sideIds, sideId],
-        };
-      }),
-    );
-  }
-
-  function handleIncrement(id: string) {
-    setCart((prev) => {
-      const line = prev.find((l) => l.id === id);
-      if (!line) return prev;
-      const isCustomizable = line.maxSauces > 0 || line.maxSides > 0;
-      if (isCustomizable) {
-        return [
-          ...prev,
-          {
-            id: generateId(),
-            productId: line.productId,
-            name: line.name,
-            unitPrice: line.unitPrice,
-            quantity: 1,
-            maxSauces: line.maxSauces,
-            maxSides: line.maxSides,
-            sauceIds: [],
-            sideIds: [],
-          },
-        ];
-      }
-      return prev.map((l) => (l.id === id ? { ...l, quantity: l.quantity + 1 } : l));
-    });
-  }
-
-  function handleDecrement(id: string) {
-    setCart((prev) =>
-      prev
-        .map((line) => (line.id === id ? { ...line, quantity: line.quantity - 1 } : line))
-        .filter((line) => line.quantity > 0),
-    );
-  }
-
-  function handleRemove(id: string) {
-    setCart((prev) => prev.filter((line) => line.id !== id));
-  }
-
   function handleSubmit() {
     if (!branchId) {
       enqueueSnackbar('Tu usuario no tiene una sucursal asignada; no puedes crear pedidos.', {
         variant: 'error',
       });
+      return;
+    }
+    const missingOption = checkRequiredOptions(cart);
+    if (missingOption) {
+      enqueueSnackbar(missingOption, { variant: 'error' });
       return;
     }
 
@@ -187,18 +93,13 @@ export default function CarServiceKioskPage() {
         orderType: 'CAR_SERVICE',
         tableNumber: vehicleTag || undefined,
         customerName: customerName || undefined,
-        items: cart.map((line) => ({
-          productId: line.productId,
-          quantity: line.quantity,
-          sauceIds: line.sauceIds.length ? line.sauceIds : undefined,
-          sideIds: line.sideIds.length ? line.sideIds : undefined,
-        })),
+        items: cart.map(cartLineToOrderItem),
       },
       {
         onSuccess: (order) => {
           updateStatus.mutate({ id: order.id, status: 'CONFIRMED' });
           enqueueSnackbar(`Pedido #${order.orderNumber} enviado a cocina`, { variant: 'success' });
-          setCart([]);
+          clear();
           setVehicleTag('');
           setCustomerName('');
           setLastOrderNumber(order.orderNumber);
@@ -284,7 +185,7 @@ export default function CarServiceKioskPage() {
         <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
           <CarServiceCategoryStrip value={categoryId} onChange={setCategoryId} />
           <Box sx={{ flex: 1, overflowY: 'auto' }}>
-            <CarServiceProductGrid categoryId={categoryId} onSelect={handleAddToCart} />
+            <CarServiceProductGrid categoryId={categoryId} onSelect={addToCart} />
           </Box>
         </Box>
 
@@ -301,11 +202,10 @@ export default function CarServiceKioskPage() {
         >
           <CarServiceCartPanel
             cart={cart}
-            onIncrement={handleIncrement}
-            onDecrement={handleDecrement}
-            onRemove={handleRemove}
-            onToggleSauce={handleToggleSauce}
-            onToggleSide={handleToggleSide}
+            onIncrement={increment}
+            onDecrement={decrement}
+            onRemove={remove}
+            onToggleOption={toggleOption}
             vehicleTag={vehicleTag}
             onVehicleTagChange={setVehicleTag}
             customerName={customerName}

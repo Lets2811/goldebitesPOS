@@ -16,6 +16,7 @@ import IconButton from '@mui/material/IconButton';
 import { MapPin, ArrowRight, Ban, CreditCard, Users, Printer, Receipt, Pencil, Plus, Check, X } from 'lucide-react';
 import DetailDrawer from '../../../components/common/DetailDrawer';
 import StatusChip from '../../../components/common/StatusChip';
+import OptionSelectionsText from '../../../modules/option-groups/components/OptionSelectionsText';
 import CurrencyDisplay from '../../../components/common/CurrencyDisplay';
 import CurrencyField from '../../../components/common/CurrencyField';
 import CashChangeCalculator from './CashChangeCalculator';
@@ -241,14 +242,9 @@ export default function OrderDetailDrawer({
                     <Typography variant="body2" sx={{ fontWeight: 600 }}>
                       {item.quantity}× {item.productNameSnapshot}
                     </Typography>
-                    {(item.sauceNames.length > 0 || item.sideNames.length > 0) && (
+                    {item.optionSelections.length > 0 && (
                       <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
-                        {[
-                          item.sauceNames.length > 0 && `Salsas: ${item.sauceNames.join(', ')}`,
-                          item.sideNames.length > 0 && `Acompañantes: ${item.sideNames.join(', ')}`,
-                        ]
-                          .filter(Boolean)
-                          .join(' · ')}
+                        <OptionSelectionsText item={item} />
                       </Typography>
                     )}
                     {item.notes && (

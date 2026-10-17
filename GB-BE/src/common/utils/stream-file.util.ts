@@ -32,6 +32,10 @@ export function streamStoredFile(
       res.status(404).end();
     }
   });
+  // A client that goes away mid-download (a closed tab, a cancelled image
+  // load) stops the pipe but not the stream: without this the file stays
+  // open, and on Windows can't even be deleted when the photo is replaced.
+  res.once('close', () => stream.destroy());
   // Headers go out only once there is something to send, so a failure to
   // open the file is not answered as a 200 with an image type and no image.
   stream.once('open', () => {

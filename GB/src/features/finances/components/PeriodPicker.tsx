@@ -45,10 +45,12 @@ const BACK_TO_TODAY: Record<PeriodMode, string> = {
 interface PeriodPickerProps {
   value: Period;
   onChange: (period: Period) => void;
+  /** Los modos que se ofrecen; por defecto, todos. */
+  modes?: PeriodMode[];
 }
 
 /** Elige qué período muestra Finanzas: un día, una semana, un mes o un rango de fechas, y permite moverse entre ellos. */
-export default function PeriodPicker({ value, onChange }: PeriodPickerProps) {
+export default function PeriodPicker({ value, onChange, modes }: PeriodPickerProps) {
   return (
     <Stack
       direction={{ xs: 'column', md: 'row' }}
@@ -61,7 +63,7 @@ export default function PeriodPicker({ value, onChange }: PeriodPickerProps) {
         value={value.mode}
         onChange={(_, mode: PeriodMode | null) => mode && onChange(periodAround(mode))}
       >
-        {MODES.map((mode) => (
+        {MODES.filter((mode) => !modes || modes.includes(mode.value)).map((mode) => (
           <ToggleButton key={mode.value} value={mode.value} sx={{ px: 2, fontWeight: 700 }}>
             {mode.label}
           </ToggleButton>

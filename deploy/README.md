@@ -37,3 +37,35 @@ Ejemplo para apuntar a otro servidor sin editar el script:
 ```
 GB_DEPLOY_SSH_HOST=ubuntu@1.2.3.4 npm run deploy
 ```
+
+# Staging (demostraciones)
+
+```
+npm run deploy:staging
+```
+
+Despliega **el código local tal como está** (con o sin commit) a <https://staging.goldenbites.net>: una copia aparte para demostraciones, en la misma VM que producción pero sin compartir nada con ella.
+
+- Proyecto de Compose propio (`gbstaging`) en `/opt/golden-bites/staging`, con su **propia base de datos**, sus fotos subidas y sus secretos (`/opt/golden-bites/staging/.env.staging`, generado con valores aleatorios la primera vez).
+- No commitea, no hace push y no toca producción. No corre los tests locales: es para mostrar, no para liberar.
+- No publica puertos. El nginx de producción (`GB/nginx.conf`) atiende `staging.goldenbites.net` y lo reenvía por la red `gb_edge` al frontend de staging. Si staging está apagado, producción sigue igual (staging responde 502).
+- La **primera vez** siembra una base vacía con el negocio de demostración y cambia las contraseñas por defecto del seed por unas aleatorias. Las imprime una vez y quedan en el servidor en `/opt/golden-bites/staging/credentials.txt`.
+
+## Preparación (una sola vez)
+
+1. **DNS (GoDaddy):** registro `A`, nombre `staging`, valor `157.137.220.21`.
+2. **Certificado**, emitido con el webroot que ya sirve el nginx de producción (no se reinicia nada):
+   ```
+   docker run --rm -v app_certbot_webroot:/var/www/certbot -v app_certbot_certs:/etc/letsencrypt \
+     certbot/certbot certonly --webroot -w /var/www/certbot -d staging.goldenbites.net \
+     --non-interactive --agree-tos -m <correo>
+   ```
+3. **Desplegar producción** una vez con este `GB/nginx.conf` (trae el reenvío a staging). `deploy.sh` prueba la configuración con `nginx -t` antes de reiniciar: si el certificado faltara, se detiene sin tumbar el sitio.
+
+## Apagar / borrar staging
+
+```
+# en el servidor, dentro de /opt/golden-bites/staging/src
+docker compose -p gbstaging --env-file .env.staging -f docker-compose.staging.yml down      # apagar
+docker compose -p gbstaging --env-file .env.staging -f docker-compose.staging.yml down -v   # apagar Y BORRAR su base y sus fotos
+```
