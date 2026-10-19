@@ -12,10 +12,11 @@ Panel de administración interno para **Golden Bites**, restaurante premium de t
 - **Zustand** — estado global por dominio, con persistencia en `localStorage`.
 - **React Hook Form + Zod** — formularios y validaciones tipadas.
 - **TanStack Table** — tablas de datos (ordenamiento, paginación).
-- **TanStack Query** — cliente preparado para una futura integración con API REST (`QueryClientProvider` ya configurado en `src/app/App.tsx`).
+- **TanStack Query** — cliente preparado para integración con API REST.
 - **Recharts** — gráficas del dashboard, finanzas y analítica.
 - **Lucide React** — iconografía.
 - **Notistack** — sistema de notificaciones tipo toast.
+- **Playwright** — pruebas automatizadas End-to-End (E2E) para los flujos críticos del sistema.
 
 ## Instalación
 
@@ -26,15 +27,21 @@ npm install
 cp .env.example .env.development   # ajusta VITE_API_BASE_URL si tu backend no corre en localhost:3000
 ```
 
+En Windows PowerShell también puedes utilizar:
+
+```powershell
+Copy-Item .env.example .env.development
+```
+
 ## Ejecución
 
 ```bash
 npm run dev        # servidor de desarrollo (http://localhost:5173)
-npm run build       # typecheck (tsc -b) + build de producción a dist/
-npm run preview     # sirve el build de producción localmente
-npm run lint         # ESLint
-npm run typecheck   # solo verificación de tipos
-npm run format       # Prettier
+npm run build      # typecheck (tsc -b) + build de producción a dist/
+npm run preview    # sirve el build de producción localmente
+npm run lint       # ESLint
+npm run typecheck  # solo verificación de tipos
+npm run format     # Prettier
 ```
 
 ## Integración con el backend (GB-BE)
@@ -48,7 +55,7 @@ Requiere el backend `GB-BE` corriendo (ver su propio README). Orden recomendado:
 
 Variables de entorno (`.env.development`, ver `.env.example`):
 
-```
+```env
 VITE_API_BASE_URL=http://localhost:3000/api/v1
 ```
 
@@ -62,6 +69,218 @@ Capa de integración real (ver también `INTEGRATION_STATUS.md` en la raíz del 
 - `src/modules/products/` — capa API + hooks de TanStack Query para `/products`, con query key factory (`products.keys.ts`).
 
 Los módulos restantes (Pedidos, Cocina, Caja, Inventario, Compras, Proveedores, Clientes, Fidelización, Finanzas, Personal, Checklists, Mermas, Mantenimiento, Documentos, Marketing, Analítica) siguen en mock — ver `INTEGRATION_STATUS.md` para el detalle de qué tiene endpoint real disponible en el backend y qué no.
+
+## Pruebas E2E con Playwright
+
+El proyecto incluye una suite de pruebas automatizadas **End-to-End (E2E)** con Playwright para validar los flujos críticos del sistema desde la perspectiva del usuario.
+
+La configuración general se encuentra en:
+
+```text
+playwright.config.ts
+```
+
+Los escenarios de prueba están organizados dentro de:
+
+```text
+tests/
+```
+
+La primera suite de regresión automatizada corresponde al módulo de autenticación:
+
+```text
+tests/
+  auth/
+    login.spec.ts
+```
+
+### Instalación de Playwright
+
+Playwright está incluido como dependencia de desarrollo del frontend. Después de instalar las dependencias:
+
+```bash
+npm install
+```
+
+Instala los navegadores administrados por Playwright:
+
+```bash
+npx playwright install
+```
+
+La configuración actual permite ejecutar las pruebas en Chromium, Firefox y WebKit.
+
+### Preparación del ambiente de pruebas
+
+Las pruebas E2E requieren que los servicios utilizados por cada escenario estén disponibles.
+
+Para preparar por primera vez el ambiente local:
+
+1. PostgreSQL debe estar disponible en `localhost:5432`.
+2. El backend `GB-BE` debe tener sus dependencias instaladas.
+3. Las migraciones deben estar aplicadas.
+4. El seed debe haberse ejecutado.
+5. El backend debe estar activo.
+6. El frontend debe estar activo.
+7. Playwright puede ejecutar la suite.
+
+Desde `GB-BE`:
+
+```bash
+npm install
+npm run migration:run
+npm run seed
+npm run start:dev
+```
+
+La API estará disponible por defecto en:
+
+```text
+http://localhost:3000/api/v1
+```
+
+Swagger estará disponible en desarrollo en:
+
+```text
+http://localhost:3000/api/docs
+```
+
+El frontend debe tener configurado:
+
+```env
+VITE_API_BASE_URL=http://localhost:3000/api/v1
+```
+
+Desde `GB`:
+
+```bash
+npm install
+npm run dev
+```
+
+El frontend estará disponible en:
+
+```text
+http://localhost:5173
+```
+
+Esta dirección corresponde también al `baseURL` configurado actualmente en `playwright.config.ts`.
+
+Una vez que la base de datos está preparada, normalmente no es necesario ejecutar las migraciones y el seed antes de cada corrida. Para el trabajo diario basta con iniciar backend y frontend antes de ejecutar Playwright.
+
+### Ejecución
+
+Todos los comandos de Playwright deben ejecutarse desde el directorio `GB`.
+
+Ejecutar toda la suite:
+
+```bash
+npx playwright test
+```
+
+Ejecutar únicamente en Chromium:
+
+```bash
+npx playwright test --project=chromium
+```
+
+Ejecutar mostrando el navegador:
+
+```bash
+npx playwright test --project=chromium --headed
+```
+
+### Pruebas de autenticación
+
+Los escenarios automatizados de autenticación se encuentran en:
+
+```text
+tests/auth/login.spec.ts
+```
+
+Para ejecutar únicamente esta suite:
+
+```bash
+npx playwright test tests/auth/login.spec.ts --project=chromium
+```
+
+Para observar la ejecución en el navegador:
+
+```bash
+npx playwright test tests/auth/login.spec.ts --project=chromium --headed
+```
+
+La suite de autenticación se ampliará progresivamente para cubrir los flujos relacionados con acceso, autorización, sesión y protección de rutas.
+
+### Reporte HTML
+
+Playwright utiliza un reporte HTML para facilitar el análisis de las ejecuciones.
+
+Después de ejecutar las pruebas:
+
+```bash
+npx playwright show-report
+```
+
+El reporte permite consultar pruebas ejecutadas, pruebas exitosas y fallidas, duración, errores, traces cuando estén disponibles e información útil para diagnosticar fallos.
+
+### Flujo de trabajo recomendado
+
+Durante el desarrollo local se recomienda mantener tres terminales abiertas:
+
+```text
+Terminal 1 — GB-BE
+  npm run start:dev
+
+Terminal 2 — GB
+  npm run dev
+
+Terminal 3 — GB
+  npx playwright test --project=chromium
+```
+
+Para ejecutar únicamente la regresión de autenticación mostrando el navegador:
+
+```bash
+npx playwright test tests/auth/login.spec.ts --project=chromium --headed
+```
+
+### Organización de las pruebas
+
+La estructura inicial es:
+
+```text
+tests/
+  auth/
+    login.spec.ts
+```
+
+A medida que aumente la cobertura de regresión, los escenarios deben organizarse por dominio funcional:
+
+```text
+tests/
+  auth/
+    login.spec.ts
+  products/
+  orders/
+  kitchen/
+  cash/
+  inventory/
+  customers/
+```
+
+Cada archivo debe agrupar escenarios relacionados con una misma funcionalidad y, siempre que sea posible, cada prueba debe poder ejecutarse de forma independiente.
+
+### Buenas prácticas
+
+- Ejecutar las pruebas E2E contra ambientes locales o de QA, no contra producción.
+- No almacenar credenciales directamente en los archivos `.spec.ts`.
+- No versionar archivos `.env` con información sensible.
+- Mantener los tests separados por funcionalidad.
+- Utilizar selectores accesibles y estables como `getByRole` y `getByLabel` cuando estén disponibles.
+- Evitar dependencias innecesarias entre tests.
+- Antes de modificar un test que falla, determinar si el problema pertenece al escenario automatizado, frontend, backend, datos o configuración del ambiente.
+- La suite de regresión debe crecer junto con la integración real de los módulos del frontend con `GB-BE`.
 
 ## Arquitectura
 
@@ -116,21 +335,23 @@ Los módulos **Pedidos, Cocina, Caja, Productos e Inventario** tienen la profund
 ## Decisiones técnicas
 
 - **Persistencia**: cada store de Zustand usa el middleware `persist` con una clave `gb-*` propia en `localStorage`. Esto simula un backend con estado durable sin necesidad de servidor.
-- **Autenticación y roles**: la sesión (usuario, rol, permisos) viene del backend vía JWT (`src/modules/auth/`). `src/routes/ProtectedRoute.tsx` sigue filtrando la navegación del sidebar por módulo usando `ROLE_MODULES` (`src/types/role.ts`), mapeado desde el rol real del backend por `roleFromBackendRoleName` — es un filtro cosmético de navegación, no reemplaza la autorización real, que ocurre en el backend vía `PermissionsGuard`. Para gating fino de acciones (crear/editar/eliminar) se usa `usePermissions`/`<Can>` de `src/modules/auth/`, que lee los códigos de permiso reales del JWT. Ver `INTEGRATION_STATUS.md` para el detalle de por qué ambos sistemas conviven.
-- **Costeo de productos**: el costo de cada producto se calcula en tiempo real (`computeProductCost`) a partir de las cantidades de receta y el costo promedio de cada insumo en el store de inventario — si el inventario cambia, el margen del producto se recalcula automáticamente.
-- **Búsqueda global**: cada store relevante (pedidos, productos, inventario, clientes, proveedores, personal) registra un proveedor de búsqueda en `src/services/globalSearch.ts` vía `registerSearchProvider`. El barrel `src/store/index.ts` se importa una única vez en `main.tsx` para garantizar que el índice esté listo desde el arranque, sin depender de que el usuario visite cada módulo primero.
-- **Moneda y fechas**: todos los montos usan `Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP' })` y las fechas usan `Intl.DateTimeFormat('es-CO', { timeZone: 'America/Bogota' })` (ver `src/utils/format.ts`). No se usan dólares en ninguna parte de la interfaz.
-- **Gráficas**: paleta categórica fija (`chartCategorical` en `src/theme/palette.ts`) asignada por entidad (ej. cada canal de venta siempre tiene el mismo color), sin degradados agresivos, con un solo eje por gráfica.
-- **Tablas**: `DataTable` envuelve TanStack Table con ordenamiento y paginación consistentes en todos los módulos.
+- **Autenticación y roles**: la sesión (usuario, rol, permisos) viene del backend vía JWT (`src/modules/auth/`). `src/routes/ProtectedRoute.tsx` sigue filtrando la navegación del sidebar por módulo usando `ROLE_MODULES` (`src/types/role.ts`), mapeado desde el rol real del backend por `roleFromBackendRoleName` — es un filtro cosmético de navegación, no reemplaza la autorización real, que ocurre en el backend vía `PermissionsGuard`. Para gating fino de acciones (crear/editar/eliminar) se usa `usePermissions`/`<Can>` de `src/modules/auth/`, que lee los códigos de permiso reales del JWT.
+- **Costeo de productos**: el costo de cada producto se calcula en tiempo real (`computeProductCost`) a partir de las cantidades de receta y el costo promedio de cada insumo en el store de inventario.
+- **Búsqueda global**: cada store relevante registra un proveedor de búsqueda en `src/services/globalSearch.ts`.
+- **Moneda y fechas**: todos los montos usan `Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP' })` y las fechas usan `Intl.DateTimeFormat('es-CO', { timeZone: 'America/Bogota' })`.
+- **Gráficas**: paleta categórica fija (`chartCategorical` en `src/theme/palette.ts`) asignada por entidad.
+- **Tablas**: `DataTable` envuelve TanStack Table con ordenamiento y paginación consistentes.
+- **Pruebas E2E**: Playwright permite validar los flujos críticos del sistema utilizando el frontend y backend reales del ambiente de desarrollo. Los escenarios se organizan por dominio dentro de `tests/`.
 
 ## Próximos pasos para conectar una API real
 
-1. **Reemplazar los stores por llamadas HTTP**: cada store de Zustand en `src/store/*.ts` inicializa su estado desde un mock (`features/<dominio>/mocks/*.ts`). El siguiente paso natural es mover esas llamadas a hooks de TanStack Query (`useQuery`/`useMutation`) contra endpoints REST, manteniendo Zustand solo para estado de UI (sidebar, tema, filtros) y dejando la fuente de verdad del dominio en el servidor.
-2. **Capa de servicios**: crear `src/services/api/<dominio>.ts` con funciones `fetch*`, `create*`, `update*` que hoy podrían simplemente envolver los mocks y mañana apunten a `fetch`/`axios`. `src/services/globalSearch.ts` ya está desacoplado de la fuente de datos (usa un patrón de proveedores) por lo que no requiere cambios estructurales.
-3. **Autenticación real**: sustituir `src/store/authStore.ts` (usuario y rol fijos con selector de prueba) por un flujo de login real y tokens, manteniendo `ROLE_MODULES` como la fuente de verdad de permisos por rol en el cliente (a validar también en el backend).
-4. **Persistencia**: una vez exista API, se recomienda quitar el middleware `persist` de los stores de dominio (pedidos, inventario, caja, etc.) para evitar desincronización con el servidor, dejándolo únicamente en preferencias de UI (`uiStore`).
-5. **Websockets / polling**: los módulos de Cocina y Pedidos están diseñados para actualizarse en tiempo real (cronómetros, estados). Al conectar backend, esto se beneficiaría de un canal de websockets o polling corto vía TanStack Query (`refetchInterval`).
-6. **Carga de archivos**: Documentos, Proveedores y Personal simulan adjuntos como texto plano (`fileNameSimulated`). Se requiere un servicio de almacenamiento (S3 u otro) para adjuntos reales.
+1. **Reemplazar los stores por llamadas HTTP**: mover progresivamente los datos mock a hooks de TanStack Query (`useQuery`/`useMutation`) contra endpoints REST.
+2. **Capa de servicios**: crear servicios por dominio para centralizar las operaciones HTTP.
+3. **Autenticación real**: continuar consolidando el flujo de login, sesión, JWT y permisos contra el backend.
+4. **Persistencia**: retirar progresivamente `persist` de los stores de dominio una vez que el backend sea la fuente de verdad.
+5. **Websockets / polling**: implementar actualizaciones en tiempo real para Cocina y Pedidos.
+6. **Carga de archivos**: integrar un servicio de almacenamiento para Documentos, Proveedores y Personal.
+7. **Cobertura E2E**: ampliar progresivamente la suite de Playwright para cubrir Productos, Pedidos, Cocina, Caja, Inventario y los demás flujos críticos de regresión.
 
 ## Datos mock
 
