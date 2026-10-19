@@ -20,7 +20,6 @@ function createUser(permissions: string[]): AuthenticatedUser {
     roleId: 'r1',
     roleName: 'CASHIER',
     permissions,
-    isPlatformAdmin: false,
     enabledFeatures: [],
     mustChangePassword: false,
   };

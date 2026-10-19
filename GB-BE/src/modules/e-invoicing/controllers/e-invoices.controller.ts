@@ -14,7 +14,7 @@ import { CurrentBusiness } from '../../../common/decorators/current-business.dec
 import { CurrentUser } from '../../../common/decorators/current-user.decorator';
 import { Permissions } from '../../../common/decorators/permissions.decorator';
 import { RawResponse } from '../../../common/decorators/raw-response.decorator';
-import { RequirePlatformAdmin } from '../../../common/decorators/require-platform-admin.decorator';
+import { InternalActor, InternalRoute } from '../../../internal/internal-api';
 import { RequiresFeature } from '../../../common/decorators/requires-feature.decorator';
 import { EInvoiceBuyer } from '../domain/e-invoice.types';
 import {
@@ -112,8 +112,8 @@ export class EInvoicesController {
 /** The platform admin connecting a business to its own Factus account. */
 @ApiTags('Platform Admin')
 @ApiBearerAuth()
-@RequirePlatformAdmin()
-@Controller('platform-admin/businesses/:businessId/e-invoicing')
+@InternalRoute()
+@Controller('internal/businesses/:businessId/e-invoicing')
 export class PlatformEInvoicingController {
   constructor(private readonly eInvoicingService: EInvoicingService) {}
 
@@ -132,7 +132,7 @@ export class PlatformEInvoicingController {
   })
   save(
     @Param('businessId', ParseUUIDPipe) businessId: string,
-    @CurrentUser('userId') actorUserId: string,
+    @InternalActor() actorUserId: string,
     @Body() dto: EInvoicingSettingsDto,
   ) {
     return this.eInvoicingService.saveSettings(businessId, dto, actorUserId);

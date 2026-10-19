@@ -38,7 +38,8 @@ export class BusinessesRepository implements IBusinessesRepository {
 
   async findAll(): Promise<BusinessRow[]> {
     const result = await this.db.query<BusinessRow>(
-      `SELECT ${SELECT_COLUMNS} FROM businesses ORDER BY created_at`,
+      // Internal businesses (the old platform one) are not customers.
+      `SELECT ${SELECT_COLUMNS} FROM businesses WHERE NOT is_internal ORDER BY created_at`,
     );
     return result.rows;
   }

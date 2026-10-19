@@ -38,16 +38,12 @@ export default function LoginPage() {
   const onSubmit = (values: LoginFormValues) => {
     login.mutate(values, {
       onSuccess: (data) => {
-        // Un admin de plataforma no tiene "operación diaria" que ver — su
-        // destino es siempre el panel de plataforma, sin importar de dónde
-        // vino el redirect.
         const decoded = decodeAccessToken(data.accessToken);
-        const isPlatformAdmin = decoded?.isPlatformAdmin ?? false;
         // A courier has no back office: their place is the courier app.
         const permissions = decoded?.permissions ?? [];
         const isCourierOnly =
           permissions.includes('deliveries.deliver') && !permissions.includes('dashboard.read') && redirectTo === '/';
-        navigate(isPlatformAdmin ? '/plataforma' : isCourierOnly ? KIOSK_PATHS.courier : redirectTo, { replace: true });
+        navigate(isCourierOnly ? KIOSK_PATHS.courier : redirectTo, { replace: true });
       },
     });
   };

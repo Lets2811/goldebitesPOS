@@ -15,7 +15,6 @@ export interface AccessTokenPayload {
   roleId: string;
   roleName: string;
   permissions: string[];
-  isPlatformAdmin: boolean;
   enabledFeatures: string[];
 }
 

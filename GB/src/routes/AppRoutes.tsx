@@ -3,7 +3,6 @@ import { Navigate, Routes, Route } from 'react-router-dom';
 import AppLayout from '../components/layout/AppLayout';
 import LoadingSkeleton from '../components/common/LoadingSkeleton';
 import ProtectedRoute from './ProtectedRoute';
-import PlatformAdminRoute from './PlatformAdminRoute';
 import AuthProtectedRoute from '../modules/auth/components/protected-route';
 import ForbiddenPage from './ForbiddenPage';
 import NotFoundPage from './NotFoundPage';
@@ -50,8 +49,6 @@ const AnalyticsPage = lazy(() => import('../features/analytics/pages/AnalyticsPa
 const SettingsPage = lazy(() => import('../features/settings/pages/SettingsPage'));
 const BranchTablesNfcPage = lazy(() => import('../features/settings/pages/BranchTablesNfcPage'));
 const RolesPage = lazy(() => import('../features/roles/pages/RolesPage'));
-const PlatformAdminPage = lazy(() => import('../features/platform-admin/pages/PlatformAdminPage'));
-const FeatureFlagsPage = lazy(() => import('../features/platform-admin/pages/FeatureFlagsPage'));
 const WaiterKioskPage = lazy(() => import('../features/kiosk-waiter/pages/WaiterKioskPage'));
 const KitchenKioskPage = lazy(() => import('../features/kiosk-kitchen/pages/KitchenKioskPage'));
 const CarServiceKioskPage = lazy(() => import('../features/kiosk-car-service/pages/CarServiceKioskPage'));
@@ -455,24 +452,6 @@ export default function AppRoutes() {
               element={
                 <Loadable>
                   <BranchTablesNfcPage />
-                </Loadable>
-              }
-            />
-          </Route>
-          <Route element={<PlatformAdminRoute />}>
-            <Route
-              path="/plataforma"
-              element={
-                <Loadable>
-                  <PlatformAdminPage />
-                </Loadable>
-              }
-            />
-            <Route
-              path="/plataforma/feature-flags"
-              element={
-                <Loadable>
-                  <FeatureFlagsPage />
                 </Loadable>
               }
             />

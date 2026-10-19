@@ -1,0 +1,47 @@
+{
+  "name": "pos-admin-app",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "POS-ADMIN: the Golden Bites team's app to manage the businesses on the platform.",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview",
+    "lint": "eslint . --max-warnings 0",
+    "typecheck": "tsc -b --noEmit"
+  },
+  "dependencies": {
+    "@emotion/react": "^11.14.0",
+    "@emotion/styled": "^11.14.1",
+    "@hookform/resolvers": "^5.4.0",
+    "@mui/material": "^9.2.0",
+    "@tanstack/react-query": "^5.101.4",
+    "@tanstack/react-table": "^8.21.3",
+    "axios": "^1.18.1",
+    "lucide-react": "^1.26.0",
+    "notistack": "^3.0.2",
+    "qrcode": "^1.5.4",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
+    "react-hook-form": "^7.82.0",
+    "react-router-dom": "^7.18.1",
+    "zod": "^3.25.76",
+    "zustand": "^5.0.14"
+  },
+  "devDependencies": {
+    "@types/qrcode": "^1.5.5",
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^6.0.3",
+    "typescript": "^5.9.3",
+    "vite": "^8.1.1",
+    "eslint": "^10.7.0",
+    "@eslint/js": "^10.0.1",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "eslint-plugin-react-refresh": "^0.5.3",
+    "globals": "^17.7.0",
+    "typescript-eslint": "^8.65.0",
+    "eslint-config-prettier": "^10.1.8"
+  }
+}

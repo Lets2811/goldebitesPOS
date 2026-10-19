@@ -119,6 +119,12 @@ class EnvironmentVariables {
   @IsOptional()
   CREDENTIALS_ENCRYPTION_KEY: string = '';
 
+  /** Shared with POS-ADMIN (the Admin's own service): the key of the internal
+   *  API (/api/v1/internal). At least 32 characters; empty switches it off. */
+  @IsString()
+  @IsOptional()
+  INTERNAL_API_KEY: string = '';
+
   /** Web Push (notifications to the couriers' phones). Generate the pair with
    *  `npx web-push generate-vapid-keys`; empty disables push (the apps still
    *  alert while open). VAPID_SUBJECT is a contact, "mailto:..." or a URL. */

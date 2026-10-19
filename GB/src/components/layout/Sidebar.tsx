@@ -5,7 +5,7 @@ import Typography from '@mui/material/Typography';
 import List from '@mui/material/List';
 import Tooltip from '@mui/material/Tooltip';
 import IconButton from '@mui/material/IconButton';
-import { ChevronsLeft, ChevronsRight, Crown, Building2, Flag } from 'lucide-react';
+import { ChevronsLeft, ChevronsRight, Crown } from 'lucide-react';
 import { useLocation } from 'react-router-dom';
 import { alpha } from '@mui/material/styles';
 import { MODULE_PERMISSIONS, NAV_ENTRIES } from '../../routes/navConfig';
@@ -41,7 +41,6 @@ function useBranchLabel(): string | null {
 function BrandHeader({ collapsed }: { collapsed: boolean }) {
   const { data: business } = useCurrentBusiness();
   const { data: logo } = useBusinessLogo();
-  const { isPlatformAdmin } = usePermissions();
   const branchLabel = useBranchLabel();
 
   return (
@@ -85,7 +84,7 @@ function BrandHeader({ collapsed }: { collapsed: boolean }) {
             {business?.name ?? '—'}
           </Typography>
           {/* Debajo del nombre y no a su lado: un nombre largo de negocio o de sede no cabría en una sola línea. */}
-          {!isPlatformAdmin && branchLabel && (
+          {branchLabel && (
             <Tooltip title="Sede en la que estás trabajando" placement="right">
               <Typography
                 component="span"
@@ -118,7 +117,7 @@ function BrandHeader({ collapsed }: { collapsed: boolean }) {
 }
 
 function SidebarContent({ collapsed, onNavigate }: { collapsed: boolean; onNavigate?: () => void }) {
-  const { hasPermission, hasAnyPermission, hasFeature, isPlatformAdmin } = usePermissions();
+  const { hasPermission, hasAnyPermission, hasFeature } = usePermissions();
   const location = useLocation();
   const toggleCollapsed = useUiStore((s) => s.toggleSidebarCollapsed);
   const hrSections = useHrSections();
@@ -142,33 +141,7 @@ function SidebarContent({ collapsed, onNavigate }: { collapsed: boolean; onNavig
       <BrandHeader collapsed={collapsed} />
       <Box sx={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', px: collapsed ? 1 : 1.5 }}>
         <List component="nav" disablePadding sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-          {isPlatformAdmin && (
-            <Box sx={{ mb: 1 }}>
-              {!collapsed && (
-                <Typography
-                  variant="overline"
-                  color="text.secondary"
-                  sx={{ pl: 1.5, display: 'block', fontSize: '0.68rem' }}
-                >
-                  Plataforma
-                </Typography>
-              )}
-              <SidebarItem
-                item={{ kind: 'item', label: 'Administración de plataforma', path: '/plataforma', icon: Building2 }}
-                collapsed={collapsed}
-                active={location.pathname === '/plataforma'}
-                onNavigate={onNavigate}
-              />
-              <SidebarItem
-                item={{ kind: 'item', label: 'Feature Flags', path: '/plataforma/feature-flags', icon: Flag }}
-                collapsed={collapsed}
-                active={location.pathname === '/plataforma/feature-flags'}
-                onNavigate={onNavigate}
-              />
-            </Box>
-          )}
-          {/* Un admin de plataforma no opera un negocio — nada de la navegación de POS aplica, solo la sección de Plataforma de arriba. */}
-          {!isPlatformAdmin && NAV_ENTRIES.map((entry) => {
+          {NAV_ENTRIES.map((entry) => {
             if (entry.kind === 'item') {
               if (!can(entry.module)) return null;
               return (

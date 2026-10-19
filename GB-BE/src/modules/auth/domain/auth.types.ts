@@ -5,7 +5,6 @@ export interface JwtPayload {
   roleId: string;
   roleName: string;
   permissions: string[];
-  isPlatformAdmin: boolean;
   enabledFeatures: string[];
   mustChangePassword: boolean;
   /**

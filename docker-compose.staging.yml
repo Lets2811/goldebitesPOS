@@ -45,6 +45,8 @@ services:
         # Shows the STAGING chip in the app.
         VITE_APP_ENV: staging
         VITE_TURA_APP_URL: https://tura-staging.goldenbites.net
+        # From .env.staging (deploy-staging.sh passes it as --env-file).
+        VITE_GOOGLE_MAPS_API_KEY: ${GOOGLE_MAPS_API_KEY:-}
         NGINX_CONF: nginx.staging.conf
     networks:
       default:
@@ -85,6 +87,38 @@ services:
     depends_on:
       - backend
       - tura-api
+    restart: unless-stopped
+
+  # POS-ADMIN, the Golden Bites team's Admin (POS-ADMIN/README.md), at
+  # https://admin-staging.goldenbites.net. Its API signs the team in and does
+  # everything about businesses through this backend's internal API.
+  admin-api:
+    build:
+      context: ./POS-ADMIN/api
+    env_file: .env.admin.staging
+    environment:
+      NODE_ENV: production
+      PORT: 3200
+      CORS_ORIGIN: https://admin-staging.goldenbites.net
+      POS_INTERNAL_URL: http://backend:3000/api/v1/internal
+      DB_HOST: postgres
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+  admin-web:
+    build:
+      context: ./POS-ADMIN/app
+      args:
+        VITE_APP_ENV: staging
+        VITE_TURA_APP_URL: https://tura-staging.goldenbites.net
+    networks:
+      default:
+      edge:
+        # The name production's nginx forwards admin-staging.goldenbites.net to.
+        aliases: [gb-staging-admin]
+    depends_on:
+      - admin-api
     restart: unless-stopped
 
 networks:

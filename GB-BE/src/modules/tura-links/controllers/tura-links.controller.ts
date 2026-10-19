@@ -17,7 +17,7 @@ import { Permissions } from '../../../common/decorators/permissions.decorator';
 import { Public } from '../../../common/decorators/public.decorator';
 import { RawResponse } from '../../../common/decorators/raw-response.decorator';
 import { RequiresFeature } from '../../../common/decorators/requires-feature.decorator';
-import { RequirePlatformAdmin } from '../../../common/decorators/require-platform-admin.decorator';
+import { InternalActor, InternalRoute } from '../../../internal/internal-api';
 import { GenerateLinkCodeForUserDto } from '../dto/generate-link-code-for-user.dto';
 import { LinkTokenDto } from '../dto/link-token.dto';
 import { RedeemLinkCodeDto } from '../dto/redeem-link-code.dto';
@@ -113,8 +113,8 @@ export class TuraLinksController {
  */
 @ApiTags('Platform Admin')
 @ApiBearerAuth()
-@RequirePlatformAdmin()
-@Controller('platform-admin/businesses/:businessId/tura')
+@InternalRoute()
+@Controller('internal/businesses/:businessId/tura')
 export class PlatformTuraLinksController {
   constructor(private readonly turaLinksService: TuraLinksService) {}
 
@@ -132,7 +132,7 @@ export class PlatformTuraLinksController {
   })
   generateCode(
     @Param('businessId', ParseUUIDPipe) businessId: string,
-    @CurrentUser('userId') actorUserId: string,
+    @InternalActor() actorUserId: string,
     @Body() dto: GenerateLinkCodeForUserDto,
   ) {
     return this.turaLinksService.generateCodeForUser(
@@ -149,7 +149,7 @@ export class PlatformTuraLinksController {
   async revoke(
     @Param('businessId', ParseUUIDPipe) businessId: string,
     @Param('id', ParseUUIDPipe) id: string,
-    @CurrentUser('userId') actorUserId: string,
+    @InternalActor() actorUserId: string,
   ) {
     await this.turaLinksService.revokeForPlatform(businessId, id, actorUserId);
   }

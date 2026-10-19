@@ -24,7 +24,6 @@ describe('AssistantController — GET /assistant/sales', () => {
       roleId: 'role-1',
       roleName: 'MANAGER',
       permissions: ['analytics.read'],
-      isPlatformAdmin: false,
       enabledFeatures: ['analytics'],
       mustChangePassword: false,
       ...overrides,

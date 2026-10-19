@@ -33,6 +33,9 @@ services:
       context: ./GB
       args:
         VITE_API_BASE_URL: /api/v1
+        VITE_TURA_APP_URL: https://tura.goldenbites.net
+        # From .env.production (deploy.sh passes it as --env-file).
+        VITE_GOOGLE_MAPS_API_KEY: ${GOOGLE_MAPS_API_KEY:-}
     ports:
       - '80:80'
       - '443:443'
@@ -48,6 +51,58 @@ services:
       - backend
     restart: unless-stopped
 
+  # TURA, the assistant (TURA/README.md), at https://tura.goldenbites.net:
+  # this nginx (frontend) forwards that host to tura-web. TURA reads the POS
+  # through the backend's API with the user's own token, never its database.
+  tura-api:
+    build:
+      context: ./TURA/api
+    env_file: .env.tura.production
+    environment:
+      NODE_ENV: production
+      PORT: 3100
+      POS_API_TARGET: prod
+      POS_API_URL_PROD: http://backend:3000/api/v1
+      CORS_ORIGIN: https://tura.goldenbites.net
+    volumes:
+      - tura_data:/app/data
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+  tura-web:
+    build:
+      context: ./TURA/app
+    depends_on:
+      - backend
+      - tura-api
+    restart: unless-stopped
+
+  # POS-ADMIN, the Golden Bites team's Admin (POS-ADMIN/README.md), at
+  # https://admin.goldenbites.net: this nginx forwards that host to admin-web.
+  admin-api:
+    build:
+      context: ./POS-ADMIN/api
+    env_file: .env.admin.production
+    environment:
+      NODE_ENV: production
+      PORT: 3200
+      CORS_ORIGIN: https://admin.goldenbites.net
+      POS_INTERNAL_URL: http://backend:3000/api/v1/internal
+      DB_HOST: postgres
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+  admin-web:
+    build:
+      context: ./POS-ADMIN/app
+      args:
+        VITE_TURA_APP_URL: https://tura.goldenbites.net
+    depends_on:
+      - admin-api
+    restart: unless-stopped
+
 networks:
   # Created by deploy/deploy.sh and deploy/deploy-staging.sh if missing.
   edge:
@@ -59,3 +114,4 @@ volumes:
   golden_bites_uploads:
   certbot_webroot:
   certbot_certs:
+  tura_data:

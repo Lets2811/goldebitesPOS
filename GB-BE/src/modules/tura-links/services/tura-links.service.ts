@@ -143,7 +143,6 @@ export class TuraLinksService {
       roleId: user.role_id,
       roleName,
       permissions,
-      isPlatformAdmin: false,
       enabledFeatures,
       mustChangePassword: false,
       turaLinkId: link.id,

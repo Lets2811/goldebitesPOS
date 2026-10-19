@@ -25,7 +25,6 @@ describe('AssistantController', () => {
       roleId: 'role-1',
       roleName: 'MANAGER',
       permissions: ['products.read', 'inventory.read'],
-      isPlatformAdmin: false,
       enabledFeatures: ['products', 'inventory'],
       mustChangePassword: false,
       ...overrides,

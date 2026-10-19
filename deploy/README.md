@@ -75,6 +75,10 @@ Preparación (una sola vez), igual que staging:
 2. **Certificado:** el mismo comando de arriba con `-d tura-staging.goldenbites.net`.
 3. **nginx de producción** con este `GB/nginx.conf` (trae el reenvío a `tura-staging`).
 
+## POS-ADMIN (equipo Golden Bites)
+
+La administración de la plataforma es un producto aparte, en `POS-ADMIN/` (app y API propias): ver `POS-ADMIN/README.md`. GB-BE solo le expone una API interna (`/api/v1/internal`, con `INTERNAL_API_KEY`), que el nginx público bloquea. El POS ya no tiene `/plataforma`: hasta publicar POS-ADMIN en un ambiente, ese ambiente no tiene interfaz de administración.
+
 ## Apagar / borrar staging
 
 ```

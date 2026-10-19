@@ -5,9 +5,11 @@
 const bcrypt = require('bcrypt');
 const { Client } = require('pg');
 
+// [email, password, table]: the restaurant admin is a POS user; the
+// superadmin is a Golden Bites team account of the Admin app (platform_users).
 const accounts = [
-  ['admin@goldenbites.local', process.env.DEMO_ADMIN_PASSWORD],
-  ['superadmin@goldenbitespos.local', process.env.DEMO_SUPERADMIN_PASSWORD],
+  ['admin@goldenbites.local', process.env.DEMO_ADMIN_PASSWORD, 'users'],
+  ['superadmin@goldenbitespos.local', process.env.DEMO_SUPERADMIN_PASSWORD, 'platform_users'],
 ];
 
 (async () => {
@@ -20,11 +22,11 @@ const accounts = [
   });
   await client.connect();
   try {
-    for (const [email, password] of accounts) {
+    for (const [email, password, table] of accounts) {
       if (!password || password.length < 12) throw new Error(`No password given for ${email}`);
       const hash = await bcrypt.hash(password, 10);
       const result = await client.query(
-        'UPDATE users SET password_hash = $1, must_change_password = false, updated_at = now() WHERE email = $2',
+        `UPDATE ${table} SET password_hash = $1, must_change_password = false, updated_at = now() WHERE lower(email) = lower($2)`,
         [hash, email],
       );
       console.log(`  ${email}: ${result.rowCount === 1 ? 'password set' : 'NOT FOUND'}`);

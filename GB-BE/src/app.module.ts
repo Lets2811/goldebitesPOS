@@ -11,7 +11,6 @@ import { FeaturesGuard } from './common/guards/features.guard';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { MustChangePasswordGuard } from './common/guards/must-change-password.guard';
 import { PermissionsGuard } from './common/guards/permissions.guard';
-import { PlatformAdminGuard } from './common/guards/platform-admin.guard';
 import { RolesGuard } from './common/guards/roles.guard';
 import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
 import { ResponseInterceptor } from './common/interceptors/response.interceptor';
@@ -49,7 +48,8 @@ import { NfcTagsModule } from './modules/nfc-tags/nfc-tags.module';
 import { OrdersModule } from './modules/orders/orders.module';
 import { PaymentsModule } from './modules/payments/payments.module';
 import { PermissionsModule } from './modules/permissions/permissions.module';
-import { PlatformAdminModule } from './modules/platform-admin/platform-admin.module';
+import { PlatformAdminModule } from './internal/businesses/platform-admin.module';
+import { InternalApiGuard } from './internal/internal-api';
 import { ProductCategoriesModule } from './modules/product-categories/product-categories.module';
 import { EInvoicingModule } from './modules/e-invoicing/e-invoicing.module';
 import { DeliveriesModule } from './modules/deliveries/deliveries.module';
@@ -147,7 +147,7 @@ import { WasteModule } from './modules/waste/waste.module';
     { provide: APP_GUARD, useClass: RolesGuard },
     { provide: APP_GUARD, useClass: PermissionsGuard },
     { provide: APP_GUARD, useClass: FeaturesGuard },
-    { provide: APP_GUARD, useClass: PlatformAdminGuard },
+    { provide: APP_GUARD, useClass: InternalApiGuard },
     { provide: APP_FILTER, useClass: GlobalExceptionFilter },
     { provide: APP_INTERCEPTOR, useClass: LoggingInterceptor },
     { provide: APP_INTERCEPTOR, useClass: ResponseInterceptor },

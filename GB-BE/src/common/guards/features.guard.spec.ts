@@ -20,7 +20,6 @@ function createUser(enabledFeatures: string[]): AuthenticatedUser {
     roleId: 'r1',
     roleName: 'CASHIER',
     permissions: [],
-    isPlatformAdmin: false,
     enabledFeatures,
     mustChangePassword: false,
   };
@@ -42,25 +41,33 @@ describe('FeaturesGuard', () => {
     } as unknown as Reflector;
     const guard = new FeaturesGuard(reflector);
 
-    expect(guard.canActivate(createContext(createUser(['inventory'])))).toBe(true);
+    expect(guard.canActivate(createContext(createUser(['inventory'])))).toBe(
+      true,
+    );
   });
 
   it('allows the request when the user has the required sub-feature, alongside its parent module', () => {
     const reflector = {
-      getAllAndOverride: jest.fn().mockReturnValue('inventory.specializedQueries'),
+      getAllAndOverride: jest
+        .fn()
+        .mockReturnValue('inventory.specializedQueries'),
     } as unknown as Reflector;
     const guard = new FeaturesGuard(reflector);
 
     expect(
       guard.canActivate(
-        createContext(createUser(['inventory', 'inventory.specializedQueries'])),
+        createContext(
+          createUser(['inventory', 'inventory.specializedQueries']),
+        ),
       ),
     ).toBe(true);
   });
 
   it('rejects when the user has the parent module but not the specific sub-feature', () => {
     const reflector = {
-      getAllAndOverride: jest.fn().mockReturnValue('inventory.specializedQueries'),
+      getAllAndOverride: jest
+        .fn()
+        .mockReturnValue('inventory.specializedQueries'),
     } as unknown as Reflector;
     const guard = new FeaturesGuard(reflector);
 
@@ -96,7 +103,10 @@ describe('FeaturesGuard', () => {
       getAllAndOverride: jest.fn().mockReturnValue('inventory'),
     } as unknown as Reflector;
     const guard = new FeaturesGuard(reflector);
-    const staleUser = { ...createUser([]), enabledFeatures: undefined } as unknown as AuthenticatedUser;
+    const staleUser = {
+      ...createUser([]),
+      enabledFeatures: undefined,
+    } as unknown as AuthenticatedUser;
 
     expect(() => guard.canActivate(createContext(staleUser))).toThrow(
       UnauthorizedOperationException,

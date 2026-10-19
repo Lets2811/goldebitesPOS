@@ -306,7 +306,6 @@ export class AuthService {
       roleId: user.role_id,
       roleName: role.name,
       permissions: role.permissions,
-      isPlatformAdmin: user.is_platform_admin,
       enabledFeatures,
       mustChangePassword: user.must_change_password,
     };

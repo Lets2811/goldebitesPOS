@@ -164,7 +164,6 @@ describe('TuraLinksService', () => {
           roleName: 'Cajero',
           // orders.create is the user's, but TURA never gets to write.
           permissions: ['dashboard.read', 'orders.read'],
-          isPlatformAdmin: false,
           // Only what both the business and the platform have enabled.
           enabledFeatures: ['orders', 'tura'],
           mustChangePassword: false,
