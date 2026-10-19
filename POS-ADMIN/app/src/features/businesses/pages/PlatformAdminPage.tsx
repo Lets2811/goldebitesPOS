@@ -2,7 +2,7 @@ import { useState } from 'react';
 import Button from '@mui/material/Button';
 import type { ColumnDef } from '@tanstack/react-table';
 import Stack from '@mui/material/Stack';
-import { Plus, Settings2, Store, FileCheck, Bot } from 'lucide-react';
+import { Plus, Settings2, Store, FileCheck, Bot, KeyRound } from 'lucide-react';
 import { useSnackbar } from 'notistack';
 import PageHeader from '../../../shared/components/common/PageHeader';
 import DataTable from '../../../shared/components/common/DataTable';
@@ -19,6 +19,7 @@ import BusinessBranchesDrawer from '../components/BusinessBranchesDrawer';
 import BusinessFeaturesDrawer from '../components/BusinessFeaturesDrawer';
 import BusinessEInvoicingDrawer from '../components/BusinessEInvoicingDrawer';
 import BusinessTuraDrawer from '../components/BusinessTuraDrawer';
+import BusinessMasterKeyDrawer from '../components/BusinessMasterKeyDrawer';
 
 export default function PlatformAdminPage() {
   const { enqueueSnackbar } = useSnackbar();
@@ -27,6 +28,7 @@ export default function PlatformAdminPage() {
   const [branchesOf, setBranchesOf] = useState<Business | null>(null);
   const [eInvoicingOf, setEInvoicingOf] = useState<Business | null>(null);
   const [turaOf, setTuraOf] = useState<Business | null>(null);
+  const [masterKeyOf, setMasterKeyOf] = useState<Business | null>(null);
 
   const { data: businesses, isLoading, isError, refetch } = usePlatformBusinesses();
   const createBusiness = useCreatePlatformBusiness();
@@ -104,6 +106,16 @@ export default function PlatformAdminPage() {
           >
             TURA
           </Button>
+          <Button
+            size="small"
+            startIcon={<KeyRound size={14} />}
+            onClick={(e) => {
+              e.stopPropagation();
+              setMasterKeyOf(row.original);
+            }}
+          >
+            Llave maestra
+          </Button>
         </Stack>
       ),
     },
@@ -146,6 +158,7 @@ export default function PlatformAdminPage() {
       <BusinessBranchesDrawer business={branchesOf} onClose={() => setBranchesOf(null)} />
       <BusinessEInvoicingDrawer business={eInvoicingOf} onClose={() => setEInvoicingOf(null)} />
       <BusinessTuraDrawer business={turaOf} onClose={() => setTuraOf(null)} />
+      <BusinessMasterKeyDrawer business={masterKeyOf} onClose={() => setMasterKeyOf(null)} />
     </>
   );
 }

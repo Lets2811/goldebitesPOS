@@ -15,7 +15,8 @@ export class CloseCashSessionDto {
 
   @ApiPropertyOptional({
     minimum: 0,
-    description: 'Transfers received during the session, counted/verified against the bank.',
+    description:
+      'Transfers received during the session, counted/verified against the bank.',
   })
   @IsOptional()
   @IsNumber()

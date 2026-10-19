@@ -102,7 +102,8 @@ export class CashSessionsController {
   @Permissions('cash.reopen')
   @RequiresFeature('cash-register.rectification')
   @ApiOperation({
-    summary: 'Rectificar caja — reopen a closed session for correction (requires the admin master key)',
+    summary:
+      'Rectificar caja — reopen a closed session for correction (requires the admin master key)',
   })
   reopen(
     @CurrentBusiness() businessId: string,
