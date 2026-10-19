@@ -117,6 +117,14 @@ docker network inspect gb_edge >/dev/null 2>&1 || docker network create gb_edge
 echo "==> [staging] Building images (takes a few minutes; shares the VM's CPU with production meanwhile)"
 compose build backend frontend tura-api tura-web < /dev/null
 
+# Added with courier push notifications: this environment's own VAPID key pair,
+# generated once with the backend's web-push library.
+if ! grep -q '^VAPID_PUBLIC_KEY=.' "$ENV_FILE"; then
+  echo "==> [staging] Generating the Web Push (VAPID) keys"
+  crun backend node -e 'const k=require("web-push").generateVAPIDKeys();console.log("VAPID_PUBLIC_KEY="+k.publicKey);console.log("VAPID_PRIVATE_KEY="+k.privateKey);console.log("VAPID_SUBJECT=mailto:soporte@goldenbites.net")'     | grep '^VAPID_' >> "$ENV_FILE"
+  cp "$ENV_FILE" .env.staging
+fi
+
 echo "==> [staging] Starting the database"
 compose up -d postgres < /dev/null
 

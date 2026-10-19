@@ -15,6 +15,7 @@ import { decodeAccessToken } from '../utils/decode-access-token';
 import { brand } from '../../../theme/palette';
 import { FORCE_PASSWORD_CHANGE_PATH } from '../components/protected-route';
 import EnvironmentChip from '../../../components/common/EnvironmentChip';
+import { KIOSK_PATHS } from '../../../routes/kioskConfig';
 
 export default function LoginPage() {
   const navigate = useNavigate();
@@ -40,8 +41,13 @@ export default function LoginPage() {
         // Un admin de plataforma no tiene "operación diaria" que ver — su
         // destino es siempre el panel de plataforma, sin importar de dónde
         // vino el redirect.
-        const isPlatformAdmin = decodeAccessToken(data.accessToken)?.isPlatformAdmin ?? false;
-        navigate(isPlatformAdmin ? '/plataforma' : redirectTo, { replace: true });
+        const decoded = decodeAccessToken(data.accessToken);
+        const isPlatformAdmin = decoded?.isPlatformAdmin ?? false;
+        // A courier has no back office: their place is the courier app.
+        const permissions = decoded?.permissions ?? [];
+        const isCourierOnly =
+          permissions.includes('deliveries.deliver') && !permissions.includes('dashboard.read') && redirectTo === '/';
+        navigate(isPlatformAdmin ? '/plataforma' : isCourierOnly ? KIOSK_PATHS.courier : redirectTo, { replace: true });
       },
     });
   };

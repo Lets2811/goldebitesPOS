@@ -6,6 +6,7 @@ export type ModuleKey =
   | 'orders'
   | 'ordersBacklog'
   | 'kitchen'
+  | 'deliveries'
   | 'cash-register'
   | 'products'
   | 'inventory'

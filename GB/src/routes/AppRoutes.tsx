@@ -19,6 +19,9 @@ const DashboardPage = lazy(() => import('../features/dashboard/pages/DashboardPa
 const OrdersPage = lazy(() => import('../features/orders/pages/OrdersPage'));
 const OrdersBacklogPage = lazy(() => import('../features/orders/pages/OrdersBacklogPage'));
 const KitchenPage = lazy(() => import('../features/kitchen/pages/KitchenPage'));
+const DeliveriesPage = lazy(() => import('../features/deliveries/pages/DeliveriesPage'));
+const CourierAppPage = lazy(() => import('../features/deliveries/courier/CourierAppPage'));
+const PublicTrackingPage = lazy(() => import('../features/deliveries/public/PublicTrackingPage'));
 const CashRegisterPage = lazy(() => import('../features/cash-register/pages/CashRegisterPage'));
 const ProductsPage = lazy(() => import('../features/products/pages/ProductsPage'));
 const ProductsHubPage = lazy(() => import('../features/products/pages/ProductsHubPage'));
@@ -76,6 +79,18 @@ export default function AppRoutes() {
           </Loadable>
         }
       />
+      {/* The customer follows their delivery with a code: no login. */}
+      {['/seguimiento', '/seguimiento/:code'].map((path) => (
+        <Route
+          key={path}
+          path={path}
+          element={
+            <Loadable>
+              <PublicTrackingPage />
+            </Loadable>
+          }
+        />
+      ))}
       <Route
         path="/m/:token"
         element={
@@ -130,6 +145,16 @@ export default function AppRoutes() {
               element={
                 <Loadable>
                   <KitchenPage />
+                </Loadable>
+              }
+            />
+          </Route>
+          <Route element={<ProtectedRoute permission={MODULE_PERMISSIONS.deliveries} module="deliveries" />}>
+            <Route
+              path={MODULE_PATHS.deliveries}
+              element={
+                <Loadable>
+                  <DeliveriesPage />
                 </Loadable>
               }
             />
@@ -472,6 +497,16 @@ export default function AppRoutes() {
             element={
               <Loadable>
                 <KitchenKioskPage />
+              </Loadable>
+            }
+          />
+        </Route>
+        <Route element={<ProtectedRoute permission="deliveries.deliver" module="deliveries" />}>
+          <Route
+            path={KIOSK_PATHS.courier}
+            element={
+              <Loadable>
+                <CourierAppPage />
               </Loadable>
             }
           />

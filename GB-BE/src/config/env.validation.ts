@@ -118,6 +118,21 @@ class EnvironmentVariables {
   @IsString()
   @IsOptional()
   CREDENTIALS_ENCRYPTION_KEY: string = '';
+
+  /** Web Push (notifications to the couriers' phones). Generate the pair with
+   *  `npx web-push generate-vapid-keys`; empty disables push (the apps still
+   *  alert while open). VAPID_SUBJECT is a contact, "mailto:..." or a URL. */
+  @IsString()
+  @IsOptional()
+  VAPID_PUBLIC_KEY: string = '';
+
+  @IsString()
+  @IsOptional()
+  VAPID_PRIVATE_KEY: string = '';
+
+  @IsString()
+  @IsOptional()
+  VAPID_SUBJECT: string = 'mailto:soporte@goldenbites.net';
 }
 
 export function validate(config: Record<string, unknown>) {

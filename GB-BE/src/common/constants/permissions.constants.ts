@@ -30,6 +30,29 @@ export const PERMISSIONS: PermissionDefinition[] = [
   },
 
   {
+    code: 'deliveries.read',
+    module: 'deliveries',
+    description: 'Ver domicilios',
+  },
+  {
+    code: 'deliveries.manage',
+    module: 'deliveries',
+    description: 'Crear domicilios, asignar domiciliario y cambiar su estado',
+  },
+  {
+    code: 'deliveries.deliver',
+    module: 'deliveries',
+    description:
+      'Llevar domicilios: ver los propios, compartir la ubicación y chatear con el cliente',
+  },
+  {
+    code: 'deliveries.configure',
+    module: 'deliveries',
+    description:
+      'Configurar la tarifa de domicilios y la ubicación de las sedes',
+  },
+
+  {
     code: 'kitchen.read',
     module: 'kitchen',
     description: 'Ver la pantalla de cocina',
@@ -97,7 +120,8 @@ export const PERMISSIONS: PermissionDefinition[] = [
   {
     code: 'cash.reopen',
     module: 'cash',
-    description: 'Rectificar una sesión de caja cerrada (requiere clave maestra)',
+    description:
+      'Rectificar una sesión de caja cerrada (requiere clave maestra)',
   },
 
   {
@@ -303,6 +327,9 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<SystemRoleName, string[]> = {
     'orders.update',
     'orders.cancel',
     'einvoices.issue',
+    'deliveries.read',
+    'deliveries.manage',
+    'deliveries.configure',
     'kitchen.read',
     'kitchen.update_status',
     'inventory.read',
@@ -355,6 +382,8 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<SystemRoleName, string[]> = {
     'orders.create',
     'orders.update',
     'einvoices.issue',
+    'deliveries.read',
+    'deliveries.manage',
     'kitchen.read',
     'products.read',
     'cash.open',
@@ -400,4 +429,6 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<SystemRoleName, string[]> = {
     'checklists.read',
     'checklists.execute',
   ],
+  // Only their own deliveries, in the courier app (/domiciliario).
+  COURIER: ['deliveries.deliver'],
 };

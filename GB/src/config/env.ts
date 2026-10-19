@@ -18,4 +18,6 @@ export const env = {
   isStaging: appEnv === 'staging',
   /** TURA's app (the assistant), where a link code is entered. Empty when not deployed. */
   turaAppUrl: import.meta.env.VITE_TURA_APP_URL || '',
+  /** Google Maps browser key (Domicilios). Empty: the map shows a notice instead. */
+  googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY || '',
 };
