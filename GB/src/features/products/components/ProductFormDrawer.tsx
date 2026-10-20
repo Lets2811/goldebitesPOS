@@ -20,6 +20,7 @@ import { useProductRecipe } from '../../../modules/recipes/hooks/use-product-rec
 import type { Product } from '../../../modules/products/types/product.types';
 import ProductOptionGroupsField from './ProductOptionGroupsField';
 import ProductImageField, { type ProductImageChange } from './ProductImageField';
+import { menuAvailabilityLabel, useComboBuilderName } from '../../../modules/products/combo-builder';
 
 interface ProductFormDrawerProps {
   open: boolean;
@@ -48,6 +49,7 @@ export default function ProductFormDrawer({
   onSubmit,
   initialProduct,
 }: ProductFormDrawerProps) {
+  const comboName = useComboBuilderName();
   const { data: categoriesData } = useProductCategories({ limit: 100, isActive: true });
   const categories = categoriesData?.data ?? [];
   const { data: inventoryItemsData } = useInventoryItems({
@@ -289,7 +291,7 @@ export default function ProductFormDrawer({
               {(Object.keys(PRODUCT_MENU_AVAILABILITY_LABELS) as ProductMenuAvailability[]).map(
                 (value) => (
                   <MenuItem key={value} value={value}>
-                    {PRODUCT_MENU_AVAILABILITY_LABELS[value]}
+                    {menuAvailabilityLabel(value, comboName)}
                   </MenuItem>
                 ),
               )}

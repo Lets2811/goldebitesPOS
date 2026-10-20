@@ -21,6 +21,9 @@ import { useProducts } from '../../../modules/products/hooks/use-products';
 import type { Product } from '../../../modules/products/types/product.types';
 import { brand } from '../../../theme/palette';
 import { formatCOP } from '../../../utils/format';
+import { useComboBuilderName } from '../../../modules/products/combo-builder';
+import { usePermissions } from '../../../modules/auth/hooks/use-permissions';
+import ComboBuilderNameCard from './ComboBuilderNameCard';
 
 /** Lo que el cliente ve en cada lista: el menú no muestra lo que es solo de combo, y al revés. */
 const offeredIn = (product: Product, scope: CategoryOrderScope) =>
@@ -45,6 +48,7 @@ function PhonePreview({
   uncategorized: Product[];
   activeId: string | null;
 }) {
+  const comboName = useComboBuilderName();
   const visible = sections.filter((section) => section.products.length > 0);
   const renderSection = (key: string, name: string, products: Product[], active: boolean) => (
     <Box
@@ -102,14 +106,14 @@ function PhonePreview({
             <Sparkles size={20} color={brand.gold} />
           )}
           <Typography variant="subtitle2" sx={{ fontWeight: 800 }}>
-            {scope === 'MENU' ? 'Menú' : 'Arma tu combo'}
+            {scope === 'MENU' ? 'Menú' : comboName}
           </Typography>
         </Stack>
         {visible.length === 0 && uncategorized.length === 0 ? (
           <Typography variant="caption" color="text.secondary" sx={{ display: 'block', textAlign: 'center', mt: 4 }}>
             {scope === 'MENU'
               ? 'No hay productos visibles en el menú.'
-              : 'Ningún producto está marcado para "Arma tu combo".'}
+              : `Ningún producto está marcado para «${comboName}».`}
           </Typography>
         ) : (
           <Stack spacing={1.5}>
@@ -133,6 +137,8 @@ function PhonePreview({
 export default function MenuOrganizerTab({ initialScope = 'MENU' }: { initialScope?: CategoryOrderScope }) {
   const { enqueueSnackbar } = useSnackbar();
   const [scope, setScope] = useState<CategoryOrderScope>(initialScope);
+  const comboName = useComboBuilderName();
+  const { hasPermission } = usePermissions();
   const { data: categoryPage, isLoading: categoriesLoading } = useProductCategories({ isActive: true, limit: 100 });
   const { data: productPage, isLoading: productsLoading } = useProducts({ isActive: true, isVisible: true, limit: 100 });
   const setOrderMutation = useSetCategoryOrder();
@@ -221,7 +227,7 @@ export default function MenuOrganizerTab({ initialScope = 'MENU' }: { initialSco
             <UtensilsCrossed size={15} /> Menú
           </ToggleButton>
           <ToggleButton value="BUILDER" sx={{ gap: 0.75 }}>
-            <Sparkles size={15} /> Arma tu combo
+            <Sparkles size={15} /> {comboName}
           </ToggleButton>
         </ToggleButtonGroup>
         <Typography variant="body2" color="text.secondary" sx={{ flex: 1 }}>
@@ -242,13 +248,15 @@ export default function MenuOrganizerTab({ initialScope = 'MENU' }: { initialSco
         </Stack>
       </Stack>
 
+      {scope === 'BUILDER' && <ComboBuilderNameCard canEdit={hasPermission('products.update')} />}
+
       <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'minmax(0, 1fr) 320px' }, gap: 3, alignItems: 'start' }}>
         <Card variant="outlined" sx={{ p: 1 }}>
           {sections.length === 0 ? (
             <Typography variant="body2" color="text.secondary" sx={{ p: 2 }}>
               {scope === 'MENU'
                 ? 'Ninguna sección tiene productos visibles en el menú.'
-                : 'Ninguna sección tiene productos para "Arma tu combo". Márcalos en cada producto, en "Disponible para el cliente en".'}
+                : `Ninguna sección tiene productos para «${comboName}». Márcalos en cada producto, en "Disponible para el cliente en".`}
             </Typography>
           ) : (
             <Stack spacing={0.75}>

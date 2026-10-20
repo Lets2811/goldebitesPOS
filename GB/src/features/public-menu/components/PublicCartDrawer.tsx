@@ -22,6 +22,8 @@ interface PublicCartDrawerProps {
   /** Absent (e.g. the generic /menu/:businessId preview, no NFC context) hides the confirm button entirely. */
   onSubmit?: () => void;
   submitting?: boolean;
+  /** What the business calls "Arma tu combo", to name each combo in the cart. */
+  comboName: string;
 }
 
 /** Customization is decided in ProductDetailDialog — this view only edits quantity or removes a line, never re-opens the option choice. */
@@ -36,10 +38,11 @@ export default function PublicCartDrawer({
   onClose,
   onSubmit,
   submitting,
+  comboName,
 }: PublicCartDrawerProps) {
   function describeLine(line: PublicCartLine): string {
     const parts = describeSelection(line, optionGroups);
-    if (line.comboNumber) parts.unshift(`Arma tu combo ${line.comboNumber}`);
+    if (line.comboNumber) parts.unshift(`${comboName} ${line.comboNumber}`);
     return parts.join(' · ');
   }
 

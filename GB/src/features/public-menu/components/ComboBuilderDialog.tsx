@@ -31,6 +31,8 @@ interface ComboUnit {
 export const MIN_COMBO_ITEMS = 2;
 
 interface ComboBuilderDialogProps {
+  /** What the business calls it ("Arma tu combo" by default). */
+  title: string;
   open: boolean;
   categories: PublicMenuCategory[];
   optionGroups: PublicMenuOptionGroup[];
@@ -44,6 +46,7 @@ interface ComboBuilderDialogProps {
  * agrega al pedido como un solo combo. Cuesta la suma de lo elegido.
  */
 export default function ComboBuilderDialog({
+  title,
   open,
   categories,
   optionGroups,
@@ -81,7 +84,7 @@ export default function ComboBuilderDialog({
             <Sparkles size={22} color={brand.gold} />
             <Box sx={{ flex: 1 }}>
               <Typography variant="h6" sx={{ fontWeight: 800, lineHeight: 1.2 }}>
-                Arma tu combo
+                {title}
               </Typography>
               <Typography variant="body2" color="text.secondary">
                 Elige lo que quieras: pagas la suma de lo que escojas.

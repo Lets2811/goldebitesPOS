@@ -87,7 +87,7 @@ export default function PublicMenuBrowser({
           quantity: line.quantity,
           optionItemIds: line.optionItemIds.length > 0 ? line.optionItemIds : undefined,
           // Cocina ve qué productos van juntos en un mismo combo armado.
-          notes: line.comboNumber ? `Arma tu combo ${line.comboNumber}` : undefined,
+          notes: line.comboNumber ? `${menu?.builderName ?? 'Arma tu combo'} ${line.comboNumber}` : undefined,
         })),
       },
       {
@@ -180,10 +180,10 @@ export default function PublicMenuBrowser({
                   <Sparkles size={28} color={brand.gold} />
                   <Box sx={{ flex: 1 }}>
                     <Typography variant="subtitle1" sx={{ fontWeight: 800 }}>
-                      Arma tu combo
+                      {menu.builderName}
                     </Typography>
                     <Typography variant="body2" color="text.secondary">
-                      Escoge lo que quieras, a tu gusto y a tu estilo.
+                      {menu.builderDescription}
                     </Typography>
                   </Box>
                   <ChevronRight size={22} color={brand.gold} />
@@ -304,6 +304,7 @@ export default function PublicMenuBrowser({
       />
 
       <ComboBuilderDialog
+        title={menu?.builderName ?? 'Arma tu combo'}
         open={builderOpen && !readOnly}
         categories={menu?.builderCategories ?? []}
         optionGroups={menu?.optionGroups ?? []}
@@ -316,6 +317,7 @@ export default function PublicMenuBrowser({
       />
 
       <PublicCartDrawer
+        comboName={menu?.builderName ?? 'Arma tu combo'}
         open={cartOpen && !readOnly}
         cart={cart}
         optionGroups={menu?.optionGroups ?? []}

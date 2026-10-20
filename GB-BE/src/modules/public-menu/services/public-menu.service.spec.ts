@@ -328,6 +328,30 @@ describe('PublicMenuService', () => {
     expect(otros?.products.map((p) => p.name)).toEqual(['Combo especial']);
   });
 
+  describe('the name of "Arma tu combo"', () => {
+    it('is "Arma tu combo" until the business names it', async () => {
+      const menu = await service.getMenu(businessId);
+      expect(menu.builderName).toBe('Arma tu combo');
+      expect(menu.builderDescription).toBe(
+        'Escoge lo que quieras, a tu gusto y a tu estilo.',
+      );
+    });
+
+    it("is the business's own once it names it", async () => {
+      businessesService.findById.mockResolvedValue({
+        id: businessId,
+        name: 'Golden Bites',
+        comboBuilderName: 'Tu combo dorado',
+        comboBuilderDescription: 'Mezcla lo que más te guste',
+      });
+
+      const menu = await service.getMenu(businessId);
+
+      expect(menu.builderName).toBe('Tu combo dorado');
+      expect(menu.builderDescription).toBe('Mezcla lo que más te guste');
+    });
+  });
+
   it('omits the "Otros" bucket entirely when every active product has a category', async () => {
     productsService.findAll.mockResolvedValue({
       data: [

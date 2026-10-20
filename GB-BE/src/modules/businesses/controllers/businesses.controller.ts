@@ -34,6 +34,7 @@ import {
 } from '../../../common/utils/stream-file.util';
 import { SetBusinessStatusDto } from '../dto/set-business-status.dto';
 import { UpdateBusinessDto } from '../dto/update-business.dto';
+import { UpdateComboBuilderDto } from '../dto/update-combo-builder.dto';
 import { BusinessesService } from '../services/businesses.service';
 import {
   BUSINESS_LOGOS_UPLOADS_DIR,
@@ -68,6 +69,24 @@ export class BusinessesController {
     @Body() dto: UpdateBusinessDto,
   ) {
     return this.businessesService.update(businessId, dto, actorUserId);
+  }
+
+  @Patch('me/combo-builder')
+  @Permissions('products.update')
+  @ApiOperation({
+    summary: 'Name "Arma tu combo" (and its line) the business\'s own way',
+  })
+  updateComboBuilder(
+    @CurrentBusiness() businessId: string,
+    @CurrentUser('userId') actorUserId: string,
+    @Body() dto: UpdateComboBuilderDto,
+  ) {
+    return this.businessesService.updateComboBuilder(
+      businessId,
+      dto.name ?? null,
+      dto.description ?? null,
+      actorUserId,
+    );
   }
 
   @Patch('me/status')

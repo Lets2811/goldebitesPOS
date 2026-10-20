@@ -40,6 +40,9 @@ export interface PublicMenu {
    * simply doesn't show.
    */
   builderCategories: PublicMenuCategory[];
+  /** What the business calls "Arma tu combo", and the line under it (defaults applied). */
+  builderName: string;
+  builderDescription: string;
   /** The business's active option groups, in display order, each with its active options. */
   optionGroups: PublicMenuOptionGroup[];
 }

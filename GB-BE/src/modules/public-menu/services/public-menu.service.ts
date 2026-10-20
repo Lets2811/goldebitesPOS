@@ -15,6 +15,10 @@ import {
 } from '../domain/public-menu.interface';
 
 const UNCATEGORIZED_LABEL = 'Otros';
+/** What "Arma tu combo" is called, and says, until the business names it its own way. */
+export const DEFAULT_BUILDER_NAME = 'Arma tu combo';
+export const DEFAULT_BUILDER_DESCRIPTION =
+  'Escoge lo que quieras, a tu gusto y a tu estilo.';
 
 @Injectable()
 export class PublicMenuService {
@@ -114,6 +118,9 @@ export class PublicMenuService {
       businessName: business.name,
       categories,
       builderCategories,
+      builderName: business.comboBuilderName ?? DEFAULT_BUILDER_NAME,
+      builderDescription:
+        business.comboBuilderDescription ?? DEFAULT_BUILDER_DESCRIPTION,
       optionGroups,
     };
   }

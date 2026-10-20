@@ -10,6 +10,10 @@ export interface Business {
   taxRate: number;
   /** Whether the checkout offers the "Descuento" section. */
   discountsAtCheckout: boolean;
+  /** "Arma tu combo" under the business's own name; null: the default. */
+  comboBuilderName: string | null;
+  /** The line under it; null: the default. */
+  comboBuilderDescription: string | null;
   loyaltyPointsPerThousand: number;
   loyaltyBirthdayBonusEnabled: boolean;
   loyaltyBirthdayBonusPoints: number;
@@ -29,6 +33,8 @@ export interface BusinessRow {
   timezone: string;
   tax_rate: string;
   discounts_at_checkout: boolean;
+  combo_builder_name: string | null;
+  combo_builder_description: string | null;
   loyalty_points_per_thousand: string;
   loyalty_birthday_bonus_enabled: boolean;
   loyalty_birthday_bonus_points: number;

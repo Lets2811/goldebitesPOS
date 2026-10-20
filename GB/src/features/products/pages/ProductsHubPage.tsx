@@ -32,6 +32,7 @@ import NewOptionGroupDialog from '../components/NewOptionGroupDialog';
 import OptionGroupOrderDialog from '../components/OptionGroupOrderDialog';
 import PublicMenuLinkDialog from '../components/PublicMenuLinkDialog';
 import { useAllBranchesReview } from '../../../modules/auth/hooks/use-branch-mode';
+import { useComboBuilderName } from '../../../modules/products/combo-builder';
 
 interface HubCardProps {
   icon: LucideIcon;
@@ -152,6 +153,7 @@ function groupStat(group: OptionGroup): string {
  */
 export default function ProductsHubPage() {
   const reviewOnly = useAllBranchesReview();
+  const comboName = useComboBuilderName();
   const navigate = useNavigate();
   const [menuLinkOpen, setMenuLinkOpen] = useState(false);
   const { data: currentBusiness } = useCurrentBusiness();
@@ -235,7 +237,7 @@ export default function ProductsHubPage() {
           />
           <HubCard
             icon={Sparkles}
-            title="Arma tu combo"
+            title={comboName}
             description="Lo que el cliente puede combinar a su gusto, y el orden de sus secciones."
             stat={
               products

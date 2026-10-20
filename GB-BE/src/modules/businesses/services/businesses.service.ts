@@ -166,6 +166,37 @@ export class BusinessesService {
     return BusinessMapper.toDomain(row);
   }
 
+  /** Names "Arma tu combo" (and its line) the business's own way; empty goes back to the default. */
+  async updateComboBuilder(
+    id: string,
+    name: string | null,
+    description: string | null,
+    actorUserId?: string,
+  ): Promise<Business> {
+    await this.getOrFail(id);
+    const clean = (value: string | null) => value?.trim() || null;
+    const row = await this.businessesRepository.updateComboBuilder(
+      id,
+      clean(name),
+      clean(description),
+    );
+    if (!row) {
+      throw new EntityNotFoundException('Business', id);
+    }
+    await this.auditService.record({
+      businessId: id,
+      userId: actorUserId,
+      entityType: 'business',
+      entityId: id,
+      action: 'UPDATE_COMBO_BUILDER',
+      newValues: {
+        name: row.combo_builder_name,
+        description: row.combo_builder_description,
+      },
+    });
+    return BusinessMapper.toDomain(row);
+  }
+
   /** Used by LoyaltyModule to compute earned points and read program settings. */
   async getLoyaltyConfig(businessId: string): Promise<{
     pointsPerThousand: number;

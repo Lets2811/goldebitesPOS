@@ -10,6 +10,10 @@ export interface Business {
   taxRate: number;
   /** Whether the checkout offers the "Descuento" section (Configuración). */
   discountsAtCheckout: boolean;
+  /** "Arma tu combo" under the business's own name; null: the default. */
+  comboBuilderName: string | null;
+  /** The line under it; null: the default. */
+  comboBuilderDescription: string | null;
   isActive: boolean;
   createdAt: string;
   updatedAt: string;

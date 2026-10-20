@@ -8,7 +8,7 @@ import {
 } from '../domain/business.types';
 import { IBusinessesRepository } from './businesses.repository.interface';
 
-const SELECT_COLUMNS = `id, name, legal_name, tax_id, email, phone, currency, timezone, tax_rate, discounts_at_checkout, loyalty_points_per_thousand, loyalty_birthday_bonus_enabled, loyalty_birthday_bonus_points, is_active, created_at, updated_at`;
+const SELECT_COLUMNS = `id, name, legal_name, tax_id, email, phone, currency, timezone, tax_rate, discounts_at_checkout, combo_builder_name, combo_builder_description, loyalty_points_per_thousand, loyalty_birthday_bonus_enabled, loyalty_birthday_bonus_points, is_active, created_at, updated_at`;
 
 @Injectable()
 export class BusinessesRepository implements IBusinessesRepository {
@@ -124,6 +124,21 @@ export class BusinessesRepository implements IBusinessesRepository {
     const result = await this.db.query<BusinessRow>(
       `UPDATE businesses SET discounts_at_checkout = $2 WHERE id = $1 RETURNING ${SELECT_COLUMNS}`,
       [id, enabled],
+      client,
+    );
+    return result.rows[0] ?? null;
+  }
+
+  async updateComboBuilder(
+    id: string,
+    name: string | null,
+    description: string | null,
+    client?: DbClient,
+  ): Promise<BusinessRow | null> {
+    const result = await this.db.query<BusinessRow>(
+      `UPDATE businesses SET combo_builder_name = $2, combo_builder_description = $3
+       WHERE id = $1 RETURNING ${SELECT_COLUMNS}`,
+      [id, name, description],
       client,
     );
     return result.rows[0] ?? null;

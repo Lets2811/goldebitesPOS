@@ -35,6 +35,9 @@ export interface PublicMenu {
   categories: PublicMenuCategory[];
   /** "Arma tu combo": productos marcados "Solo arma tu combo" o "Ambos", por categoría. Vacío si no se ofrece. */
   builderCategories: PublicMenuCategory[];
+  /** Cómo llama el negocio a "Arma tu combo", y la frase debajo (con los valores por defecto ya puestos). */
+  builderName: string;
+  builderDescription: string;
   /** Los grupos de opciones activos del negocio, en orden, cada uno con sus opciones activas. */
   optionGroups: PublicMenuOptionGroup[];
 }

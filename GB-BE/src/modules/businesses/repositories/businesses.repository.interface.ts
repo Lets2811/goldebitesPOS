@@ -29,6 +29,12 @@ export interface IBusinessesRepository {
     enabled: boolean,
     client?: DbClient,
   ): Promise<BusinessRow | null>;
+  updateComboBuilder(
+    id: string,
+    name: string | null,
+    description: string | null,
+    client?: DbClient,
+  ): Promise<BusinessRow | null>;
   updateLoyaltyConfig(
     id: string,
     data: {
