@@ -14,11 +14,14 @@ import { CurrentUser } from '../../../common/decorators/current-user.decorator';
 import { Public } from '../../../common/decorators/public.decorator';
 import { RawResponse } from '../../../common/decorators/raw-response.decorator';
 import { SkipMustChangePassword } from '../../../common/decorators/skip-must-change-password.decorator';
+import { BranchSelectionExempt } from '../../../common/decorators/branch-selection-exempt.decorator';
+import { Permissions } from '../../../common/decorators/permissions.decorator';
 import { ChangePasswordDto } from '../dto/change-password.dto';
 import { ForgotPasswordDto } from '../dto/forgot-password.dto';
 import { LoginDto } from '../dto/login.dto';
 import { RefreshTokenDto } from '../dto/refresh-token.dto';
 import { ResetPasswordDto } from '../dto/reset-password.dto';
+import { SwitchBranchDto } from '../dto/switch-branch.dto';
 import { AuthService, RequestMetadata } from '../services/auth.service';
 
 /**
@@ -28,6 +31,7 @@ import { AuthService, RequestMetadata } from '../services/auth.service';
 const CREDENTIALS_THROTTLE = { default: { limit: 100, ttl: 60000 } };
 
 @ApiTags('Auth')
+@BranchSelectionExempt()
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
@@ -64,6 +68,29 @@ export class AuthController {
   @ApiOperation({ summary: 'Revoke a refresh token' })
   async logout(@Body() dto: RefreshTokenDto) {
     await this.authService.logout(dto.refreshToken);
+  }
+
+  @Post('switch-branch')
+  @Permissions('branches.switch')
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary:
+      'Take the session to one branch (or all, with branchId null): a new token pair',
+  })
+  switchBranch(
+    @CurrentUser('userId') userId: string,
+    @CurrentBusiness() businessId: string,
+    @Body() dto: SwitchBranchDto,
+    @Ip() ip: string,
+    @Headers('user-agent') userAgent?: string,
+  ) {
+    return this.authService.switchBranch(
+      userId,
+      businessId,
+      dto.branchId,
+      dto.refreshToken,
+      this.meta(ip, userAgent),
+    );
   }
 
   @Post('change-password')

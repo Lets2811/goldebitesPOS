@@ -23,6 +23,7 @@ describe('OrdersService', () => {
     replaceItems: jest.Mock;
     findItems: jest.Mock;
     updateTotals: jest.Mock;
+    setDiscount: jest.Mock;
     setStatus: jest.Mock;
     updatePaymentStatus: jest.Mock;
     getTotalPaid: jest.Mock;
@@ -44,11 +45,20 @@ describe('OrdersService', () => {
     recordMovement: jest.Mock;
     getMovementsByReference: jest.Mock;
   };
-  let businessesService: { getTaxRate: jest.Mock; getTimezone: jest.Mock };
+  let businessesService: {
+    getTaxRate: jest.Mock;
+    getTimezone: jest.Mock;
+    getDiscountsAtCheckout: jest.Mock;
+  };
   let loyaltyService: { awardPointsForOrder: jest.Mock };
   let optionGroupsService: { findAll: jest.Mock; getProductGroups: jest.Mock };
   let transactionService: { execute: jest.Mock };
   let auditService: { record: jest.Mock };
+  let discountsService: {
+    resolve: jest.Mock;
+    takeUse: jest.Mock;
+    releaseUse: jest.Mock;
+  };
   let service: OrdersService;
 
   const businessId = 'business-1';
@@ -118,6 +128,7 @@ describe('OrdersService', () => {
       replaceItems: jest.fn(),
       findItems: jest.fn().mockResolvedValue([]),
       updateTotals: jest.fn(),
+      setDiscount: jest.fn(),
       setStatus: jest.fn(),
       updatePaymentStatus: jest.fn(),
       getTotalPaid: jest.fn().mockResolvedValue(0),
@@ -157,6 +168,7 @@ describe('OrdersService', () => {
     businessesService = {
       getTaxRate: jest.fn().mockResolvedValue(0),
       getTimezone: jest.fn().mockResolvedValue('America/Bogota'),
+      getDiscountsAtCheckout: jest.fn().mockResolvedValue(true),
     };
     loyaltyService = { awardPointsForOrder: jest.fn() };
     optionGroupsService = {
@@ -169,6 +181,11 @@ describe('OrdersService', () => {
       ),
     };
     auditService = { record: jest.fn() };
+    discountsService = {
+      resolve: jest.fn(),
+      takeUse: jest.fn().mockResolvedValue(true),
+      releaseUse: jest.fn().mockResolvedValue(undefined),
+    };
 
     service = new OrdersService(
       repository,
@@ -182,6 +199,7 @@ describe('OrdersService', () => {
       optionGroupsService as never,
       transactionService as never,
       auditService as never,
+      discountsService as never,
     );
   });
 
@@ -1078,6 +1096,194 @@ describe('OrdersService', () => {
           revenue: 50000,
         },
       ]);
+    });
+  });
+
+  describe('applyDiscount', () => {
+    const orderId = 'order-1';
+    const pending = () =>
+      makeOrderRow({
+        id: orderId,
+        subtotal: '20000.00',
+        discount_amount: '0.00',
+        delivery_fee: '0.00',
+        total_amount: '20000.00',
+      } as Partial<OrderRow>);
+
+    beforeEach(() => {
+      repository.findById.mockResolvedValue(pending());
+    });
+
+    it('takes a manual percentage off the subtotal', async () => {
+      discountsService.resolve.mockResolvedValue({
+        source: 'MANUAL',
+        percent: 5,
+        discountId: null,
+        label: 'Descuento manual (5%)',
+      });
+
+      await service.applyDiscount(businessId, orderId, {
+        source: 'MANUAL',
+        percent: 5,
+      });
+
+      // 20000 − 5% = 19000.
+      expect(repository.updateTotals).toHaveBeenCalledWith(
+        orderId,
+        20000,
+        1000,
+        0,
+        0,
+        19000,
+        expect.anything(),
+      );
+      expect(repository.setDiscount).toHaveBeenCalledWith(
+        orderId,
+        expect.objectContaining({ percent: 5, source: 'MANUAL' }),
+        expect.anything(),
+      );
+      expect(discountsService.takeUse).not.toHaveBeenCalled();
+    });
+
+    it('counts a use of a coupon', async () => {
+      discountsService.resolve.mockResolvedValue({
+        source: 'COUPON',
+        percent: 10,
+        discountId: 'coupon-1',
+        label: 'Cupón VERANO10 (10%)',
+      });
+
+      await service.applyDiscount(businessId, orderId, {
+        source: 'COUPON',
+        code: 'verano10',
+      });
+
+      expect(discountsService.takeUse).toHaveBeenCalledWith(
+        'coupon-1',
+        expect.anything(),
+      );
+      expect(repository.updateTotals).toHaveBeenCalledWith(
+        orderId,
+        20000,
+        2000,
+        0,
+        0,
+        18000,
+        expect.anything(),
+      );
+    });
+
+    it('gives the use back when the discount is removed', async () => {
+      repository.findById.mockResolvedValue({
+        ...pending(),
+        discount_id: 'coupon-1',
+        discount_percent: '10',
+      });
+
+      await service.applyDiscount(businessId, orderId, { source: 'NONE' });
+
+      expect(discountsService.releaseUse).toHaveBeenCalledWith(
+        'coupon-1',
+        expect.anything(),
+      );
+      expect(repository.setDiscount).toHaveBeenCalledWith(
+        orderId,
+        null,
+        expect.anything(),
+      );
+      expect(repository.updateTotals).toHaveBeenCalledWith(
+        orderId,
+        20000,
+        0,
+        0,
+        0,
+        20000,
+        expect.anything(),
+      );
+    });
+
+    it('refuses once the order has payments', async () => {
+      repository.getTotalPaid.mockResolvedValue(5000);
+
+      await expect(
+        service.applyDiscount(businessId, orderId, {
+          source: 'MANUAL',
+          percent: 5,
+        }),
+      ).rejects.toThrow(BusinessRuleException);
+      expect(repository.updateTotals).not.toHaveBeenCalled();
+    });
+
+    it('refuses a discount when the business turned them off at checkout', async () => {
+      businessesService.getDiscountsAtCheckout.mockResolvedValue(false);
+
+      await expect(
+        service.applyDiscount(businessId, orderId, {
+          source: 'MANUAL',
+          percent: 5,
+        }),
+      ).rejects.toThrow(BusinessRuleException);
+      expect(discountsService.resolve).not.toHaveBeenCalled();
+      expect(repository.updateTotals).not.toHaveBeenCalled();
+    });
+
+    it('still removes a discount when they are turned off', async () => {
+      businessesService.getDiscountsAtCheckout.mockResolvedValue(false);
+
+      await service.applyDiscount(businessId, orderId, { source: 'NONE' });
+
+      expect(repository.setDiscount).toHaveBeenCalledWith(
+        orderId,
+        null,
+        expect.anything(),
+      );
+    });
+
+    it('refuses a coupon with no uses left', async () => {
+      discountsService.resolve.mockResolvedValue({
+        source: 'COUPON',
+        percent: 10,
+        discountId: 'coupon-1',
+        label: 'Cupón X (10%)',
+      });
+      discountsService.takeUse.mockResolvedValue(false);
+
+      await expect(
+        service.applyDiscount(businessId, orderId, {
+          source: 'COUPON',
+          code: 'X',
+        }),
+      ).rejects.toThrow(BusinessRuleException);
+    });
+  });
+
+  describe('a percentage discount follows the items', () => {
+    it('is recomputed on the new subtotal when items are added', async () => {
+      repository.findById.mockResolvedValue(
+        makeOrderRow({
+          id: 'order-1',
+          subtotal: '10000.00',
+          discount_amount: '1000.00',
+          discount_percent: '10',
+          delivery_fee: '0.00',
+          total_amount: '9000.00',
+        } as Partial<OrderRow>),
+      );
+
+      await service.addItems(businessId, 'order-1', [
+        { productId, quantity: 2 },
+      ]);
+
+      // 10000 + 2 × 5000 = 20000; 10% = 2000.
+      expect(repository.updateTotals).toHaveBeenCalledWith(
+        'order-1',
+        20000,
+        2000,
+        0,
+        0,
+        18000,
+        expect.anything(),
+      );
     });
   });
 });

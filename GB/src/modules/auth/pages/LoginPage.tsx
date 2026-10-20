@@ -42,7 +42,9 @@ export default function LoginPage() {
         // A courier has no back office: their place is the courier app.
         const permissions = decoded?.permissions ?? [];
         const isCourierOnly =
-          permissions.includes('deliveries.deliver') && !permissions.includes('dashboard.read') && redirectTo === '/';
+          permissions.includes('deliveries.deliver') &&
+          !permissions.includes('dashboard.read') &&
+          redirectTo === '/';
         navigate(isCourierOnly ? KIOSK_PATHS.courier : redirectTo, { replace: true });
       },
     });

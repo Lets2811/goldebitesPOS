@@ -3,6 +3,7 @@ import type { ApiResponse } from '../../../lib/api/api-types';
 
 export interface BusinessSettings {
   taxRate: number;
+  discountsAtCheckout: boolean;
 }
 
 export const settingsApi = {
@@ -11,8 +12,9 @@ export const settingsApi = {
     return data.data;
   },
 
-  async update(taxRate: number): Promise<BusinessSettings> {
-    const { data } = await apiClient.patch<ApiResponse<BusinessSettings>>('/settings', { taxRate });
+  /** Changes only the settings sent. */
+  async update(changes: Partial<BusinessSettings>): Promise<BusinessSettings> {
+    const { data } = await apiClient.patch<ApiResponse<BusinessSettings>>('/settings', changes);
     return data.data;
   },
 };

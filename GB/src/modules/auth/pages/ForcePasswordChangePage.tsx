@@ -12,7 +12,10 @@ import Link from '@mui/material/Link';
 import { useSnackbar } from 'notistack';
 import { useChangePassword } from '../hooks/use-change-password';
 import { useLogout } from '../hooks/use-logout';
-import { changePasswordSchema, type ChangePasswordFormValues } from '../schemas/change-password.schema';
+import {
+  changePasswordSchema,
+  type ChangePasswordFormValues,
+} from '../schemas/change-password.schema';
 import { normalizeApiError } from '../../../lib/api/api-error';
 import { brand } from '../../../theme/palette';
 
@@ -41,7 +44,9 @@ export default function ForcePasswordChangePage() {
       { currentPassword: values.currentPassword, newPassword: values.newPassword },
       {
         onSuccess: () => {
-          enqueueSnackbar('Contraseña actualizada. Inicia sesión de nuevo.', { variant: 'success' });
+          enqueueSnackbar('Contraseña actualizada. Inicia sesión de nuevo.', {
+            variant: 'success',
+          });
           navigate('/login', { replace: true });
         },
       },

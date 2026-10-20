@@ -16,6 +16,7 @@ export interface AccessTokenPayload {
   roleName: string;
   permissions: string[];
   enabledFeatures: string[];
+  branchSelectionRequired?: boolean;
 }
 
 export function decodeAccessToken(token: string): AccessTokenPayload | null {

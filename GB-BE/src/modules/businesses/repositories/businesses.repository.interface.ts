@@ -24,6 +24,11 @@ export interface IBusinessesRepository {
     taxRate: number,
     client?: DbClient,
   ): Promise<BusinessRow | null>;
+  updateDiscountsAtCheckout(
+    id: string,
+    enabled: boolean,
+    client?: DbClient,
+  ): Promise<BusinessRow | null>;
   updateLoyaltyConfig(
     id: string,
     data: {

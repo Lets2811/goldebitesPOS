@@ -8,6 +8,8 @@ export interface Business {
   currency: string;
   timezone: string;
   taxRate: number;
+  /** Whether the checkout offers the "Descuento" section (Configuración). */
+  discountsAtCheckout: boolean;
   isActive: boolean;
   createdAt: string;
   updatedAt: string;

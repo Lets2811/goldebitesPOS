@@ -8,6 +8,7 @@ import { validate } from './config/env.validation';
 import { DatabaseModule } from './database/database.module';
 import { GlobalExceptionFilter } from './common/filters/global-exception.filter';
 import { FeaturesGuard } from './common/guards/features.guard';
+import { BranchScopeGuard } from './common/guards/branch-scope.guard';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { MustChangePasswordGuard } from './common/guards/must-change-password.guard';
 import { PermissionsGuard } from './common/guards/permissions.guard';
@@ -22,6 +23,7 @@ import { AuthModule } from './modules/auth/auth.module';
 import { BranchesModule } from './modules/branches/branches.module';
 import { BusinessFeaturesModule } from './modules/business-features/business-features.module';
 import { BusinessesModule } from './modules/businesses/businesses.module';
+import { BranchComparisonModule } from './modules/branch-comparison/branch-comparison.module';
 import { CashSessionsModule } from './modules/cash-sessions/cash-sessions.module';
 import { ChecklistsModule } from './modules/checklists/checklists.module';
 import { CustomersModule } from './modules/customers/customers.module';
@@ -92,6 +94,7 @@ import { WasteModule } from './modules/waste/waste.module';
     PermissionsModule,
     RolesModule,
     BusinessesModule,
+    BranchComparisonModule,
     BranchesModule,
     UsersModule,
     AuthModule,
@@ -147,6 +150,7 @@ import { WasteModule } from './modules/waste/waste.module';
     { provide: APP_GUARD, useClass: RolesGuard },
     { provide: APP_GUARD, useClass: PermissionsGuard },
     { provide: APP_GUARD, useClass: FeaturesGuard },
+    { provide: APP_GUARD, useClass: BranchScopeGuard },
     { provide: APP_GUARD, useClass: InternalApiGuard },
     { provide: APP_FILTER, useClass: GlobalExceptionFilter },
     { provide: APP_INTERCEPTOR, useClass: LoggingInterceptor },

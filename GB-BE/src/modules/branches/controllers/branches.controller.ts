@@ -7,6 +7,7 @@ import { BranchQueryDto } from '../dto/branch-query.dto';
 import { SetBranchPaymentPolicyDto } from '../dto/set-branch-payment-policy.dto';
 import { SetBranchTableCountDto } from '../dto/set-branch-table-count.dto';
 import { BranchesService } from '../services/branches.service';
+import { BranchSelectionExempt } from '../../../common/decorators/branch-selection-exempt.decorator';
 
 /**
  * A business's own view of its branches. It can read them and set what
@@ -22,6 +23,7 @@ export class BranchesController {
   constructor(private readonly branchesService: BranchesService) {}
 
   @Get()
+  @BranchSelectionExempt()
   @ApiOperation({ summary: 'List branches for the current business' })
   findAll(
     @CurrentBusiness() businessId: string,

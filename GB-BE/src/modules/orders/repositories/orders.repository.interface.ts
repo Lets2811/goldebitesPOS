@@ -57,6 +57,17 @@ export interface IOrdersRepository {
     client?: DbClient,
   ): Promise<void>;
   findItems(orderId: string, client?: DbClient): Promise<OrderItemRow[]>;
+  setDiscount(
+    orderId: string,
+    discount: {
+      percent: number;
+      discountId: string | null;
+      source: string;
+      label: string;
+    } | null,
+    client?: DbClient,
+  ): Promise<void>;
+
   updateTotals(
     orderId: string,
     subtotal: number,

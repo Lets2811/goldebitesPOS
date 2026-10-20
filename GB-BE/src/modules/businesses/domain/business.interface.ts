@@ -8,6 +8,8 @@ export interface Business {
   currency: string;
   timezone: string;
   taxRate: number;
+  /** Whether the checkout offers the "Descuento" section. */
+  discountsAtCheckout: boolean;
   loyaltyPointsPerThousand: number;
   loyaltyBirthdayBonusEnabled: boolean;
   loyaltyBirthdayBonusPoints: number;
@@ -26,6 +28,7 @@ export interface BusinessRow {
   currency: string;
   timezone: string;
   tax_rate: string;
+  discounts_at_checkout: boolean;
   loyalty_points_per_thousand: string;
   loyalty_birthday_bonus_enabled: boolean;
   loyalty_birthday_bonus_points: number;

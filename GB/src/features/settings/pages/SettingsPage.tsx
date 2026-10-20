@@ -10,6 +10,7 @@ import Typography from '@mui/material/Typography';
 import Chip from '@mui/material/Chip';
 import Switch from '@mui/material/Switch';
 import FormControlLabel from '@mui/material/FormControlLabel';
+import Checkbox from '@mui/material/Checkbox';
 import Box from '@mui/material/Box';
 import { ChevronDown, Check, X, Upload, Trash2, Nfc } from 'lucide-react';
 import { useSnackbar } from 'notistack';
@@ -23,6 +24,8 @@ import { useBusinessLogo } from '../../../modules/businesses/hooks/use-business-
 import { useUploadBusinessLogo } from '../../../modules/businesses/hooks/use-upload-business-logo';
 import { useDeleteBusinessLogo } from '../../../modules/businesses/hooks/use-delete-business-logo';
 import { useUpdateTaxRate } from '../../../modules/settings/hooks/use-update-tax-rate';
+import { useUpdateDiscountsAtCheckout } from '../../../modules/settings/hooks/use-update-discounts-at-checkout';
+import { usePermissions } from '../../../modules/auth/hooks/use-permissions';
 import { useBranches } from '../../../modules/branches/hooks/use-branches';
 import BranchTableCountField from '../components/BranchTableCountField';
 import TuraLinksSection from '../components/TuraLinksSection';
@@ -32,7 +35,12 @@ import { useCreateProductCategory } from '../../../modules/product-categories/ho
 import { normalizeApiError } from '../../../lib/api/api-error';
 import { useSettingsStore } from '../../../store/settingsStore';
 import { useUiStore } from '../../../store/uiStore';
-import { PAYMENT_METHOD_LABELS, type PaymentMethod, type Channel, CHANNEL_LABELS } from '../../../types/common';
+import {
+  PAYMENT_METHOD_LABELS,
+  type PaymentMethod,
+  type Channel,
+  CHANNEL_LABELS,
+} from '../../../types/common';
 import { ORDER_STATUS_LABELS, ORDER_STATUS_SEQUENCE } from '../../../modules/orders/order-status';
 
 export default function SettingsPage() {
@@ -50,6 +58,8 @@ export default function SettingsPage() {
   const uploadLogo = useUploadBusinessLogo();
   const deleteLogo = useDeleteBusinessLogo();
   const updateTaxRate = useUpdateTaxRate();
+  const updateDiscountsAtCheckout = useUpdateDiscountsAtCheckout();
+  const { hasPermission } = usePermissions();
   const { data: branchesData } = useBranches({ limit: 50 });
   const branches = branchesData?.data ?? [];
   const { data: categoriesData } = useProductCategories({ limit: 100 });
@@ -94,7 +104,11 @@ export default function SettingsPage() {
 
   return (
     <>
-      <PageHeader title="Configuración" subtitle="Parámetros generales del negocio y del sistema." breadcrumbs={[{ label: 'Configuración' }]} />
+      <PageHeader
+        title="Configuración"
+        subtitle="Parámetros generales del negocio y del sistema."
+        breadcrumbs={[{ label: 'Configuración' }]}
+      />
 
       <Accordion defaultExpanded>
         <AccordionSummary expandIcon={<ChevronDown size={18} />}>
@@ -134,8 +148,12 @@ export default function SettingsPage() {
                 loading={updateBusiness.isPending}
                 onClick={() => {
                   updateBusiness.mutate(businessForm, {
-                    onSuccess: () => enqueueSnackbar('Información del negocio actualizada', { variant: 'success' }),
-                    onError: (error) => enqueueSnackbar(normalizeApiError(error).message, { variant: 'error' }),
+                    onSuccess: () =>
+                      enqueueSnackbar('Información del negocio actualizada', {
+                        variant: 'success',
+                      }),
+                    onError: (error) =>
+                      enqueueSnackbar(normalizeApiError(error).message, { variant: 'error' }),
                   });
                 }}
               >
@@ -147,8 +165,13 @@ export default function SettingsPage() {
               <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 1 }}>
                 Logo del negocio
               </Typography>
-              <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1.5 }}>
-                Se incluye en las comandas de cocina, facturas y comprobantes de pago que imprime la app.
+              <Typography
+                variant="caption"
+                color="text.secondary"
+                sx={{ display: 'block', mb: 1.5 }}
+              >
+                Se incluye en las comandas de cocina, facturas y comprobantes de pago que imprime la
+                app.
               </Typography>
               <Stack direction="row" spacing={2} sx={{ alignItems: 'center' }}>
                 <Box
@@ -171,9 +194,18 @@ export default function SettingsPage() {
                       ...
                     </Typography>
                   ) : logoDataUri ? (
-                    <Box component="img" src={logoDataUri} alt="Logo del negocio" sx={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                    <Box
+                      component="img"
+                      src={logoDataUri}
+                      alt="Logo del negocio"
+                      sx={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                    />
                   ) : (
-                    <Typography variant="caption" color="text.secondary" sx={{ textAlign: 'center', px: 0.5 }}>
+                    <Typography
+                      variant="caption"
+                      color="text.secondary"
+                      sx={{ textAlign: 'center', px: 0.5 }}
+                    >
                       Sin logo
                     </Typography>
                   )}
@@ -205,8 +237,12 @@ export default function SettingsPage() {
                         loading={deleteLogo.isPending}
                         onClick={() => {
                           deleteLogo.mutate(undefined, {
-                            onSuccess: () => enqueueSnackbar('Logo eliminado', { variant: 'success' }),
-                            onError: (error) => enqueueSnackbar(normalizeApiError(error).message, { variant: 'error' }),
+                            onSuccess: () =>
+                              enqueueSnackbar('Logo eliminado', { variant: 'success' }),
+                            onError: (error) =>
+                              enqueueSnackbar(normalizeApiError(error).message, {
+                                variant: 'error',
+                              }),
                           });
                         }}
                         sx={{ alignSelf: 'flex-start' }}
@@ -224,19 +260,30 @@ export default function SettingsPage() {
 
       <Accordion>
         <AccordionSummary expandIcon={<ChevronDown size={18} />}>
-          <Typography sx={{ fontWeight: 700 }}>{branches.length > 1 ? 'Sedes: mesas y NFC' : 'Mesas y NFC'}</Typography>
+          <Typography sx={{ fontWeight: 700 }}>
+            {branches.length > 1 ? 'Sedes: mesas y NFC' : 'Mesas y NFC'}
+          </Typography>
         </AccordionSummary>
         <AccordionDetails>
           <Stack spacing={1}>
             {/* Which branches exist is the platform's to manage (they are a contracted add-on); here only what running one needs. */}
             {branches.length > 1 && (
               <Typography variant="caption" color="text.secondary">
-                Las sedes de tu negocio las administra el proveedor del POS. Aquí configuras las mesas y las etiquetas NFC
-                de cada una.
+                Las sedes de tu negocio las administra el proveedor del POS. Aquí configuras las
+                mesas y las etiquetas NFC de cada una.
               </Typography>
             )}
             {branches.map((branch) => (
-              <Stack key={branch.id} direction="row" sx={{ alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 1 }}>
+              <Stack
+                key={branch.id}
+                direction="row"
+                sx={{
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  flexWrap: 'wrap',
+                  gap: 1,
+                }}
+              >
                 {/* A single branch is just "the business": naming it would only raise the question of what a branch is. */}
                 {branches.length > 1 ? (
                   <Box>
@@ -244,7 +291,8 @@ export default function SettingsPage() {
                       {branch.name}
                     </Typography>
                     <Typography variant="caption" color="text.secondary">
-                      {[branch.address, branch.city, branch.phone].filter(Boolean).join(' · ') || 'Sin datos de contacto'}
+                      {[branch.address, branch.city, branch.phone].filter(Boolean).join(' · ') ||
+                        'Sin datos de contacto'}
                     </Typography>
                   </Box>
                 ) : (
@@ -303,8 +351,10 @@ export default function SettingsPage() {
                   onClick={() => {
                     const rate = Number(taxRatePercent) / 100;
                     updateTaxRate.mutate(rate, {
-                      onSuccess: () => enqueueSnackbar('Tasa de impuesto actualizada', { variant: 'success' }),
-                      onError: (error) => enqueueSnackbar(normalizeApiError(error).message, { variant: 'error' }),
+                      onSuccess: () =>
+                        enqueueSnackbar('Tasa de impuesto actualizada', { variant: 'success' }),
+                      onError: (error) =>
+                        enqueueSnackbar(normalizeApiError(error).message, { variant: 'error' }),
                     });
                   }}
                 >
@@ -312,32 +362,81 @@ export default function SettingsPage() {
                 </Button>
               </Can>
             </Stack>
+            <HasFeature feature="discounts">
+              <Box>
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={business?.discountsAtCheckout ?? true}
+                      disabled={
+                        !business ||
+                        !hasPermission('settings.manage') ||
+                        updateDiscountsAtCheckout.isPending
+                      }
+                      onChange={(e) => {
+                        const enabled = e.target.checked;
+                        updateDiscountsAtCheckout.mutate(enabled, {
+                          onSuccess: () =>
+                            enqueueSnackbar(
+                              enabled
+                                ? 'Descuentos al cobrar activados'
+                                : 'Descuentos al cobrar ocultos',
+                              { variant: 'success' },
+                            ),
+                          onError: (error) =>
+                            enqueueSnackbar(normalizeApiError(error).message, { variant: 'error' }),
+                        });
+                      }}
+                    />
+                  }
+                  label="Mostrar la sección de descuentos al cobrar"
+                />
+                <Typography
+                  variant="caption"
+                  color="text.secondary"
+                  sx={{ display: 'block', ml: 4 }}
+                >
+                  Promociones, cupones y porcentaje manual en el detalle del pedido. Aplica para
+                  todas las cajas.
+                </Typography>
+              </Box>
+            </HasFeature>
             <Typography variant="caption" color="text.secondary">
-              Los métodos de pago y canales de venta habilitados son preferencias locales de la interfaz — el
-              backend no modela esta configuración todavía.
+              Los métodos de pago y canales de venta habilitados son preferencias locales de la
+              interfaz — el backend no modela esta configuración todavía.
             </Typography>
             <Box>
               <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 1 }}>
                 Métodos de pago habilitados (local)
               </Typography>
-              <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: "wrap" }}>
-                {(Object.entries(PAYMENT_METHOD_LABELS) as [PaymentMethod, string][]).map(([value, label]) => (
-                  <Chip
-                    key={value}
-                    label={label}
-                    onClick={() => settings.togglePaymentMethod(value)}
-                    color={settings.paymentMethodsEnabled.includes(value) ? 'primary' : 'default'}
-                    variant={settings.paymentMethodsEnabled.includes(value) ? 'filled' : 'outlined'}
-                    icon={settings.paymentMethodsEnabled.includes(value) ? <Check size={14} /> : <X size={14} />}
-                  />
-                ))}
+              <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: 'wrap' }}>
+                {(Object.entries(PAYMENT_METHOD_LABELS) as [PaymentMethod, string][]).map(
+                  ([value, label]) => (
+                    <Chip
+                      key={value}
+                      label={label}
+                      onClick={() => settings.togglePaymentMethod(value)}
+                      color={settings.paymentMethodsEnabled.includes(value) ? 'primary' : 'default'}
+                      variant={
+                        settings.paymentMethodsEnabled.includes(value) ? 'filled' : 'outlined'
+                      }
+                      icon={
+                        settings.paymentMethodsEnabled.includes(value) ? (
+                          <Check size={14} />
+                        ) : (
+                          <X size={14} />
+                        )
+                      }
+                    />
+                  ),
+                )}
               </Stack>
             </Box>
             <Box>
               <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 1 }}>
                 Canales de venta habilitados (local)
               </Typography>
-              <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: "wrap" }}>
+              <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: 'wrap' }}>
                 {(Object.entries(CHANNEL_LABELS) as [Channel, string][]).map(([value, label]) => (
                   <Chip
                     key={value}
@@ -345,7 +444,13 @@ export default function SettingsPage() {
                     onClick={() => settings.toggleChannel(value)}
                     color={settings.channelsEnabled.includes(value) ? 'primary' : 'default'}
                     variant={settings.channelsEnabled.includes(value) ? 'filled' : 'outlined'}
-                    icon={settings.channelsEnabled.includes(value) ? <Check size={14} /> : <X size={14} />}
+                    icon={
+                      settings.channelsEnabled.includes(value) ? (
+                        <Check size={14} />
+                      ) : (
+                        <X size={14} />
+                      )
+                    }
                   />
                 ))}
               </Stack>
@@ -364,9 +469,14 @@ export default function SettingsPage() {
               <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 1 }}>
                 Estados de pedido
               </Typography>
-              <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: "wrap" }}>
+              <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: 'wrap' }}>
                 {ORDER_STATUS_SEQUENCE.map((status) => (
-                  <Chip key={status} label={ORDER_STATUS_LABELS[status]} variant="outlined" size="small" />
+                  <Chip
+                    key={status}
+                    label={ORDER_STATUS_LABELS[status]}
+                    variant="outlined"
+                    size="small"
+                  />
                 ))}
               </Stack>
             </Box>
@@ -374,7 +484,7 @@ export default function SettingsPage() {
               <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 1 }}>
                 Categorías de productos
               </Typography>
-              <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: "wrap", mb: 1.5 }}>
+              <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: 'wrap', mb: 1.5 }}>
                 {categories.map((cat) => (
                   <Chip key={cat.id} label={cat.name} variant="outlined" size="small" />
                 ))}

@@ -5,7 +5,7 @@ export function useUpdateTaxRate() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (taxRate: number) => settingsApi.update(taxRate),
+    mutationFn: (taxRate: number) => settingsApi.update({ taxRate }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['businesses', 'me'] });
     },

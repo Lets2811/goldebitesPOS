@@ -44,6 +44,8 @@ export interface FeatureModuleDefinition extends FeatureDefinition {
 export const FEATURE_MODULES: FeatureModuleDefinition[] = [
   { key: 'roles', label: 'Roles y permisos' },
   { key: 'orders', label: 'Pedidos' },
+  // Promotions, coupons and manual percentages at checkout.
+  { key: 'discounts', label: 'Descuentos' },
   { key: 'kitchen', label: 'Cocina' },
   {
     key: 'cash-register',

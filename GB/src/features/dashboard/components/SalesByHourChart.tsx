@@ -9,7 +9,12 @@ export default function SalesByHourChart({ data }: { data: { hour: string; venta
       <ResponsiveContainer width="100%" height="100%">
         <BarChart data={data} margin={{ left: 0, right: 8, top: 4, bottom: 0 }}>
           <CartesianGrid vertical={false} stroke={chartGrid} />
-          <XAxis dataKey="hour" tick={{ fill: chartAxis, fontSize: 11 }} axisLine={{ stroke: chartGrid }} tickLine={false} />
+          <XAxis
+            dataKey="hour"
+            tick={{ fill: chartAxis, fontSize: 11 }}
+            axisLine={{ stroke: chartGrid }}
+            tickLine={false}
+          />
           <YAxis
             tick={{ fill: chartAxis, fontSize: 11 }}
             axisLine={false}
@@ -19,7 +24,11 @@ export default function SalesByHourChart({ data }: { data: { hour: string; venta
           />
           <Tooltip
             cursor={{ fill: 'rgba(212,175,55,0.08)' }}
-            contentStyle={{ backgroundColor: '#1A1A1D', border: '1px solid #2A2A2E', borderRadius: 8 }}
+            contentStyle={{
+              backgroundColor: '#1A1A1D',
+              border: '1px solid #2A2A2E',
+              borderRadius: 8,
+            }}
             labelStyle={{ color: brand.bone }}
             formatter={(value) => [formatCOP(Number(value)), 'Ventas']}
           />

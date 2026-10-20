@@ -5,6 +5,8 @@ import {
   ChefHat,
   Wallet,
   Bike,
+  BadgePercent,
+  GitCompareArrows,
   UtensilsCrossed,
   Boxes,
   ShoppingCart,
@@ -30,6 +32,7 @@ export const MODULE_PATHS = {
   ordersBacklog: '/pedidos-atrasados',
   kitchen: '/cocina',
   deliveries: '/domicilios',
+  discounts: '/descuentos',
   'cash-register': '/caja',
   products: '/productos',
   productsCatalog: '/productos/catalogo',
@@ -57,6 +60,7 @@ export const MODULE_PATHS = {
   analytics: '/analitica',
   settings: '/configuracion',
   roles: '/recursos-humanos/roles-permisos',
+  branchComparison: '/comparativo-sedes',
 } as const;
 
 /** Rutas anteriores a reunir Personal y Roles y permisos dentro de Recursos Humanos; redirigen a las nuevas. */
@@ -82,6 +86,7 @@ export const MODULE_PERMISSIONS: Record<ModuleKey, string | string[]> = {
   ordersBacklog: 'orders.read',
   kitchen: 'kitchen.read',
   deliveries: 'deliveries.read',
+  discounts: 'discounts.manage',
   'cash-register': 'cash.open',
   products: 'products.read',
   inventory: 'inventory.read',
@@ -101,6 +106,7 @@ export const MODULE_PERMISSIONS: Record<ModuleKey, string | string[]> = {
   analytics: 'analytics.read',
   settings: ['settings.manage', 'businesses.manage', 'branches.manage'],
   roles: 'roles.manage',
+  branchComparison: 'branches.switch',
 };
 
 /**
@@ -136,7 +142,13 @@ const ALL_NAV_ENTRIES: NavEntry[] = [
     kind: 'group',
     label: 'Operación diaria',
     items: [
-      { kind: 'item', module: 'orders', label: 'Pedidos', path: MODULE_PATHS.orders, icon: ClipboardList },
+      {
+        kind: 'item',
+        module: 'orders',
+        label: 'Pedidos',
+        path: MODULE_PATHS.orders,
+        icon: ClipboardList,
+      },
       {
         kind: 'item',
         module: 'ordersBacklog',
@@ -144,8 +156,27 @@ const ALL_NAV_ENTRIES: NavEntry[] = [
         path: MODULE_PATHS.ordersBacklog,
         icon: History,
       },
-      { kind: 'item', module: 'kitchen', label: 'Cocina', path: MODULE_PATHS.kitchen, icon: ChefHat },
-      { kind: 'item', module: 'deliveries', label: 'Domicilios', path: MODULE_PATHS.deliveries, icon: Bike },
+      {
+        kind: 'item',
+        module: 'kitchen',
+        label: 'Cocina',
+        path: MODULE_PATHS.kitchen,
+        icon: ChefHat,
+      },
+      {
+        kind: 'item',
+        module: 'deliveries',
+        label: 'Domicilios',
+        path: MODULE_PATHS.deliveries,
+        icon: Bike,
+      },
+      {
+        kind: 'item',
+        module: 'discounts',
+        label: 'Descuentos',
+        path: MODULE_PATHS.discounts,
+        icon: BadgePercent,
+      },
       {
         kind: 'item',
         module: 'cash-register',
@@ -166,7 +197,13 @@ const ALL_NAV_ENTRIES: NavEntry[] = [
         path: MODULE_PATHS.products,
         icon: UtensilsCrossed,
       },
-      { kind: 'item', module: 'inventory', label: 'Inventario', path: MODULE_PATHS.inventory, icon: Boxes },
+      {
+        kind: 'item',
+        module: 'inventory',
+        label: 'Inventario',
+        path: MODULE_PATHS.inventory,
+        icon: Boxes,
+      },
       {
         kind: 'item',
         module: 'purchases',
@@ -187,15 +224,40 @@ const ALL_NAV_ENTRIES: NavEntry[] = [
     kind: 'group',
     label: 'Clientes',
     items: [
-      { kind: 'item', module: 'customers', label: 'Clientes', path: MODULE_PATHS.customers, icon: Users },
-      { kind: 'item', module: 'loyalty', label: 'Fidelización', path: MODULE_PATHS.loyalty, icon: Gift },
+      {
+        kind: 'item',
+        module: 'customers',
+        label: 'Clientes',
+        path: MODULE_PATHS.customers,
+        icon: Users,
+      },
+      {
+        kind: 'item',
+        module: 'loyalty',
+        label: 'Fidelización',
+        path: MODULE_PATHS.loyalty,
+        icon: Gift,
+      },
     ],
   },
   {
     kind: 'group',
     label: 'Gestión del negocio',
     items: [
-      { kind: 'item', module: 'finances', label: 'Finanzas', path: MODULE_PATHS.finances, icon: Landmark },
+      {
+        kind: 'item',
+        module: 'finances',
+        label: 'Finanzas',
+        path: MODULE_PATHS.finances,
+        icon: Landmark,
+      },
+      {
+        kind: 'item',
+        module: 'branchComparison',
+        label: 'Comparativo de sedes',
+        path: MODULE_PATHS.branchComparison,
+        icon: GitCompareArrows,
+      },
       {
         kind: 'item',
         module: 'hr',
@@ -290,10 +352,25 @@ export interface HrSection {
  * aparece si el usuario puede abrir al menos una, y solo ve las que puede.
  */
 export const HR_SECTIONS: HrSection[] = [
-  { module: 'employees', label: 'Personal', path: MODULE_PATHS.employees, permission: 'employees.read' },
-  { module: 'employees', label: 'Turnos', path: MODULE_PATHS.hrRoster, permission: 'employees.read' },
+  {
+    module: 'employees',
+    label: 'Personal',
+    path: MODULE_PATHS.employees,
+    permission: 'employees.read',
+  },
+  {
+    module: 'employees',
+    label: 'Turnos',
+    path: MODULE_PATHS.hrRoster,
+    permission: 'employees.read',
+  },
   { module: 'hr', label: 'Tareas', path: MODULE_PATHS.hrTasks, permission: 'tasks.manage' },
   { module: 'hr', label: 'Solicitudes', path: MODULE_PATHS.hrLeave, permission: 'leave.approve' },
-  { module: 'roles', label: 'Roles y permisos', path: MODULE_PATHS.roles, permission: 'roles.manage' },
+  {
+    module: 'roles',
+    label: 'Roles y permisos',
+    path: MODULE_PATHS.roles,
+    permission: 'roles.manage',
+  },
   { module: 'hr', label: 'Normas', path: MODULE_PATHS.hrRules, permission: 'hr.manage' },
 ];

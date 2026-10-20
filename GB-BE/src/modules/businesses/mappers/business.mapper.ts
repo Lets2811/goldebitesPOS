@@ -12,6 +12,7 @@ export class BusinessMapper {
       currency: row.currency,
       timezone: row.timezone,
       taxRate: parseFloat(row.tax_rate),
+      discountsAtCheckout: row.discounts_at_checkout,
       loyaltyPointsPerThousand: parseFloat(row.loyalty_points_per_thousand),
       loyaltyBirthdayBonusEnabled: row.loyalty_birthday_bonus_enabled,
       loyaltyBirthdayBonusPoints: row.loyalty_birthday_bonus_points,

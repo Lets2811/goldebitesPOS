@@ -53,6 +53,18 @@ export const PERMISSIONS: PermissionDefinition[] = [
   },
 
   {
+    code: 'discounts.manage',
+    module: 'discounts',
+    description: 'Crear y administrar promociones y cupones de descuento',
+  },
+  {
+    code: 'discounts.apply',
+    module: 'discounts',
+    description:
+      'Aplicar descuentos al cobrar (promoción, cupón o porcentaje manual)',
+  },
+
+  {
     code: 'kitchen.read',
     module: 'kitchen',
     description: 'Ver la pantalla de cocina',
@@ -181,6 +193,12 @@ export const PERMISSIONS: PermissionDefinition[] = [
     code: 'branches.manage',
     module: 'settings',
     description: 'Administrar sedes',
+  },
+  {
+    code: 'branches.switch',
+    module: 'settings',
+    description:
+      'Administrar todas las sedes: cambiar de sede y ver la comparativa entre sedes',
   },
   {
     code: 'settings.manage',
@@ -330,6 +348,8 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<SystemRoleName, string[]> = {
     'deliveries.read',
     'deliveries.manage',
     'deliveries.configure',
+    'discounts.manage',
+    'discounts.apply',
     'kitchen.read',
     'kitchen.update_status',
     'inventory.read',
@@ -384,6 +404,7 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<SystemRoleName, string[]> = {
     'einvoices.issue',
     'deliveries.read',
     'deliveries.manage',
+    'discounts.apply',
     'kitchen.read',
     'products.read',
     'cash.open',

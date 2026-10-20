@@ -22,7 +22,8 @@ import { IOrdersRepository } from './orders.repository.interface';
 
 const SELECT_COLUMNS = `id, business_id, branch_id, customer_id, customer_name, created_by, order_number::text AS order_number,
   order_type, status, payment_status, payment_policy, table_number, delivery_address, delivery_instructions,
-  subtotal, discount_amount, tax_amount, delivery_fee, total_amount, notes,
+  subtotal, discount_amount, discount_percent, discount_id, discount_source, discount_label,
+  tax_amount, delivery_fee, total_amount, notes,
   confirmed_at, prepared_at, delivered_at, cancelled_at, created_at, updated_at`;
 
 const ITEM_COLUMNS = `id, order_id, product_id, product_name_snapshot, product_description_snapshot, quantity, unit_price,
@@ -299,6 +300,31 @@ export class OrdersRepository implements IOrdersRepository {
        SET subtotal = $2, discount_amount = $3, tax_amount = $4, delivery_fee = $5, total_amount = $6
        WHERE id = $1`,
       [orderId, subtotal, discountAmount, taxAmount, deliveryFee, totalAmount],
+      client,
+    );
+  }
+
+  async setDiscount(
+    orderId: string,
+    discount: {
+      percent: number;
+      discountId: string | null;
+      source: string;
+      label: string;
+    } | null,
+    client?: DbClient,
+  ): Promise<void> {
+    await this.db.query(
+      `UPDATE orders
+       SET discount_percent = $2, discount_id = $3, discount_source = $4, discount_label = $5
+       WHERE id = $1`,
+      [
+        orderId,
+        discount?.percent ?? null,
+        discount?.discountId ?? null,
+        discount?.source ?? null,
+        discount?.label ?? null,
+      ],
       client,
     );
   }

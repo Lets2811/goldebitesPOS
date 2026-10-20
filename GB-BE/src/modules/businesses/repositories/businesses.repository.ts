@@ -8,7 +8,7 @@ import {
 } from '../domain/business.types';
 import { IBusinessesRepository } from './businesses.repository.interface';
 
-const SELECT_COLUMNS = `id, name, legal_name, tax_id, email, phone, currency, timezone, tax_rate, loyalty_points_per_thousand, loyalty_birthday_bonus_enabled, loyalty_birthday_bonus_points, is_active, created_at, updated_at`;
+const SELECT_COLUMNS = `id, name, legal_name, tax_id, email, phone, currency, timezone, tax_rate, discounts_at_checkout, loyalty_points_per_thousand, loyalty_birthday_bonus_enabled, loyalty_birthday_bonus_points, is_active, created_at, updated_at`;
 
 @Injectable()
 export class BusinessesRepository implements IBusinessesRepository {
@@ -111,6 +111,19 @@ export class BusinessesRepository implements IBusinessesRepository {
     const result = await this.db.query<BusinessRow>(
       `UPDATE businesses SET tax_rate = $2 WHERE id = $1 RETURNING ${SELECT_COLUMNS}`,
       [id, taxRate],
+      client,
+    );
+    return result.rows[0] ?? null;
+  }
+
+  async updateDiscountsAtCheckout(
+    id: string,
+    enabled: boolean,
+    client?: DbClient,
+  ): Promise<BusinessRow | null> {
+    const result = await this.db.query<BusinessRow>(
+      `UPDATE businesses SET discounts_at_checkout = $2 WHERE id = $1 RETURNING ${SELECT_COLUMNS}`,
+      [id, enabled],
       client,
     );
     return result.rows[0] ?? null;

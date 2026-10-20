@@ -10,6 +10,7 @@ describe('BusinessesService', () => {
     update: jest.Mock;
     setActive: jest.Mock;
     updateTaxRate: jest.Mock;
+    updateDiscountsAtCheckout: jest.Mock;
     updateLoyaltyConfig: jest.Mock;
     setLogo: jest.Mock;
     getLogo: jest.Mock;
@@ -31,6 +32,7 @@ describe('BusinessesService', () => {
       currency: 'COP',
       timezone: 'America/Bogota',
       tax_rate: '0.0000',
+      discounts_at_checkout: true,
       loyalty_points_per_thousand: '1.00',
       loyalty_birthday_bonus_enabled: false,
       loyalty_birthday_bonus_points: 0,
@@ -49,6 +51,7 @@ describe('BusinessesService', () => {
       update: jest.fn(),
       setActive: jest.fn(),
       updateTaxRate: jest.fn(),
+      updateDiscountsAtCheckout: jest.fn(),
       updateLoyaltyConfig: jest.fn(),
       setLogo: jest.fn(),
       getLogo: jest.fn(),

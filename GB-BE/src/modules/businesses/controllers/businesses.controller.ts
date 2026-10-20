@@ -39,6 +39,7 @@ import {
   BUSINESS_LOGOS_UPLOADS_DIR,
   ensureBusinessLogosUploadsDir,
 } from '../storage/business-logo-storage.util';
+import { BranchSelectionExempt } from '../../../common/decorators/branch-selection-exempt.decorator';
 
 const ALLOWED_LOGO_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 const MAX_LOGO_SIZE_BYTES = 5 * 1024 * 1024;
@@ -52,6 +53,7 @@ export class BusinessesController {
   constructor(private readonly businessesService: BusinessesService) {}
 
   @Get('me')
+  @BranchSelectionExempt()
   @ApiOperation({ summary: "Get the current user's business" })
   findMine(@CurrentBusiness() businessId: string) {
     return this.businessesService.findById(businessId);
@@ -132,6 +134,7 @@ export class BusinessesController {
   }
 
   @Get('me/logo')
+  @BranchSelectionExempt()
   @RawResponse()
   @ApiOperation({ summary: "Stream the current business's logo" })
   async getLogo(@CurrentBusiness() businessId: string, @Res() res: Response) {

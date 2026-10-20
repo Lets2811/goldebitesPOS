@@ -136,6 +136,36 @@ export class BusinessesService {
     return BusinessMapper.toDomain(row);
   }
 
+  /** Used by OrdersModule: whether the checkout may apply discounts. */
+  async getDiscountsAtCheckout(businessId: string): Promise<boolean> {
+    const row = await this.getOrFail(businessId);
+    return row.discounts_at_checkout;
+  }
+
+  async updateDiscountsAtCheckout(
+    id: string,
+    enabled: boolean,
+    actorUserId?: string,
+  ): Promise<Business> {
+    await this.getOrFail(id);
+    const row = await this.businessesRepository.updateDiscountsAtCheckout(
+      id,
+      enabled,
+    );
+    if (!row) {
+      throw new EntityNotFoundException('Business', id);
+    }
+    await this.auditService.record({
+      businessId: id,
+      userId: actorUserId,
+      entityType: 'business',
+      entityId: id,
+      action: 'UPDATE_DISCOUNTS_AT_CHECKOUT',
+      newValues: { discountsAtCheckout: enabled },
+    });
+    return BusinessMapper.toDomain(row);
+  }
+
   /** Used by LoyaltyModule to compute earned points and read program settings. */
   async getLoyaltyConfig(businessId: string): Promise<{
     pointsPerThousand: number;

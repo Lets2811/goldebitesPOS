@@ -38,6 +38,11 @@ import {
   OrderQuery,
 } from '../domain/order.types';
 import { OrderMapper } from '../mappers/order.mapper';
+import {
+  CheckoutDiscountChoice,
+  DiscountsService,
+} from '../../discounts/discounts.service';
+import { discountAmountFor } from '../../discounts/domain/discount';
 import { ORDERS_REPOSITORY } from '../repositories/orders.repository.interface';
 import type { IOrdersRepository } from '../repositories/orders.repository.interface';
 
@@ -75,6 +80,7 @@ export class OrdersService {
     private readonly optionGroupsService: OptionGroupsService,
     private readonly transactionService: TransactionService,
     private readonly auditService: AuditService,
+    private readonly discountsService: DiscountsService,
   ) {}
 
   async create(
@@ -327,7 +333,7 @@ export class OrdersService {
     const newSubtotal = round2(parseFloat(order.subtotal) + additionalSubtotal);
     const totals = this.computeTotalsFromSubtotal(
       newSubtotal,
-      parseFloat(order.discount_amount),
+      this.discountFor(order, newSubtotal),
       parseFloat(order.delivery_fee),
       taxRate,
     );
@@ -423,9 +429,12 @@ export class OrdersService {
 
     const computedItems = await this.computeItems(businessId, items);
     const taxRate = await this.businessesService.getTaxRate(businessId);
+    const itemsSubtotal = round2(
+      computedItems.reduce((sum, item) => sum + item.totalPrice, 0),
+    );
     const totals = this.computeTotals(
       computedItems,
-      parseFloat(order.discount_amount),
+      this.discountFor(order, itemsSubtotal),
       parseFloat(order.delivery_fee),
       taxRate,
     );
@@ -778,6 +787,130 @@ export class OrdersService {
       });
     }
     return computed;
+  }
+
+  /**
+   * Applies (or, with NONE, removes) the order's discount at checkout: a
+   * promotion, a coupon or a manual percentage, of the subtotal (before tax
+   * and delivery). Only before anything is paid, so payments never end up
+   * covering a different total than the one charged.
+   */
+  async applyDiscount(
+    businessId: string,
+    id: string,
+    choice: CheckoutDiscountChoice | { source: 'NONE' },
+    actorUserId?: string,
+  ): Promise<OrderWithItems> {
+    const order = await this.getOwnedOrFail(businessId, id);
+    if (order.status === OrderStatus.CANCELLED) {
+      throw new BusinessRuleException(
+        'El pedido está cancelado',
+        'ORDER_NOT_EDITABLE',
+      );
+    }
+    if (round2(await this.ordersRepository.getTotalPaid(id)) > 0) {
+      throw new BusinessRuleException(
+        'El pedido ya tiene pagos registrados: el descuento se aplica antes de cobrar',
+        'ORDER_HAS_PAYMENTS',
+      );
+    }
+    // Removing one stays possible when the business has turned them off.
+    if (
+      choice.source !== 'NONE' &&
+      !(await this.businessesService.getDiscountsAtCheckout(businessId))
+    ) {
+      throw new BusinessRuleException(
+        'Los descuentos al cobrar están desactivados en la configuración',
+        'DISCOUNTS_AT_CHECKOUT_DISABLED',
+      );
+    }
+
+    const applied =
+      choice.source === 'NONE'
+        ? null
+        : await this.discountsService.resolve(businessId, choice);
+    const subtotal = parseFloat(order.subtotal);
+    const taxRate = await this.businessesService.getTaxRate(businessId);
+    const totals = this.computeTotalsFromSubtotal(
+      subtotal,
+      applied ? discountAmountFor(subtotal, applied.percent) : 0,
+      parseFloat(order.delivery_fee),
+      taxRate,
+    );
+
+    await this.transactionService.execute(async (client) => {
+      const previousId = order.discount_id ?? null;
+      const nextId = applied?.discountId ?? null;
+      if (previousId && previousId !== nextId) {
+        await this.discountsService.releaseUse(previousId, client);
+      }
+      if (nextId && nextId !== previousId) {
+        if (!(await this.discountsService.takeUse(nextId, client))) {
+          throw new BusinessRuleException(
+            'Ese descuento ya alcanzó su límite de usos',
+            'DISCOUNT_NOT_USABLE',
+          );
+        }
+      }
+      await this.ordersRepository.updateTotals(
+        id,
+        totals.subtotal,
+        totals.discountAmount,
+        totals.taxAmount,
+        totals.deliveryFee,
+        totals.totalAmount,
+        client,
+      );
+      await this.ordersRepository.setDiscount(
+        id,
+        applied
+          ? {
+              percent: applied.percent,
+              discountId: applied.discountId,
+              source: applied.source,
+              label: applied.label,
+            }
+          : null,
+        client,
+      );
+    });
+
+    await this.auditService.record({
+      businessId,
+      branchId: order.branch_id,
+      userId: actorUserId,
+      entityType: 'order',
+      entityId: id,
+      action: applied ? 'APPLY_DISCOUNT' : 'REMOVE_DISCOUNT',
+      oldValues: {
+        discountAmount: parseFloat(order.discount_amount),
+        discountLabel: order.discount_label ?? null,
+      },
+      newValues: {
+        discountAmount: totals.discountAmount,
+        discountLabel: applied?.label ?? null,
+        source: applied?.source ?? null,
+      },
+    });
+
+    return this.buildWithItems({
+      ...order,
+      ...totalsToRow(totals),
+      discount_percent: applied ? String(applied.percent) : null,
+      discount_id: applied?.discountId ?? null,
+      discount_source: applied?.source ?? null,
+      discount_label: applied?.label ?? null,
+    });
+  }
+
+  /**
+   * The discount for a new subtotal: a percentage follows it; a fixed amount
+   * (set when the order was created) stays as it was.
+   */
+  private discountFor(order: OrderRow, subtotal: number): number {
+    return order.discount_percent != null
+      ? discountAmountFor(subtotal, parseFloat(order.discount_percent))
+      : parseFloat(order.discount_amount);
   }
 
   private computeTotals(

@@ -17,6 +17,15 @@ export const authApi = {
     await apiClient.post('/auth/logout', { refreshToken });
   },
 
+  /** Takes the session to one branch, or all of them (null); see useSwitchBranch. */
+  async switchBranch(branchId: string | null, refreshToken?: string): Promise<LoginResponseData> {
+    const { data } = await apiClient.post<ApiResponse<LoginResponseData>>('/auth/switch-branch', {
+      branchId,
+      refreshToken,
+    });
+    return data.data;
+  },
+
   async getCurrentUser(): Promise<CurrentUserProfile> {
     const { data } = await apiClient.get<ApiResponse<CurrentUserProfile>>('/users/me');
     return data.data;

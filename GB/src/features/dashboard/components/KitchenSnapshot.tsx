@@ -8,7 +8,11 @@ import { useNavigate } from 'react-router-dom';
 import StatusChip from '../../../components/common/StatusChip';
 import EmptyState from '../../../components/common/EmptyState';
 import OrderTimer from '../../orders/components/OrderTimer';
-import { ORDER_STATUS_LABELS, ORDER_STATUS_TONE, ORDER_TYPE_LABELS } from '../../../modules/orders/order-status';
+import {
+  ORDER_STATUS_LABELS,
+  ORDER_STATUS_TONE,
+  ORDER_TYPE_LABELS,
+} from '../../../modules/orders/order-status';
 import type { Order } from '../../../modules/orders/types/order.types';
 
 export default function KitchenSnapshot({ orders }: { orders: Order[] }) {
@@ -17,16 +21,27 @@ export default function KitchenSnapshot({ orders }: { orders: Order[] }) {
   return (
     <Card sx={{ height: '100%' }}>
       <CardContent>
-        <Stack direction="row" sx={{ alignItems: 'center', justifyContent: 'space-between', mb: 1.5 }}>
+        <Stack
+          direction="row"
+          sx={{ alignItems: 'center', justifyContent: 'space-between', mb: 1.5 }}
+        >
           <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
             Pedidos en cocina
           </Typography>
-          <Button size="small" endIcon={<ArrowRight size={14} />} onClick={() => navigate('/cocina')}>
+          <Button
+            size="small"
+            endIcon={<ArrowRight size={14} />}
+            onClick={() => navigate('/cocina')}
+          >
             Ver cocina
           </Button>
         </Stack>
         {orders.length === 0 ? (
-          <EmptyState icon={ChefHat} title="Sin pedidos activos" description="La cocina está al día." />
+          <EmptyState
+            icon={ChefHat}
+            title="Sin pedidos activos"
+            description="La cocina está al día."
+          />
         ) : (
           <Stack spacing={1.25}>
             {orders.slice(0, 5).map((order) => (
