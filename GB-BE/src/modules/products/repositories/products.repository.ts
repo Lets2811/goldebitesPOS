@@ -11,7 +11,7 @@ import {
 import { IProductsRepository } from './products.repository.interface';
 
 const SELECT_COLUMNS = `id, business_id, category_id, name, description, sku, sale_price,
-  current_cost, image_url, image_path, image_mime_type, image_updated_at, is_active, is_visible, track_inventory, menu_availability, created_at, updated_at, deleted_at`;
+  current_cost, image_url, image_path, image_mime_type, image_updated_at, branch_id, is_active, is_visible, track_inventory, menu_availability, created_at, updated_at, deleted_at`;
 
 interface CountRow {
   count: string;
@@ -26,8 +26,8 @@ export class ProductsRepository implements IProductsRepository {
     client?: DbClient,
   ): Promise<ProductRow> {
     const result = await this.db.query<ProductRow>(
-      `INSERT INTO products (business_id, category_id, name, description, sku, sale_price, image_url, track_inventory, menu_availability)
-       VALUES ($1, $2, $3, $4, $5, COALESCE($6::numeric, 0), $7, COALESCE($8, true), COALESCE($9, 'MENU'))
+      `INSERT INTO products (business_id, category_id, name, description, sku, sale_price, image_url, track_inventory, menu_availability, branch_id)
+       VALUES ($1, $2, $3, $4, $5, COALESCE($6::numeric, 0), $7, COALESCE($8, true), COALESCE($9, 'MENU'), $10)
        RETURNING ${SELECT_COLUMNS}`,
       [
         data.businessId,
@@ -39,6 +39,7 @@ export class ProductsRepository implements IProductsRepository {
         data.imageUrl ?? null,
         data.trackInventory ?? null,
         data.menuAvailability ?? null,
+        data.branchId,
       ],
       client,
     );
@@ -64,6 +65,11 @@ export class ProductsRepository implements IProductsRepository {
   ): Promise<{ rows: ProductRow[]; total: number }> {
     const conditions: string[] = ['business_id = $1', 'deleted_at IS NULL'];
     const params: unknown[] = [query.businessId];
+
+    if (query.branchId) {
+      params.push(query.branchId);
+      conditions.push(`branch_id = $${params.length}`);
+    }
 
     if (query.categoryId) {
       params.push(query.categoryId);
@@ -111,12 +117,16 @@ export class ProductsRepository implements IProductsRepository {
     return { rows: rowsResult.rows, total };
   }
 
-  async findAvailableForSale(businessId: string): Promise<ProductRow[]> {
+  async findAvailableForSale(
+    businessId: string,
+    branchId?: string,
+  ): Promise<ProductRow[]> {
     const result = await this.db.query<ProductRow>(
       `SELECT ${SELECT_COLUMNS} FROM products
        WHERE business_id = $1 AND is_active = true AND deleted_at IS NULL
+         AND ($2::uuid IS NULL OR branch_id = $2)
        ORDER BY name`,
-      [businessId],
+      [businessId, branchId ?? null],
     );
     return result.rows;
   }
@@ -250,16 +260,17 @@ export class ProductsRepository implements IProductsRepository {
     return result.rows[0] ?? null;
   }
 
+  /** A SKU is unique within a branch's catalog. */
   async existsBySku(
-    businessId: string,
+    branchId: string,
     sku: string,
     excludeId?: string,
   ): Promise<boolean> {
     const result = await this.db.query<{ id: string }>(
       `SELECT id FROM products
-       WHERE business_id = $1 AND sku = $2 AND deleted_at IS NULL
+       WHERE branch_id = $1 AND sku = $2 AND deleted_at IS NULL
          AND ($3::uuid IS NULL OR id != $3)`,
-      [businessId, sku, excludeId ?? null],
+      [branchId, sku, excludeId ?? null],
     );
     return result.rows.length > 0;
   }

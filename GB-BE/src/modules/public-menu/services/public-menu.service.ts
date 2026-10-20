@@ -42,13 +42,13 @@ export class PublicMenuService {
    */
   async getMenu(businessId: string, branchId?: string): Promise<PublicMenu> {
     const business = await this.businessesService.findById(businessId);
-    // The branch's menu: the table's (NFC) or, at a business with a single
-    // branch, that one. Without one, the catalog as is.
+    // The branch's own menu: the table's (NFC), the one in the link, or the
+    // business's first branch when none is given.
     const branch =
       branchId &&
       (await this.branchesService.isActiveBranch(businessId, branchId))
         ? branchId
-        : await this.branchesService.findOnlyActiveBranchId(businessId);
+        : await this.branchesService.firstActiveBranchId(businessId);
 
     const [categoriesResult, productsResult, allGroups, branchMenu] =
       await Promise.all([
@@ -60,6 +60,7 @@ export class PublicMenuService {
         }),
         this.productsService.findAll({
           businessId,
+          branchId: branch ?? undefined,
           isActive: true,
           isVisible: true,
           page: 1,
@@ -68,12 +69,10 @@ export class PublicMenuService {
         this.optionGroupsService.findAll(businessId),
         this.branchMenuService.forBranch(businessId, branch),
       ]);
-    // What the branch doesn't offer, or ran out of, isn't on its menu; the rest at its prices.
-    const sellable = productsResult.data.flatMap((product) => {
-      const entry = branchMenu.get(product.id);
-      if (entry && (!entry.isAvailable || entry.outOfStock)) return [];
-      return [{ ...product, salePrice: entry?.salePrice ?? product.salePrice }];
-    });
+    // What ran out (no stock for its recipe) isn't on the menu.
+    const sellable = productsResult.data.filter(
+      (product) => !branchMenu.get(product.id)?.outOfStock,
+    );
     const optionGroups: PublicMenuOptionGroup[] = allGroups
       .filter((group) => group.isActive)
       .map((group) => ({

@@ -39,6 +39,8 @@ import ProductRecipeDialog from '../components/ProductRecipeDialog';
 import type { Product } from '../../../modules/products/types/product.types';
 import { useBranchMenu } from '../../../modules/products/branch-menu';
 import type { ProductFormValues } from '../schemas/productSchema';
+import { useAllBranchesReview } from '../../../modules/auth/hooks/use-branch-mode';
+import { useBranchNames } from '../../../modules/branches/hooks/use-branch-names';
 
 export default function ProductsPage() {
   const { enqueueSnackbar } = useSnackbar();
@@ -71,6 +73,10 @@ export default function ProductsPage() {
 
   const { data, isLoading, isError, refetch } = useProducts(filters);
   const { data: branchMenu } = useBranchMenu();
+  // In "Todas las sedes" every branch's catalog shows, each product saying whose it is;
+  // a product is created at its branch.
+  const reviewOnly = useAllBranchesReview();
+  const branchNames = useBranchNames();
   const soldOut = useMemo(
     () => new Set((branchMenu ?? []).filter((p) => p.outOfStock).map((p) => p.id)),
     [branchMenu],
@@ -230,18 +236,20 @@ export default function ProductsPage() {
         subtitle="El catálogo del menú: precio, receta, opciones para elegir y dónde lo ve el cliente."
         backTo={{ label: 'Productos y recetas', path: MODULE_PATHS.products }}
         actions={
-          <Can permission="products.create">
-            <Button
-              variant="contained"
-              startIcon={<Plus size={16} />}
-              onClick={() => {
-                setEditingProduct(null);
-                setFormOpen(true);
-              }}
-            >
-              Nuevo producto
-            </Button>
-          </Can>
+          !reviewOnly && (
+            <Can permission="products.create">
+              <Button
+                variant="contained"
+                startIcon={<Plus size={16} />}
+                onClick={() => {
+                  setEditingProduct(null);
+                  setFormOpen(true);
+                }}
+              >
+                Nuevo producto
+              </Button>
+            </Can>
+          )
         }
       />
 
@@ -291,7 +299,7 @@ export default function ProductsPage() {
         <EmptyState
           title="No hay productos con estos filtros"
           description="Ajusta la búsqueda o crea un nuevo producto para tu menú."
-          actionLabel="Nuevo producto"
+          actionLabel={reviewOnly ? undefined : 'Nuevo producto'}
           onAction={() => {
             setEditingProduct(null);
             setFormOpen(true);
@@ -304,6 +312,7 @@ export default function ProductsPage() {
               <ProductCard
                 product={product}
                 soldOut={soldOut.has(product.id)}
+                branchName={reviewOnly ? branchNames.get(product.branchId) : undefined}
                 onClick={() => setSelectedProduct(product)}
               />
             </Grid>

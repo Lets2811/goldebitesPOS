@@ -1,5 +1,7 @@
 export interface CreateInventoryItemData {
   businessId: string;
+  /** The branch whose list it joins. */
+  branchId: string;
   categoryId?: string;
   name: string;
   sku?: string;
@@ -25,6 +27,8 @@ export interface UpdateInventoryItemData {
 
 export interface InventoryItemQuery {
   businessId: string;
+  /** One branch's items; absent: every branch's. */
+  branchId?: string;
   page: number;
   limit: number;
   categoryId?: string;

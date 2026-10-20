@@ -42,7 +42,7 @@ export class ProductsService {
       await this.categoriesService.findOne(data.businessId, data.categoryId);
     }
     if (data.sku) {
-      await this.assertSkuFree(data.businessId, data.sku);
+      await this.assertSkuFree(data.branchId, data.sku);
     }
 
     if (data.optionGroups) {
@@ -78,8 +78,14 @@ export class ProductsService {
     };
   }
 
-  async findAvailableForSale(businessId: string): Promise<Product[]> {
-    const rows = await this.productsRepository.findAvailableForSale(businessId);
+  async findAvailableForSale(
+    businessId: string,
+    branchId?: string,
+  ): Promise<Product[]> {
+    const rows = await this.productsRepository.findAvailableForSale(
+      businessId,
+      branchId,
+    );
     return this.toDomainList(rows);
   }
 
@@ -104,13 +110,13 @@ export class ProductsService {
     data: UpdateProductData,
     actorUserId?: string,
   ): Promise<Product> {
-    await this.getOwnedOrFail(businessId, id);
+    const current = await this.getOwnedOrFail(businessId, id);
 
     if (data.categoryId) {
       await this.categoriesService.findOne(businessId, data.categoryId);
     }
     if (data.sku) {
-      await this.assertSkuFree(businessId, data.sku, id);
+      await this.assertSkuFree(current.branch_id, data.sku, id);
     }
     if (data.optionGroups) {
       await this.optionGroupsService.assertProductGroupsValid(
@@ -308,12 +314,12 @@ export class ProductsService {
   }
 
   private async assertSkuFree(
-    businessId: string,
+    branchId: string,
     sku: string,
     excludeId?: string,
   ): Promise<void> {
     const taken = await this.productsRepository.existsBySku(
-      businessId,
+      branchId,
       sku,
       excludeId,
     );

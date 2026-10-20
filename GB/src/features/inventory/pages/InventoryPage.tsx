@@ -38,8 +38,8 @@ import InventoryMovementDrawer from '../components/InventoryMovementDrawer';
 import InventoryItemFormDrawer from '../components/InventoryItemFormDrawer';
 import InventoryCategoryManagerDialog from '../components/InventoryCategoryManagerDialog';
 import SpecializedQueriesTab from '../components/SpecializedQueriesTab';
-import { useBranchMinimums } from '../../../modules/inventory/branch-minimums';
 import { useAllBranchesReview } from '../../../modules/auth/hooks/use-branch-mode';
+import { useBranchNames } from '../../../modules/branches/hooks/use-branch-names';
 
 type TabKey = 'inventario' | 'consultas';
 
@@ -73,9 +73,8 @@ export default function InventoryPage() {
   const { data: itemsData, isLoading, isError, refetch } = useInventoryItems(itemFilters);
   const { data: stockLevels } = useStock({ branchId });
   const { data: lowStock } = useLowStock(branchId);
-  // At a branch, each item is held to the branch's own minimum (or the general one).
-  const branchMinimums = useBranchMinimums(branchId);
   const reviewOnly = useAllBranchesReview();
+  const branchNames = useBranchNames();
   /** In "Todas las sedes": the items low at some branch, with which. */
   const lowAt = useMemo(() => {
     const map = new Map<string, string[]>();
@@ -84,7 +83,7 @@ export default function InventoryPage() {
     }
     return map;
   }, [lowStock]);
-  const minimumOf = (item: InventoryItem) => branchMinimums.get(item.id) ?? item.minimumStock;
+
   const { data: categoriesData } = useInventoryItemCategories({ limit: 100 });
   const createItem = useCreateInventoryItem();
   const updateItem = useUpdateInventoryItem();
@@ -192,6 +191,11 @@ export default function InventoryPage() {
           <Typography variant="body2" sx={{ fontWeight: 700 }}>
             {row.original.name}
           </Typography>
+          {reviewOnly && (
+            <Typography variant="caption" color="text.secondary">
+              Sede: {branchNames.get(row.original.branchId) ?? '—'}
+            </Typography>
+          )}
           {row.original.sku && (
             <Typography variant="caption" color="text.secondary">
               Referencia: {row.original.sku}
@@ -205,7 +209,7 @@ export default function InventoryPage() {
       header: 'Stock',
       cell: ({ row }) => {
         const stock = stockByItemId.get(row.original.id) ?? 0;
-        const minimum = minimumOf(row.original);
+        const minimum = row.original.minimumStock;
         const ratio = minimum > 0 ? Math.min(1, stock / (minimum * 2)) : 1;
         // Across all branches the total can look fine while one branch is out: go by each branch's alert.
         const lowBranches = reviewOnly ? lowAt.get(row.original.id) : undefined;
@@ -276,16 +280,19 @@ export default function InventoryPage() {
             >
               Categorías
             </Button>
-            <Button
-              variant="outlined"
-              startIcon={<Plus size={16} />}
-              onClick={() => {
-                setEditingItem(null);
-                setFormOpen(true);
-              }}
-            >
-              Nuevo insumo
-            </Button>
+            {/* An item is created at its branch, not from "Todas las sedes". */}
+            {!reviewOnly && (
+              <Button
+                variant="outlined"
+                startIcon={<Plus size={16} />}
+                onClick={() => {
+                  setEditingItem(null);
+                  setFormOpen(true);
+                }}
+              >
+                Nuevo insumo
+              </Button>
+            )}
             {!reviewOnly && (
               <Button
                 variant="contained"
@@ -394,7 +401,6 @@ export default function InventoryPage() {
           selectedItem?.categoryId ? (categoryNameById.get(selectedItem.categoryId) ?? null) : null
         }
         currentStock={selectedItem ? (stockByItemId.get(selectedItem.id) ?? 0) : 0}
-        minimumStock={selectedItem ? minimumOf(selectedItem) : undefined}
         onClose={() => setSelectedItem(null)}
         onRegisterMovement={(item) => {
           setSelectedItem(null);

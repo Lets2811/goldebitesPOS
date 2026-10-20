@@ -10,6 +10,13 @@ import {
 } from 'class-validator';
 
 export class CreateInventoryItemDto {
+  @ApiPropertyOptional({
+    description: "The branch whose list it joins; absent: the session's",
+  })
+  @IsOptional()
+  @IsUUID()
+  branchId?: string;
+
   @ApiPropertyOptional()
   @IsOptional()
   @IsUUID()

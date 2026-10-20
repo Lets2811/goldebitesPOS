@@ -116,6 +116,12 @@ export class BranchesService {
     return ids.length === 1 ? ids[0] : null;
   }
 
+  /** The business's first active branch (the one it was created with, unless closed). */
+  async firstActiveBranchId(businessId: string): Promise<string | null> {
+    const ids = await this.branchesRepository.findActiveIds(businessId, 1);
+    return ids[0] ?? null;
+  }
+
   /** Whether the business has more than one active branch, so there is a branch to choose. */
   async hasSeveralActive(businessId: string): Promise<boolean> {
     const ids = await this.branchesRepository.findActiveIds(businessId, 2);

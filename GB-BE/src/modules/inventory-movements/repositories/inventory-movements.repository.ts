@@ -166,28 +166,27 @@ export class InventoryMovementsRepository implements IInventoryMovementsReposito
     let branchCondition = '';
     if (branchId) {
       params.push(branchId);
-      branchCondition = ` AND b.id = $${params.length}`;
+      branchCondition = ` AND ii.branch_id = $${params.length}`;
     }
 
-    // Each branch against its own minimum (or the item's general one): one
-    // branch out of something is an alert even if another has plenty.
+    // Each item is its branch's and is measured by that branch's stock.
     const result = await this.db.query<LowStockRow>(
-      `WITH stock AS (
-         SELECT inventory_item_id, branch_id, SUM(stock) AS stock
-         FROM inventory_stock_view WHERE business_id = $1
-         GROUP BY inventory_item_id, branch_id
-       )
-       SELECT ii.id AS inventory_item_id, ii.name, ii.unit,
-              COALESCE(ibs.minimum_stock, ii.minimum_stock)::text AS minimum_stock,
-              COALESCE(st.stock, 0)::text AS current_stock,
+      `SELECT ii.id AS inventory_item_id, ii.name, ii.unit,
+              ii.minimum_stock::text AS minimum_stock,
+              COALESCE((
+                SELECT SUM(sv.stock) FROM inventory_stock_view sv
+                WHERE sv.business_id = ii.business_id AND sv.branch_id = ii.branch_id
+                  AND sv.inventory_item_id = ii.id
+              ), 0)::text AS current_stock,
               b.id AS branch_id, b.name AS branch_name
        FROM inventory_items ii
-       JOIN branches b ON b.business_id = ii.business_id AND b.is_active = true${branchCondition}
-       LEFT JOIN inventory_item_branch_settings ibs
-         ON ibs.inventory_item_id = ii.id AND ibs.branch_id = b.id
-       LEFT JOIN stock st ON st.inventory_item_id = ii.id AND st.branch_id = b.id
-       WHERE ii.business_id = $1 AND ii.deleted_at IS NULL AND ii.is_active = true
-         AND COALESCE(st.stock, 0) < COALESCE(ibs.minimum_stock, ii.minimum_stock)
+       JOIN branches b ON b.id = ii.branch_id AND b.is_active = true
+       WHERE ii.business_id = $1 AND ii.deleted_at IS NULL AND ii.is_active = true${branchCondition}
+         AND COALESCE((
+           SELECT SUM(sv.stock) FROM inventory_stock_view sv
+           WHERE sv.business_id = ii.business_id AND sv.branch_id = ii.branch_id
+             AND sv.inventory_item_id = ii.id
+         ), 0) < ii.minimum_stock
        ORDER BY ii.name, b.created_at`,
       params,
     );

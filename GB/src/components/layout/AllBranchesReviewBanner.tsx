@@ -27,7 +27,8 @@ export default function AllBranchesReviewBanner() {
         }
       >
         Estás viendo <strong>todas las sedes</strong>: es un modo de revisión y gestión. Pedidos,
-        cocina, caja y demás atención al público se trabajan desde una sede.
+        cocina, caja y demás atención al público se trabajan desde una sede, y cada producto o
+        insumo nuevo se crea en su sede.
       </Alert>
       <BranchSwitchDialog open={open} onClose={() => setOpen(false)} />
     </>

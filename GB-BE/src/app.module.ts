@@ -24,6 +24,7 @@ import { BranchesModule } from './modules/branches/branches.module';
 import { BusinessFeaturesModule } from './modules/business-features/business-features.module';
 import { BusinessesModule } from './modules/businesses/businesses.module';
 import { BranchComparisonModule } from './modules/branch-comparison/branch-comparison.module';
+import { BranchCatalogModule } from './modules/branch-catalog/branch-catalog.module';
 import { CashSessionsModule } from './modules/cash-sessions/cash-sessions.module';
 import { ChecklistsModule } from './modules/checklists/checklists.module';
 import { CustomersModule } from './modules/customers/customers.module';
@@ -95,6 +96,7 @@ import { WasteModule } from './modules/waste/waste.module';
     RolesModule,
     BusinessesModule,
     BranchComparisonModule,
+    BranchCatalogModule,
     BranchesModule,
     UsersModule,
     AuthModule,

@@ -50,7 +50,11 @@ export default function ProductFormDrawer({
 }: ProductFormDrawerProps) {
   const { data: categoriesData } = useProductCategories({ limit: 100, isActive: true });
   const categories = categoriesData?.data ?? [];
-  const { data: inventoryItemsData } = useInventoryItems({ limit: 100, isActive: true });
+  const { data: inventoryItemsData } = useInventoryItems({
+    limit: 100,
+    isActive: true,
+    branchId: initialProduct?.branchId,
+  });
   const inventoryItems = inventoryItemsData?.data ?? [];
   const { data: recipe, isLoading: recipeLoading } = useProductRecipe(initialProduct?.id ?? null);
   const recipeItemCount = recipe?.items.length ?? 0;
@@ -210,9 +214,9 @@ export default function ProductFormDrawer({
 
         {trackInventory && recipeItemCount > 1 && (
           <Alert severity="info">
-            Este producto ya tiene una receta con varios artículos de inventario. Para editarla,
-            usa "Vincular inventario" desde el detalle del producto — este formulario solo maneja
-            un vínculo simple de 1 artículo.
+            Este producto ya tiene una receta con varios artículos de inventario. Para editarla, usa
+            "Vincular inventario" desde el detalle del producto — este formulario solo maneja un
+            vínculo simple de 1 artículo.
           </Alert>
         )}
 
@@ -222,7 +226,13 @@ export default function ProductFormDrawer({
               name="inventoryItemId"
               control={control}
               render={({ field }) => (
-                <TextField {...field} value={field.value ?? ''} label="Artículo de inventario" select fullWidth>
+                <TextField
+                  {...field}
+                  value={field.value ?? ''}
+                  label="Artículo de inventario"
+                  select
+                  fullWidth
+                >
                   <MenuItem value="">Sin vincular</MenuItem>
                   {inventoryItems.map((item) => (
                     <MenuItem key={item.id} value={item.id}>
@@ -254,7 +264,9 @@ export default function ProductFormDrawer({
         <Controller
           name="optionGroups"
           control={control}
-          render={({ field }) => <ProductOptionGroupsField value={field.value} onChange={field.onChange} />}
+          render={({ field }) => (
+            <ProductOptionGroupsField value={field.value} onChange={field.onChange} />
+          )}
         />
 
         <Controller
@@ -274,11 +286,13 @@ export default function ProductFormDrawer({
                     : 'Aparece en el menú de la mesa, como hasta ahora.'
               }
             >
-              {(Object.keys(PRODUCT_MENU_AVAILABILITY_LABELS) as ProductMenuAvailability[]).map((value) => (
-                <MenuItem key={value} value={value}>
-                  {PRODUCT_MENU_AVAILABILITY_LABELS[value]}
-                </MenuItem>
-              ))}
+              {(Object.keys(PRODUCT_MENU_AVAILABILITY_LABELS) as ProductMenuAvailability[]).map(
+                (value) => (
+                  <MenuItem key={value} value={value}>
+                    {PRODUCT_MENU_AVAILABILITY_LABELS[value]}
+                  </MenuItem>
+                ),
+              )}
             </TextField>
           )}
         />

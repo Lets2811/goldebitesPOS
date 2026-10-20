@@ -21,6 +21,7 @@ export class ProductMapper {
         row.image_path && row.image_updated_at
           ? productImagePublicUrl(row.id, row.image_updated_at)
           : row.image_url,
+      branchId: row.branch_id,
       isActive: row.is_active,
       isVisible: row.is_visible,
       trackInventory: row.track_inventory,

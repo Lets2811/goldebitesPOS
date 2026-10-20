@@ -31,6 +31,7 @@ import { brand } from '../../../theme/palette';
 import NewOptionGroupDialog from '../components/NewOptionGroupDialog';
 import OptionGroupOrderDialog from '../components/OptionGroupOrderDialog';
 import PublicMenuLinkDialog from '../components/PublicMenuLinkDialog';
+import { useAllBranchesReview } from '../../../modules/auth/hooks/use-branch-mode';
 
 interface HubCardProps {
   icon: LucideIcon;
@@ -59,7 +60,10 @@ function HubCard({ icon: Icon, title, description, stat, onClick }: HubCardProps
         borderColor: 'divider',
         backgroundColor: 'background.paper',
         transition: 'border-color 120ms, background-color 120ms',
-        '&:hover': { borderColor: alpha(brand.gold, 0.6), backgroundColor: alpha(brand.gold, 0.04) },
+        '&:hover': {
+          borderColor: alpha(brand.gold, 0.6),
+          backgroundColor: alpha(brand.gold, 0.04),
+        },
         '&:focus-visible': { outline: `2px solid ${brand.gold}` },
       }}
     >
@@ -85,7 +89,10 @@ function HubCard({ icon: Icon, title, description, stat, onClick }: HubCardProps
         <Typography variant="body2" color="text.secondary" sx={{ mt: 0.25 }}>
           {description}
         </Typography>
-        <Typography variant="caption" sx={{ display: 'block', mt: 1, fontWeight: 600, color: brand.gold }}>
+        <Typography
+          variant="caption"
+          sx={{ display: 'block', mt: 1, fontWeight: 600, color: brand.gold }}
+        >
           {stat ?? <Skeleton width={110} />}
         </Typography>
       </Box>
@@ -94,7 +101,15 @@ function HubCard({ icon: Icon, title, description, stat, onClick }: HubCardProps
   );
 }
 
-function Group({ title, action, children }: { title: string; action?: React.ReactNode; children: React.ReactNode }) {
+function Group({
+  title,
+  action,
+  children,
+}: {
+  title: string;
+  action?: React.ReactNode;
+  children: React.ReactNode;
+}) {
   return (
     <Box>
       <Stack direction="row" sx={{ alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
@@ -103,7 +118,13 @@ function Group({ title, action, children }: { title: string; action?: React.Reac
         </Typography>
         {action}
       </Stack>
-      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', lg: 'repeat(3, 1fr)' }, gap: 2 }}>
+      <Box
+        sx={{
+          display: 'grid',
+          gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', lg: 'repeat(3, 1fr)' },
+          gap: 2,
+        }}
+      >
         {children}
       </Box>
     </Box>
@@ -130,6 +151,7 @@ function groupStat(group: OptionGroup): string {
  * propia pantalla.
  */
 export default function ProductsHubPage() {
+  const reviewOnly = useAllBranchesReview();
   const navigate = useNavigate();
   const [menuLinkOpen, setMenuLinkOpen] = useState(false);
   const { data: currentBusiness } = useCurrentBusiness();
@@ -142,7 +164,8 @@ export default function ProductsHubPage() {
   const products = productPage?.data;
   const productTotal = productPage?.meta?.total ?? products?.length ?? 0;
   const activeProducts = products?.filter((p) => p.isActive).length ?? 0;
-  const builderProducts = products?.filter((p) => p.isActive && p.menuAvailability !== 'MENU').length ?? 0;
+  const builderProducts =
+    products?.filter((p) => p.isActive && p.menuAvailability !== 'MENU').length ?? 0;
   const activeCategories = categoryPage?.data.filter((c) => c.isActive).length ?? 0;
 
   return (
@@ -153,18 +176,25 @@ export default function ProductsHubPage() {
         breadcrumbs={[{ label: 'Productos y recetas' }]}
         actions={
           <Stack direction="row" spacing={1}>
-            <Button variant="outlined" startIcon={<QrCode size={16} />} onClick={() => setMenuLinkOpen(true)}>
+            <Button
+              variant="outlined"
+              startIcon={<QrCode size={16} />}
+              onClick={() => setMenuLinkOpen(true)}
+            >
               Compartir menú
             </Button>
-            <Can permission="products.create">
-              <Button
-                variant="contained"
-                startIcon={<Plus size={16} />}
-                onClick={() => navigate(`${MODULE_PATHS.productsCatalog}?nuevo=1`)}
-              >
-                Nuevo producto
-              </Button>
-            </Can>
+            {/* A product is created at its branch, not from "Todas las sedes". */}
+            {!reviewOnly && (
+              <Can permission="products.create">
+                <Button
+                  variant="contained"
+                  startIcon={<Plus size={16} />}
+                  onClick={() => navigate(`${MODULE_PATHS.productsCatalog}?nuevo=1`)}
+                >
+                  Nuevo producto
+                </Button>
+              </Can>
+            )}
           </Stack>
         }
       />
@@ -175,14 +205,22 @@ export default function ProductsHubPage() {
             icon={UtensilsCrossed}
             title="Productos"
             description="Precios, recetas y qué opciones deja elegir cada producto."
-            stat={products ? `${plural(productTotal, 'producto', 'productos')} · ${activeProducts} activos` : undefined}
+            stat={
+              products
+                ? `${plural(productTotal, 'producto', 'productos')} · ${activeProducts} activos`
+                : undefined
+            }
             onClick={() => navigate(MODULE_PATHS.productsCatalog)}
           />
           <HubCard
             icon={FolderTree}
             title="Categorías"
             description="Las secciones en que se agrupan los productos."
-            stat={categoryPage ? plural(activeCategories, 'categoría activa', 'categorías activas') : undefined}
+            stat={
+              categoryPage
+                ? plural(activeCategories, 'categoría activa', 'categorías activas')
+                : undefined
+            }
             onClick={() => navigate(MODULE_PATHS.productsCategories)}
           />
         </Group>
@@ -198,7 +236,7 @@ export default function ProductsHubPage() {
           <HubCard
             icon={Sparkles}
             title="Arma tu combo"
-            description='Lo que el cliente puede combinar a su gusto, y el orden de sus secciones.'
+            description="Lo que el cliente puede combinar a su gusto, y el orden de sus secciones."
             stat={
               products
                 ? builderProducts > 0
@@ -222,7 +260,11 @@ export default function ProductsHubPage() {
           action={
             optionGroups.length > 1 && (
               <Can permission="products.update">
-                <Button size="small" startIcon={<ArrowUpDown size={14} />} onClick={() => setOrderOpen(true)}>
+                <Button
+                  size="small"
+                  startIcon={<ArrowUpDown size={14} />}
+                  onClick={() => setOrderOpen(true)}
+                >
                   Ordenar
                 </Button>
               </Can>
@@ -246,7 +288,11 @@ export default function ProductsHubPage() {
               icon={Plus}
               title="Nuevo grupo de opciones"
               description='Algo más que el cliente elige en algunos productos: "Tamaño", "Mezcladores", "Término"...'
-              stat={groupsLoading ? undefined : plural(optionGroups.length, 'grupo creado', 'grupos creados')}
+              stat={
+                groupsLoading
+                  ? undefined
+                  : plural(optionGroups.length, 'grupo creado', 'grupos creados')
+              }
               onClick={() => setNewGroupOpen(true)}
             />
           </Can>
@@ -267,7 +313,11 @@ export default function ProductsHubPage() {
           navigate(optionGroupPath(group.id));
         }}
       />
-      <OptionGroupOrderDialog open={orderOpen} groups={optionGroups} onClose={() => setOrderOpen(false)} />
+      <OptionGroupOrderDialog
+        open={orderOpen}
+        groups={optionGroups}
+        onClose={() => setOrderOpen(false)}
+      />
     </>
   );
 }

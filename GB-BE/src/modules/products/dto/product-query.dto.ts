@@ -4,6 +4,13 @@ import { IsBoolean, IsOptional, IsUUID } from 'class-validator';
 import { PaginationQueryDto } from '../../../common/pagination/pagination-query.dto';
 
 export class ProductQueryDto extends PaginationQueryDto {
+  @ApiPropertyOptional({
+    description: "One branch's catalog; absent: every branch's",
+  })
+  @IsOptional()
+  @IsUUID()
+  branchId?: string;
+
   @ApiPropertyOptional()
   @IsOptional()
   @IsUUID()

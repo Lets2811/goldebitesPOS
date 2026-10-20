@@ -22,6 +22,7 @@ describe('AssistantProductsService', () => {
     return {
       id: 'product-1',
       businessId,
+      branchId,
       categoryId: null,
       name: 'Agua Manantial',
       description: null,
@@ -117,7 +118,7 @@ describe('AssistantProductsService', () => {
   });
 
   describe('search', () => {
-    it('searches through ProductsService, scoped to the business, first page only', async () => {
+    it("searches through ProductsService, scoped to the caller's branch catalog, first page only", async () => {
       await service.search(
         makeQuery({
           search: 'Agua Manantial',
@@ -129,6 +130,7 @@ describe('AssistantProductsService', () => {
 
       expect(productsService.findAll).toHaveBeenCalledWith({
         businessId,
+        branchId,
         page: 1,
         limit: 5,
         search: 'Agua Manantial',

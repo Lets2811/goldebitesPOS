@@ -10,6 +10,8 @@ export interface InventoryItem {
   serialNumber: string | null;
   brand: string | null;
   model: string | null;
+  /** The branch it belongs to: each branch has its own list of items. */
+  branchId: string;
   isActive: boolean;
   createdAt: Date;
   updatedAt: Date;
@@ -27,6 +29,7 @@ export interface InventoryItemRow {
   serial_number: string | null;
   brand: string | null;
   model: string | null;
+  branch_id: string;
   is_active: boolean;
   created_at: Date;
   updated_at: Date;

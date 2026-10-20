@@ -11,7 +11,6 @@ import {
   Param,
   Patch,
   Post,
-  Put,
   Query,
   UploadedFile,
   UseInterceptors,
@@ -26,6 +25,8 @@ import {
 import { diskStorage } from 'multer';
 import { CurrentBusiness } from '../../../common/decorators/current-business.decorator';
 import { CurrentUser } from '../../../common/decorators/current-user.decorator';
+import { CurrentBranch } from '../../../common/decorators/current-branch.decorator';
+import { requireBranch } from '../../../common/utils/require-branch.util';
 import { Permissions } from '../../../common/decorators/permissions.decorator';
 import { RawResponse } from '../../../common/decorators/raw-response.decorator';
 import { CreateProductDto } from '../dto/create-product.dto';
@@ -35,10 +36,7 @@ import { SetProductVisibilityDto } from '../dto/set-product-visibility.dto';
 import { UpdateProductDto } from '../dto/update-product.dto';
 import { ProductsService } from '../services/products.service';
 import { BranchMenuService } from '../services/branch-menu.service';
-import {
-  BranchMenuQueryDto,
-  SetProductBranchDto,
-} from '../dto/branch-menu.dto';
+import { BranchMenuQueryDto } from '../dto/branch-menu.dto';
 import {
   ALLOWED_PRODUCT_IMAGE_MIME_TYPES,
   MAX_PRODUCT_IMAGE_SIZE_BYTES,
@@ -65,9 +63,17 @@ export class ProductsController {
   create(
     @CurrentBusiness() businessId: string,
     @CurrentUser('userId') actorUserId: string,
+    @CurrentBranch() sessionBranchId: string | null,
     @Body() dto: CreateProductDto,
   ) {
-    return this.productsService.create({ businessId, ...dto }, actorUserId);
+    return this.productsService.create(
+      {
+        businessId,
+        ...dto,
+        branchId: requireBranch(dto.branchId ?? sessionBranchId),
+      },
+      actorUserId,
+    );
   }
 
   @Get()
@@ -79,6 +85,7 @@ export class ProductsController {
   ) {
     return this.productsService.findAll({
       businessId,
+      branchId: query.branchId,
       page: query.page,
       limit: query.limit,
       categoryId: query.categoryId,
@@ -110,40 +117,6 @@ export class ProductsController {
     return this.branchMenuService.sellingMenu(
       businessId,
       query.branchId ?? null,
-    );
-  }
-
-  @Get(':id/branches')
-  @Permissions('products.read')
-  @ApiOperation({
-    summary:
-      'How a product sells at each branch: offered or not, its price there, sold out',
-  })
-  getProductBranches(
-    @CurrentBusiness() businessId: string,
-    @Param('id') id: string,
-  ) {
-    return this.branchMenuService.productBranches(businessId, id);
-  }
-
-  @Put(':id/branches/:branchId')
-  @Permissions('products.update')
-  @ApiOperation({
-    summary: "Leave a product out of a branch's menu, or set its price there",
-  })
-  setProductBranch(
-    @CurrentBusiness() businessId: string,
-    @CurrentUser('userId') actorUserId: string,
-    @Param('id') id: string,
-    @Param('branchId') branchId: string,
-    @Body() dto: SetProductBranchDto,
-  ) {
-    return this.branchMenuService.setProductBranch(
-      businessId,
-      id,
-      branchId,
-      { isAvailable: dto.isAvailable, salePrice: dto.salePrice ?? null },
-      actorUserId,
     );
   }
 

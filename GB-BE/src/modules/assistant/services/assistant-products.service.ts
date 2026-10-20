@@ -138,6 +138,7 @@ export class AssistantProductsService {
     for (let page = 1; page <= RANKING_MAX_PAGES; page++) {
       const result = await this.productsService.findAll({
         businessId: query.businessId,
+        branchId: (await this.resolveBranchId(query)) ?? undefined,
         page,
         limit: RANKING_PAGE_SIZE,
         search: query.search,
@@ -160,6 +161,8 @@ export class AssistantProductsService {
   ): Promise<AssistantProductsResult> {
     const page = await this.productsService.findAll({
       businessId: query.businessId,
+      // The caller's branch catalog (each branch has its own).
+      branchId: (await this.resolveBranchId(query)) ?? undefined,
       page: 1,
       limit: query.limit,
       search: query.search,

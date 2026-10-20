@@ -10,7 +10,7 @@ describe('PublicMenuService', () => {
   let branchMenuService: { forBranch: jest.Mock };
   let branchesService: {
     isActiveBranch: jest.Mock;
-    findOnlyActiveBranchId: jest.Mock;
+    firstActiveBranchId: jest.Mock;
   };
   let service: PublicMenuService;
 
@@ -111,7 +111,7 @@ describe('PublicMenuService', () => {
     branchMenuService = { forBranch: jest.fn().mockResolvedValue(new Map()) };
     branchesService = {
       isActiveBranch: jest.fn().mockResolvedValue(true),
-      findOnlyActiveBranchId: jest.fn().mockResolvedValue(null),
+      firstActiveBranchId: jest.fn().mockResolvedValue('branch-1'),
     };
     service = new PublicMenuService(
       businessesService as never,
@@ -140,38 +140,36 @@ describe('PublicMenuService', () => {
   });
 
   describe("a branch's menu", () => {
-    it("reads the menu of the table's branch", async () => {
+    it("shows the catalog of the table's branch", async () => {
       await service.getMenu(businessId, 'branch-2');
+      expect(productsService.findAll).toHaveBeenCalledWith(
+        expect.objectContaining({ branchId: 'branch-2' }),
+      );
       expect(branchMenuService.forBranch).toHaveBeenCalledWith(
         businessId,
         'branch-2',
       );
     });
 
-    it('takes the only branch when none is given', async () => {
-      branchesService.findOnlyActiveBranchId.mockResolvedValue('branch-1');
+    it("takes the business's first branch when none is given", async () => {
       await service.getMenu(businessId);
-      expect(branchMenuService.forBranch).toHaveBeenCalledWith(
-        businessId,
-        'branch-1',
+      expect(productsService.findAll).toHaveBeenCalledWith(
+        expect.objectContaining({ branchId: 'branch-1' }),
       );
     });
 
-    it("leaves out what the branch doesn't offer or ran out of, at the branch's prices", async () => {
+    it('leaves out what ran out', async () => {
       branchMenuService.forBranch.mockResolvedValue(
         new Map([
-          ['p1', { salePrice: 9000, isAvailable: true, outOfStock: false }],
+          ['p1', { salePrice: 8000, isAvailable: true, outOfStock: false }],
           ['p2', { salePrice: 3000, isAvailable: true, outOfStock: true }],
-          ['p3', { salePrice: 25000, isAvailable: false, outOfStock: false }],
         ]),
       );
 
       const menu = await service.getMenu(businessId, 'branch-1');
 
-      const all = menu.categories.flatMap((c) => c.products);
-      expect(all.map((p) => [p.name, p.salePrice])).toEqual([
-        ['Limonada', 9000],
-      ]);
+      const drinks = menu.categories.find((c) => c.id === 'cat-drinks');
+      expect(drinks?.products.map((p) => p.name)).toEqual(['Limonada']);
     });
   });
 

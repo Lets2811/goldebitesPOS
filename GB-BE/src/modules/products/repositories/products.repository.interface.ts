@@ -14,7 +14,10 @@ export interface IProductsRepository {
     client?: DbClient,
   ): Promise<ProductRow | null>;
   findAll(query: ProductQuery): Promise<{ rows: ProductRow[]; total: number }>;
-  findAvailableForSale(businessId: string): Promise<ProductRow[]>;
+  findAvailableForSale(
+    businessId: string,
+    branchId?: string,
+  ): Promise<ProductRow[]>;
   update(
     id: string,
     businessId: string,
@@ -50,7 +53,7 @@ export interface IProductsRepository {
     id: string,
   ): Promise<{ image_path: string; image_mime_type: string } | null>;
   existsBySku(
-    businessId: string,
+    branchId: string,
     sku: string,
     excludeId?: string,
   ): Promise<boolean>;

@@ -12,7 +12,7 @@ import { formatPercent } from '../../../utils/format';
 import { Can } from '../../../modules/auth/components/can';
 import { useProductRecipe } from '../../../modules/recipes/hooks/use-product-recipe';
 import type { Product } from '../../../modules/products/types/product.types';
-import ProductBranchesSection from './ProductBranchesSection';
+import ProductBranchSection from './ProductBranchSection';
 
 interface ProductDetailDrawerProps {
   product: Product | null;
@@ -162,7 +162,7 @@ export default function ProductDetailDrawer({
           </>
         )}
 
-        <ProductBranchesSection product={product} />
+        <ProductBranchSection product={product} />
       </Stack>
     </DetailDrawer>
   );

@@ -43,7 +43,12 @@ export default function ProductRecipeDialog({ product, onClose }: ProductRecipeD
   const [seededFor, setSeededFor] = useState<string | null>(null);
 
   const { data: recipe, isLoading, hasNoRecipe } = useProductRecipe(product?.id ?? null);
-  const { data: itemsData } = useInventoryItems({ limit: 100, isActive: true });
+  // The product's branch's items: each branch cooks from its own stock.
+  const { data: itemsData } = useInventoryItems({
+    limit: 100,
+    isActive: true,
+    branchId: product?.branchId,
+  });
   const inventoryItems = itemsData?.data ?? [];
 
   const createRecipe = useCreateRecipe();
@@ -54,7 +59,8 @@ export default function ProductRecipeDialog({ product, onClose }: ProductRecipeD
   // Re-seed the row list once the recipe for this product loads (derived during
   // render, not an effect) — recipe/hasNoRecipe flip from undefined once the
   // query settles, so this only runs once per product open.
-  const seedKey = product && (recipe || hasNoRecipe) ? `${product.id}:${recipe?.updatedAt ?? 'none'}` : null;
+  const seedKey =
+    product && (recipe || hasNoRecipe) ? `${product.id}:${recipe?.updatedAt ?? 'none'}` : null;
   if (seedKey && seedKey !== seededFor) {
     setSeededFor(seedKey);
     if (recipe && recipe.items.length > 0) {
@@ -113,10 +119,7 @@ export default function ProductRecipeDialog({ product, onClose }: ProductRecipeD
     if (recipe) {
       setRecipeItems.mutate({ productId: product.id, items }, { onSuccess, onError });
     } else {
-      createRecipe.mutate(
-        { productId: product.id, payload: { items } },
-        { onSuccess, onError },
-      );
+      createRecipe.mutate({ productId: product.id, payload: { items } }, { onSuccess, onError });
     }
   };
 
@@ -137,8 +140,8 @@ export default function ProductRecipeDialog({ product, onClose }: ProductRecipeD
         <Stack spacing={2.5} sx={{ mt: 0.5 }}>
           <Typography variant="body2" color="text.secondary">
             Define qué artículos de inventario (y cuánto de cada uno) se descuentan cada vez que se
-            vende 1 unidad de "{product.name}". Para un producto de reventa simple, como una gaseosa,
-            agrega el artículo correspondiente con cantidad 1.
+            vende 1 unidad de "{product.name}". Para un producto de reventa simple, como una
+            gaseosa, agrega el artículo correspondiente con cantidad 1.
           </Typography>
 
           {!product.trackInventory && (

@@ -1,6 +1,8 @@
 export interface InventoryItem {
   id: string;
   businessId: string;
+  /** The branch it belongs to: each branch has its own items. */
+  branchId: string;
   categoryId: string | null;
   name: string;
   sku: string | null;
@@ -30,6 +32,8 @@ export interface CreateInventoryItemPayload {
 export type UpdateInventoryItemPayload = Partial<CreateInventoryItemPayload>;
 
 export interface InventoryItemFilters {
+  /** One branch's items; the hooks default it to the session's. */
+  branchId?: string;
   page?: number;
   limit?: number;
   categoryId?: string;
@@ -92,10 +96,9 @@ export interface LowStockAlert {
   inventoryItemId: string;
   name: string;
   unit: string;
-  /** The branch's own minimum, or the item's general one. */
   minimumStock: number;
   currentStock: number;
-  /** Each alert is one branch's: an item can be low at one and fine at another. */
+  /** The branch the item is (each item is one branch's). */
   branchId: string;
   branchName: string;
 }

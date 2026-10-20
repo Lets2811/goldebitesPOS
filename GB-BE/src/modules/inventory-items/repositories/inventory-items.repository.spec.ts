@@ -2,7 +2,11 @@ import 'dotenv/config';
 import { randomUUID } from 'node:crypto';
 import { Pool } from 'pg';
 import { DatabaseService } from '../../../database/database.service';
-import { InventoryQueryField, InventoryQueryIntent, InventoryQueryOperator } from '../domain/inventory-query.types';
+import {
+  InventoryQueryField,
+  InventoryQueryIntent,
+  InventoryQueryOperator,
+} from '../domain/inventory-query.types';
 import { InventoryItemsRepository } from './inventory-items.repository';
 
 /**
@@ -16,6 +20,8 @@ describe('InventoryItemsRepository (integration)', () => {
   let db: DatabaseService;
   let repository: InventoryItemsRepository;
   let businessId: string;
+  /** Products and items belong to a branch. */
+  let catalogBranchId: string;
 
   beforeAll(async () => {
     pool = new Pool({
@@ -33,15 +39,27 @@ describe('InventoryItemsRepository (integration)', () => {
       [`Test Business ${randomUUID()}`],
     );
     businessId = result.rows[0].id;
+    const branch = await pool.query<{ id: string }>(
+      `INSERT INTO branches (business_id, name) VALUES ($1, 'Catálogo') RETURNING id`,
+      [businessId],
+    );
+    catalogBranchId = branch.rows[0].id;
   });
 
   afterAll(async () => {
-    await pool.query('DELETE FROM inventory_movements WHERE business_id = $1', [businessId]);
+    await pool.query('DELETE FROM inventory_movements WHERE business_id = $1', [
+      businessId,
+    ]);
     await pool.query('DELETE FROM inventory_items WHERE business_id = $1', [
       businessId,
     ]);
-    await pool.query('DELETE FROM inventory_item_categories WHERE business_id = $1', [businessId]);
-    await pool.query('DELETE FROM branches WHERE business_id = $1', [businessId]);
+    await pool.query(
+      'DELETE FROM inventory_item_categories WHERE business_id = $1',
+      [businessId],
+    );
+    await pool.query('DELETE FROM branches WHERE business_id = $1', [
+      businessId,
+    ]);
     await pool.query('DELETE FROM businesses WHERE id = $1', [businessId]);
     await pool.end();
   });
@@ -49,6 +67,7 @@ describe('InventoryItemsRepository (integration)', () => {
   it('creates an item with decimal minimumStock/currentCost without a type error', async () => {
     const created = await repository.create({
       businessId,
+      branchId: catalogBranchId,
       name: 'Flour',
       unit: 'kg',
       minimumStock: 10.5,
@@ -62,6 +81,7 @@ describe('InventoryItemsRepository (integration)', () => {
   it('defaults minimumStock/currentCost to 0 when omitted (also decimal-safe)', async () => {
     const created = await repository.create({
       businessId,
+      branchId: catalogBranchId,
       name: 'Salt',
       unit: 'kg',
     });
@@ -73,20 +93,22 @@ describe('InventoryItemsRepository (integration)', () => {
   it('existsBySku() detects duplicates and excludes the current row', async () => {
     const item = await repository.create({
       businessId,
+      branchId: catalogBranchId,
       name: 'Sugar',
       unit: 'kg',
       sku: 'SUG-1',
     });
 
-    expect(await repository.existsBySku(businessId, 'SUG-1')).toBe(true);
-    expect(await repository.existsBySku(businessId, 'SUG-1', item.id)).toBe(
-      false,
-    );
+    expect(await repository.existsBySku(catalogBranchId, 'SUG-1')).toBe(true);
+    expect(
+      await repository.existsBySku(catalogBranchId, 'SUG-1', item.id),
+    ).toBe(false);
   });
 
   it('softDelete() hides the item from findById/findAll', async () => {
     const item = await repository.create({
       businessId,
+      branchId: catalogBranchId,
       name: 'Butter',
       unit: 'kg',
     });
@@ -107,6 +129,7 @@ describe('InventoryItemsRepository (integration)', () => {
   it('update() applies partial changes with decimal values', async () => {
     const item = await repository.create({
       businessId,
+      branchId: catalogBranchId,
       name: 'Oil',
       unit: 'l',
     });
@@ -139,6 +162,7 @@ describe('InventoryItemsRepository (integration)', () => {
     it('filters by category (equals) and computes currentStock from movements', async () => {
       const item = await repository.create({
         businessId,
+        branchId: catalogBranchId,
         categoryId,
         name: `Soda ${randomUUID()}`,
         unit: 'unidad',
@@ -158,7 +182,13 @@ describe('InventoryItemsRepository (integration)', () => {
       const { rows, total } = await repository.queryAdvanced({
         businessId,
         branchId,
-        conditions: [{ field: InventoryQueryField.CATEGORY_ID, operator: InventoryQueryOperator.EQUALS, value: categoryId }],
+        conditions: [
+          {
+            field: InventoryQueryField.CATEGORY_ID,
+            operator: InventoryQueryOperator.EQUALS,
+            value: categoryId,
+          },
+        ],
         intent: InventoryQueryIntent.DETAIL,
         page: 1,
         limit: 50,
@@ -175,12 +205,14 @@ describe('InventoryItemsRepository (integration)', () => {
       const uniqueTag = randomUUID().slice(0, 8);
       const lowStockItem = await repository.create({
         businessId,
+        branchId: catalogBranchId,
         name: `Unique-${uniqueTag} Low`,
         unit: 'unidad',
         minimumStock: 100,
       });
       const highStockItem = await repository.create({
         businessId,
+        branchId: catalogBranchId,
         name: `Unique-${uniqueTag} High`,
         unit: 'unidad',
         minimumStock: 1,
@@ -200,8 +232,16 @@ describe('InventoryItemsRepository (integration)', () => {
         businessId,
         branchId,
         conditions: [
-          { field: InventoryQueryField.NAME, operator: InventoryQueryOperator.CONTAINS, value: uniqueTag },
-          { field: InventoryQueryField.CURRENT_STOCK, operator: InventoryQueryOperator.LESS_THAN, value: 10 },
+          {
+            field: InventoryQueryField.NAME,
+            operator: InventoryQueryOperator.CONTAINS,
+            value: uniqueTag,
+          },
+          {
+            field: InventoryQueryField.CURRENT_STOCK,
+            operator: InventoryQueryOperator.LESS_THAN,
+            value: 10,
+          },
         ],
         intent: InventoryQueryIntent.DETAIL,
         page: 1,
@@ -212,12 +252,28 @@ describe('InventoryItemsRepository (integration)', () => {
     });
 
     it('"isEmpty" matches items without a SKU', async () => {
-      const withSku = await repository.create({ businessId, name: `HasSku ${randomUUID()}`, unit: 'kg', sku: `SKU-${randomUUID()}` });
-      const withoutSku = await repository.create({ businessId, name: `NoSku ${randomUUID()}`, unit: 'kg' });
+      const withSku = await repository.create({
+        businessId,
+        branchId: catalogBranchId,
+        name: `HasSku ${randomUUID()}`,
+        unit: 'kg',
+        sku: `SKU-${randomUUID()}`,
+      });
+      const withoutSku = await repository.create({
+        businessId,
+        branchId: catalogBranchId,
+        name: `NoSku ${randomUUID()}`,
+        unit: 'kg',
+      });
 
       const { rows } = await repository.queryAdvanced({
         businessId,
-        conditions: [{ field: InventoryQueryField.SKU, operator: InventoryQueryOperator.IS_EMPTY }],
+        conditions: [
+          {
+            field: InventoryQueryField.SKU,
+            operator: InventoryQueryOperator.IS_EMPTY,
+          },
+        ],
         intent: InventoryQueryIntent.DETAIL,
         page: 1,
         limit: 200,
@@ -244,12 +300,14 @@ describe('InventoryItemsRepository (integration)', () => {
       const uniqueTag = randomUUID().slice(0, 8);
       const itemA = await repository.create({
         businessId,
+        branchId: catalogBranchId,
         name: `Aggregate-${uniqueTag} A`,
         unit: 'unidad',
         currentCost: 10,
       });
       const itemB = await repository.create({
         businessId,
+        branchId: catalogBranchId,
         name: `Aggregate-${uniqueTag} B`,
         unit: 'unidad',
         currentCost: 20,
@@ -266,7 +324,11 @@ describe('InventoryItemsRepository (integration)', () => {
       );
 
       const conditions = [
-        { field: InventoryQueryField.NAME, operator: InventoryQueryOperator.CONTAINS, value: uniqueTag },
+        {
+          field: InventoryQueryField.NAME,
+          operator: InventoryQueryOperator.CONTAINS,
+          value: uniqueTag,
+        },
       ];
 
       const count = await repository.queryAggregate({
@@ -304,10 +366,18 @@ describe('InventoryItemsRepository (integration)', () => {
 
     it('returns 0 for every aggregate when nothing matches', async () => {
       const conditions = [
-        { field: InventoryQueryField.NAME, operator: InventoryQueryOperator.CONTAINS, value: `no-match-${randomUUID()}` },
+        {
+          field: InventoryQueryField.NAME,
+          operator: InventoryQueryOperator.CONTAINS,
+          value: `no-match-${randomUUID()}`,
+        },
       ];
 
-      const count = await repository.queryAggregate({ businessId, conditions, intent: InventoryQueryIntent.COUNT });
+      const count = await repository.queryAggregate({
+        businessId,
+        conditions,
+        intent: InventoryQueryIntent.COUNT,
+      });
       expect(count.value).toBe(0);
 
       const totalValue = await repository.queryAggregate({

@@ -16,14 +16,11 @@ import type {
 } from '../../../modules/inventory/types/inventory.types';
 import { useAuthStore } from '../../../modules/auth/store/auth.store';
 import { useAllBranchesReview } from '../../../modules/auth/hooks/use-branch-mode';
-import InventoryBranchesSection from './InventoryBranchesSection';
 
 interface InventoryDetailDrawerProps {
   item: InventoryItem | null;
   categoryName: string | null;
   currentStock: number;
-  /** The minimum the item is held to where the session works (the branch's own, or the general one). */
-  minimumStock?: number;
   onClose: () => void;
   onRegisterMovement: (item: InventoryItem) => void;
   onEdit: (item: InventoryItem) => void;
@@ -53,7 +50,6 @@ export default function InventoryDetailDrawer({
   item,
   categoryName,
   currentStock,
-  minimumStock,
   onClose,
   onRegisterMovement,
   onEdit,
@@ -67,7 +63,7 @@ export default function InventoryDetailDrawer({
 
   if (!item) return null;
 
-  const minimum = minimumStock ?? item.minimumStock;
+  const minimum = item.minimumStock;
   const isLow = currentStock <= minimum;
 
   return (
@@ -182,8 +178,6 @@ export default function InventoryDetailDrawer({
             </Stack>
           </>
         )}
-
-        <InventoryBranchesSection item={item} />
 
         <Divider />
 

@@ -66,6 +66,7 @@ export class TabletKioskController {
     const [result, branchMenu] = await Promise.all([
       this.productsService.findAll({
         businessId: this.businessId,
+        branchId: this.branchId,
         isActive: true,
         categoryId,
         page: 1,
@@ -73,12 +74,10 @@ export class TabletKioskController {
       }),
       this.branchMenuService.forBranch(this.businessId, this.branchId),
     ]);
-    // The kiosk's branch menu: without what it doesn't offer or ran out of, at its prices.
-    const data = result.data.flatMap((product) => {
-      const entry = branchMenu.get(product.id);
-      if (entry && (!entry.isAvailable || entry.outOfStock)) return [];
-      return [{ ...product, salePrice: entry?.salePrice ?? product.salePrice }];
-    });
+    // The kiosk's branch catalog, without what ran out.
+    const data = result.data.filter(
+      (product) => !branchMenu.get(product.id)?.outOfStock,
+    );
     return { ...result, data };
   }
 

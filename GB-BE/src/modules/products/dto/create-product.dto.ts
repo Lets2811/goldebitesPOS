@@ -35,6 +35,13 @@ export class ProductOptionGroupInputDto {
 }
 
 export class CreateProductDto {
+  @ApiPropertyOptional({
+    description: "The branch whose catalog it joins; absent: the session's",
+  })
+  @IsOptional()
+  @IsUUID()
+  branchId?: string;
+
   @ApiProperty({ minLength: 2, maxLength: 150 })
   @IsString()
   @MinLength(2)

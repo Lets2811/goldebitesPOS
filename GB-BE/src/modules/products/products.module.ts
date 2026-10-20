@@ -9,15 +9,9 @@ import { PRODUCTS_REPOSITORY } from './repositories/products.repository.interfac
 import { ProductsService } from './services/products.service';
 import { BranchMenuService } from './services/branch-menu.service';
 import { BranchMenuRepository } from './repositories/branch-menu.repository';
-import { BranchesModule } from '../branches/branches.module';
 
 @Module({
-  imports: [
-    ProductCategoriesModule,
-    OptionGroupsModule,
-    AuditModule,
-    BranchesModule,
-  ],
+  imports: [ProductCategoriesModule, OptionGroupsModule, AuditModule],
   controllers: [ProductsController, PublicProductImagesController],
   providers: [
     ProductsService,

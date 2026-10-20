@@ -9,7 +9,6 @@ import { InventoryQueryTemplatesRepository } from './repositories/inventory-quer
 import { INVENTORY_QUERY_TEMPLATES_REPOSITORY } from './repositories/inventory-query-templates.repository.interface';
 import { InventoryItemsService } from './services/inventory-items.service';
 import { InventoryQueriesService } from './services/inventory-queries.service';
-import { InventoryItemBranchesService } from './services/inventory-item-branches.service';
 
 @Module({
   imports: [AuditModule],
@@ -21,7 +20,6 @@ import { InventoryItemBranchesService } from './services/inventory-item-branches
   providers: [
     InventoryItemsService,
     InventoryQueriesService,
-    InventoryItemBranchesService,
     { provide: INVENTORY_ITEMS_REPOSITORY, useClass: InventoryItemsRepository },
     {
       provide: INVENTORY_QUERY_TEMPLATES_REPOSITORY,

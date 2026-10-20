@@ -7,20 +7,9 @@ import type { Product } from './types/product.types';
 /** A product as a branch sells it: at its price, and whether it ran out there. */
 export type BranchMenuProduct = Product & { outOfStock: boolean };
 
-/** A product at one branch, for setting up the branch's menu. */
-export interface ProductAtBranch {
-  branchId: string;
-  branchName: string;
-  isAvailable: boolean;
-  /** The branch's own price; null: the catalog's. */
-  salePrice: number | null;
-  outOfStock: boolean;
-}
-
 export const branchMenuKeys = {
   all: ['branch-menu'] as const,
   menu: (branchId: string | null) => ['branch-menu', 'menu', branchId] as const,
-  product: (productId: string) => ['branch-menu', 'product', productId] as const,
 };
 
 export const branchMenuApi = {
@@ -28,25 +17,6 @@ export const branchMenuApi = {
     const { data } = await apiClient.get<ApiResponse<BranchMenuProduct[]>>('/products/menu', {
       params: branchId ? { branchId } : {},
     });
-    return data.data;
-  },
-
-  async productBranches(productId: string): Promise<ProductAtBranch[]> {
-    const { data } = await apiClient.get<ApiResponse<ProductAtBranch[]>>(
-      `/products/${productId}/branches`,
-    );
-    return data.data;
-  },
-
-  async setProductBranch(
-    productId: string,
-    branchId: string,
-    payload: { isAvailable: boolean; salePrice: number | null },
-  ): Promise<ProductAtBranch[]> {
-    const { data } = await apiClient.put<ApiResponse<ProductAtBranch[]>>(
-      `/products/${productId}/branches/${branchId}`,
-      payload,
-    );
     return data.data;
   },
 };
@@ -67,31 +37,26 @@ export function useBranchMenu(branchId?: string | null) {
   });
 }
 
-export function useProductBranches(productId: string | null | undefined, enabled = true) {
-  return useQuery({
-    queryKey: branchMenuKeys.product(productId ?? ''),
-    queryFn: () => branchMenuApi.productBranches(productId as string),
-    enabled: Boolean(productId) && enabled,
-  });
-}
-
-export function useSetProductBranch() {
+/**
+ * Brings a product to another branch: an independent copy there, with its
+ * recipe made from that branch's items (created, with no stock, if missing).
+ */
+export function useCopyProductToBranch() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({
-      productId,
-      branchId,
-      isAvailable,
-      salePrice,
-    }: {
-      productId: string;
-      branchId: string;
-      isAvailable: boolean;
-      salePrice: number | null;
-    }) => branchMenuApi.setProductBranch(productId, branchId, { isAvailable, salePrice }),
-    onSuccess: (data, { productId }) => {
-      queryClient.setQueryData(branchMenuKeys.product(productId), data);
-      queryClient.invalidateQueries({ queryKey: ['branch-menu', 'menu'] });
+    mutationFn: async ({ productId, branchId }: { productId: string; branchId: string }) => {
+      const { data } = await apiClient.post<ApiResponse<Product>>(
+        `/products/${productId}/copy-to-branch`,
+        {
+          branchId,
+        },
+      );
+      return data.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['products'] });
+      queryClient.invalidateQueries({ queryKey: ['branch-menu'] });
+      queryClient.invalidateQueries({ queryKey: ['inventory'] });
     },
   });
 }

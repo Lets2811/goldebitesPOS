@@ -13,6 +13,9 @@ export enum ProductMenuAvailability {
 export interface CreateProductData {
   businessId: string;
 
+  /** The branch whose catalog it joins. */
+  branchId: string;
+
   categoryId?: string;
 
   name: string;
@@ -56,6 +59,9 @@ export interface UpdateProductData {
 
 export interface ProductQuery {
   businessId: string;
+
+  /** One branch's catalog; absent: every branch's. */
+  branchId?: string;
 
   page: number;
 
