@@ -27,6 +27,8 @@ import { usePublicCart } from '../hooks/use-public-cart';
 
 interface PublicMenuBrowserProps {
   businessId: string | undefined;
+  /** The branch whose menu to show (the table's); absent, the business's. */
+  branchId?: string;
   /** Whether the generic "Menú" heading under the business name should render — off when a caller (e.g. the NFC page) already shows its own context header above this. */
   showMenuLabel?: boolean;
   /** Present only from the NFC-scanned flow (/m/:token) — absent here means the generic preview, which never offers "Confirmar pedido". */
@@ -48,19 +50,30 @@ interface PublicMenuBrowserProps {
  */
 export default function PublicMenuBrowser({
   businessId,
+  branchId,
   showMenuLabel = true,
   token,
   orderType,
   readOnly = false,
 }: PublicMenuBrowserProps) {
   const { enqueueSnackbar } = useSnackbar();
-  const { data: menu, isLoading, isError } = usePublicMenu(businessId);
+  const { data: menu, isLoading, isError } = usePublicMenu(businessId, branchId);
   const [selectedProduct, setSelectedProduct] = useState<PublicMenuProduct | null>(null);
   const [cartOpen, setCartOpen] = useState(false);
   const [activeOrder, setActiveOrder] = useState<PublicNfcOrder | null>(null);
   const [builderOpen, setBuilderOpen] = useState(false);
-  const { cart, addToCart, addComboToCart, increment, decrement, remove, clear, itemCount, total, idempotencyKey } =
-    usePublicCart();
+  const {
+    cart,
+    addToCart,
+    addComboToCart,
+    increment,
+    decrement,
+    remove,
+    clear,
+    itemCount,
+    total,
+    idempotencyKey,
+  } = usePublicCart();
   const submitOrder = useSubmitNfcOrder(token);
 
   function handleSubmit() {
@@ -133,7 +146,9 @@ export default function PublicMenuBrowser({
                   Pedido #{activeOrder.orderNumber}
                 </Typography>
                 <StatusChip
-                  label={ORDER_STATUS_LABELS[activeOrder.status as OrderStatus] ?? activeOrder.status}
+                  label={
+                    ORDER_STATUS_LABELS[activeOrder.status as OrderStatus] ?? activeOrder.status
+                  }
                   tone={ORDER_STATUS_TONE[activeOrder.status as OrderStatus]}
                 />
                 <Typography variant="body2" sx={{ fontWeight: 800 }}>
@@ -142,35 +157,38 @@ export default function PublicMenuBrowser({
               </Stack>
             )}
 
-            {!readOnly && menu.builderCategories.some((category) => category.products.length > 0) && (
-              <ButtonBase
-                onClick={() => setBuilderOpen(true)}
-                sx={{
-                  width: '100%',
-                  mb: 4,
-                  p: 2,
-                  gap: 2,
-                  borderRadius: 2,
-                  justifyContent: 'flex-start',
-                  textAlign: 'left',
-                  border: '1px solid',
-                  borderColor: brand.gold,
-                  background: `linear-gradient(135deg, ${brand.gold}22, transparent 70%)`,
-                  '&:hover': { background: `linear-gradient(135deg, ${brand.gold}33, transparent 70%)` },
-                }}
-              >
-                <Sparkles size={28} color={brand.gold} />
-                <Box sx={{ flex: 1 }}>
-                  <Typography variant="subtitle1" sx={{ fontWeight: 800 }}>
-                    Arma tu combo
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    Escoge lo que quieras, a tu gusto y a tu estilo.
-                  </Typography>
-                </Box>
-                <ChevronRight size={22} color={brand.gold} />
-              </ButtonBase>
-            )}
+            {!readOnly &&
+              menu.builderCategories.some((category) => category.products.length > 0) && (
+                <ButtonBase
+                  onClick={() => setBuilderOpen(true)}
+                  sx={{
+                    width: '100%',
+                    mb: 4,
+                    p: 2,
+                    gap: 2,
+                    borderRadius: 2,
+                    justifyContent: 'flex-start',
+                    textAlign: 'left',
+                    border: '1px solid',
+                    borderColor: brand.gold,
+                    background: `linear-gradient(135deg, ${brand.gold}22, transparent 70%)`,
+                    '&:hover': {
+                      background: `linear-gradient(135deg, ${brand.gold}33, transparent 70%)`,
+                    },
+                  }}
+                >
+                  <Sparkles size={28} color={brand.gold} />
+                  <Box sx={{ flex: 1 }}>
+                    <Typography variant="subtitle1" sx={{ fontWeight: 800 }}>
+                      Arma tu combo
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      Escoge lo que quieras, a tu gusto y a tu estilo.
+                    </Typography>
+                  </Box>
+                  <ChevronRight size={22} color={brand.gold} />
+                </ButtonBase>
+              )}
 
             {menu.categories.length === 0 && (
               <Typography variant="body1" color="text.secondary" sx={{ textAlign: 'center' }}>
@@ -247,7 +265,10 @@ export default function PublicMenuBrowser({
                             </Typography>
                           )}
                         </Box>
-                        <Typography variant="subtitle1" sx={{ fontWeight: 700, whiteSpace: 'nowrap' }}>
+                        <Typography
+                          variant="subtitle1"
+                          sx={{ fontWeight: 700, whiteSpace: 'nowrap' }}
+                        >
                           {formatCOP(product.salePrice)}
                         </Typography>
                       </ButtonBase>

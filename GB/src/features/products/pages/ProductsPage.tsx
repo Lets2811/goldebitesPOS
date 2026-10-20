@@ -29,11 +29,15 @@ import { useDeleteRecipe } from '../../../modules/recipes/hooks/use-delete-recip
 import { normalizeApiError } from '../../../lib/api/api-error';
 import ProductCard from '../components/ProductCard';
 import ProductDetailDrawer from '../components/ProductDetailDrawer';
-import { useRemoveProductImage, useUploadProductImage } from '../../../modules/products/hooks/use-product-image';
+import {
+  useRemoveProductImage,
+  useUploadProductImage,
+} from '../../../modules/products/hooks/use-product-image';
 import type { ProductImageChange } from '../components/ProductImageField';
 import ProductFormDrawer from '../components/ProductFormDrawer';
 import ProductRecipeDialog from '../components/ProductRecipeDialog';
 import type { Product } from '../../../modules/products/types/product.types';
+import { useBranchMenu } from '../../../modules/products/branch-menu';
 import type { ProductFormValues } from '../schemas/productSchema';
 
 export default function ProductsPage() {
@@ -55,7 +59,6 @@ export default function ProductsPage() {
   const [deletingProduct, setDeletingProduct] = useState<Product | null>(null);
   const [recipeProduct, setRecipeProduct] = useState<Product | null>(null);
 
-
   const filters = useMemo(
     () => ({
       limit: 100,
@@ -67,6 +70,11 @@ export default function ProductsPage() {
   );
 
   const { data, isLoading, isError, refetch } = useProducts(filters);
+  const { data: branchMenu } = useBranchMenu();
+  const soldOut = useMemo(
+    () => new Set((branchMenu ?? []).filter((p) => p.outOfStock).map((p) => p.id)),
+    [branchMenu],
+  );
   const { data: categoriesData } = useProductCategories({ limit: 100, isActive: true });
   const categories = categoriesData?.data ?? [];
   const createProduct = useCreateProduct();
@@ -98,7 +106,9 @@ export default function ProductsPage() {
       );
 
     if (values.inventoryItemId) {
-      const items = [{ inventoryItemId: values.inventoryItemId, quantity: values.inventoryQuantity || 1 }];
+      const items = [
+        { inventoryItemId: values.inventoryItemId, quantity: values.inventoryQuantity || 1 },
+      ];
       if (hadRecipe) {
         setRecipeItems.mutate({ productId, items }, { onError });
       } else {
@@ -112,9 +122,12 @@ export default function ProductsPage() {
   /** After the product itself is saved: upload the new photo, or remove the old one. */
   const applyImageChange = (productId: string, change: ProductImageChange) => {
     const onError = (error: unknown) =>
-      enqueueSnackbar(`Producto guardado, pero no se pudo guardar la foto: ${normalizeApiError(error).message}`, {
-        variant: 'warning',
-      });
+      enqueueSnackbar(
+        `Producto guardado, pero no se pudo guardar la foto: ${normalizeApiError(error).message}`,
+        {
+          variant: 'warning',
+        },
+      );
     if (change.kind === 'set') {
       uploadImage.mutate(
         { id: productId, file: change.file },
@@ -198,7 +211,9 @@ export default function ProductsPage() {
       {
         onSuccess: (updated) => {
           enqueueSnackbar(
-            updated.isVisible ? 'Producto visible en el menú público' : 'Producto oculto del menú público',
+            updated.isVisible
+              ? 'Producto visible en el menú público'
+              : 'Producto oculto del menú público',
             { variant: 'success' },
           );
           setSelectedProduct(updated);
@@ -286,7 +301,11 @@ export default function ProductsPage() {
         <Grid container spacing={2}>
           {products.map((product) => (
             <Grid key={product.id} size={{ xs: 12, sm: 6, md: 4, lg: 3 }}>
-              <ProductCard product={product} onClick={() => setSelectedProduct(product)} />
+              <ProductCard
+                product={product}
+                soldOut={soldOut.has(product.id)}
+                onClick={() => setSelectedProduct(product)}
+              />
             </Grid>
           ))}
         </Grid>
@@ -330,7 +349,6 @@ export default function ProductsPage() {
         onClose={() => setDeletingProduct(null)}
         onConfirm={handleDelete}
       />
-
     </>
   );
 }

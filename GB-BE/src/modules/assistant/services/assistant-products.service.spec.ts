@@ -111,6 +111,7 @@ describe('AssistantProductsService', () => {
       recipesService as never,
       movementsService as never,
       branchesService as never,
+      { forBranch: jest.fn().mockResolvedValue(new Map()) } as never,
     );
     givenProducts([]);
   });

@@ -8,6 +8,7 @@ import Button from '@mui/material/Button';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import { Copy, Check, ExternalLink, MessageCircle, Share2 } from 'lucide-react';
+import { useAuthStore } from '../../../modules/auth/store/auth.store';
 
 interface PublicMenuLinkDialogProps {
   open: boolean;
@@ -32,11 +33,22 @@ function toWhatsAppNumber(raw: string): string {
  * de consulta — no identifica una mesa ni permite pedir; para eso están los
  * enlaces de los gallos NFC.
  */
-export default function PublicMenuLinkDialog({ open, businessId, businessName, onClose }: PublicMenuLinkDialogProps) {
+export default function PublicMenuLinkDialog({
+  open,
+  businessId,
+  businessName,
+  onClose,
+}: PublicMenuLinkDialogProps) {
   const [copied, setCopied] = useState(false);
   const [phone, setPhone] = useState('');
-  const link = businessId ? `${window.location.origin}/menu/${businessId}` : '';
-  const message = businessName ? `Te compartimos el menú de ${businessName}: ${link}` : `Te compartimos nuestro menú: ${link}`;
+  // The menu of the branch the session is at (what it offers, at its prices).
+  const branchId = useAuthStore((s) => s.user?.branchId ?? null);
+  const link = businessId
+    ? `${window.location.origin}/menu/${businessId}${branchId ? `?sede=${branchId}` : ''}`
+    : '';
+  const message = businessName
+    ? `Te compartimos el menú de ${businessName}: ${link}`
+    : `Te compartimos nuestro menú: ${link}`;
   const canNativeShare = typeof navigator !== 'undefined' && typeof navigator.share === 'function';
 
   const handleCopy = async () => {
@@ -60,7 +72,9 @@ export default function PublicMenuLinkDialog({ open, businessId, businessName, o
   const handleNativeShare = () => {
     if (!link) return;
     // El usuario puede cerrar la hoja de compartir sin elegir nada; no es un error.
-    navigator.share({ title: businessName ? `Menú de ${businessName}` : 'Menú', text: message, url: link }).catch(() => {});
+    navigator
+      .share({ title: businessName ? `Menú de ${businessName}` : 'Menú', text: message, url: link })
+      .catch(() => {});
   };
 
   return (
@@ -68,9 +82,9 @@ export default function PublicMenuLinkDialog({ open, businessId, businessName, o
       <DialogTitle sx={{ fontWeight: 700 }}>Compartir menú</DialogTitle>
       <DialogContent>
         <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-          Enlace público del menú: lo puede abrir cualquier persona, sin iniciar sesión. Muestra los productos
-          activos y visibles con precio y descripción, y se actualiza solo cuando cambias el catálogo. Es solo de
-          consulta: no identifica una mesa ni permite pedir.
+          Enlace público del menú: lo puede abrir cualquier persona, sin iniciar sesión. Muestra los
+          productos activos y visibles con precio y descripción, y se actualiza solo cuando cambias
+          el catálogo. Es solo de consulta: no identifica una mesa ni permite pedir.
         </Typography>
         <Stack spacing={2}>
           <TextField
@@ -80,7 +94,11 @@ export default function PublicMenuLinkDialog({ open, businessId, businessName, o
             slotProps={{ htmlInput: { readOnly: true } }}
             onFocus={(e) => e.target.select()}
           />
-          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} sx={{ alignItems: { sm: 'flex-start' } }}>
+          <Stack
+            direction={{ xs: 'column', sm: 'row' }}
+            spacing={1.5}
+            sx={{ alignItems: { sm: 'flex-start' } }}
+          >
             <TextField
               fullWidth
               label="WhatsApp del cliente (opcional)"

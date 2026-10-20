@@ -1,4 +1,4 @@
-import { Controller, Get, Param } from '@nestjs/common';
+import { Controller, Get, Param, ParseUUIDPipe, Query } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Public } from '../../../common/decorators/public.decorator';
 import { PublicMenuService } from '../services/public-menu.service';
@@ -15,8 +15,13 @@ export class PublicMenuController {
   constructor(private readonly publicMenuService: PublicMenuService) {}
 
   @Get(':businessId')
-  @ApiOperation({ summary: 'Live menu (active categories and products) for customers to view' })
-  getMenu(@Param('businessId') businessId: string) {
-    return this.publicMenuService.getMenu(businessId);
+  @ApiOperation({
+    summary: 'Live menu (active categories and products) for customers to view',
+  })
+  getMenu(
+    @Param('businessId') businessId: string,
+    @Query('branchId', new ParseUUIDPipe({ optional: true })) branchId?: string,
+  ) {
+    return this.publicMenuService.getMenu(businessId, branchId);
   }
 }

@@ -12,10 +12,12 @@ import { CurrentUser } from '../../../common/decorators/current-user.decorator';
 import { Permissions } from '../../../common/decorators/permissions.decorator';
 import { TableHelpRequestQueryDto } from '../dto/table-help-request-query.dto';
 import { TableHelpRequestsService } from '../services/table-help-requests.service';
+import { BranchOperation } from '../../../common/decorators/branch-operation.decorator';
 
 /** Tables calling for staff — under the orders permissions: whoever works the orders screen answers the calls. */
 @ApiTags('Table Help Requests')
 @ApiBearerAuth()
+@BranchOperation()
 @Controller('table-help-requests')
 export class TableHelpRequestsController {
   constructor(private readonly helpRequestsService: TableHelpRequestsService) {}

@@ -11,7 +11,7 @@ import Box from '@mui/material/Box';
 import { Plus, Trash2 } from 'lucide-react';
 import FormDrawer from '../../../components/common/FormDrawer';
 import { editOrderItemsSchema, type EditOrderItemsFormValues } from '../schemas/orderSchema';
-import { useProducts } from '../../../modules/products/hooks/use-products';
+import { useBranchMenu } from '../../../modules/products/branch-menu';
 import { formatCOP } from '../../../utils/format';
 import type { OrderWithItems } from '../../../modules/orders/types/order.types';
 
@@ -30,8 +30,14 @@ export default function EditOrderItemsDrawer({
   onClose,
   onSubmit,
 }: EditOrderItemsDrawerProps) {
-  const { data: productsData } = useProducts({ limit: 100, isActive: true });
-  const products = useMemo(() => productsData?.data ?? [], [productsData]);
+  // The order's branch menu, at its prices.
+  const { data: menu } = useBranchMenu(order?.branchId ?? null);
+  const products = useMemo(() => menu ?? [], [menu]);
+  // What the order already has stays pickable even if it ran out since.
+  const inOrder = useMemo(
+    () => new Set((order?.items ?? []).map((item) => item.productId)),
+    [order],
+  );
 
   const {
     control,
@@ -86,7 +92,10 @@ export default function EditOrderItemsDrawer({
     >
       <Stack spacing={2.5}>
         <Box>
-          <Stack direction="row" sx={{ alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
+          <Stack
+            direction="row"
+            sx={{ alignItems: 'center', justifyContent: 'space-between', mb: 1 }}
+          >
             <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
               Productos
             </Typography>
@@ -125,8 +134,13 @@ export default function EditOrderItemsDrawer({
                       >
                         <MenuItem value="">Selecciona…</MenuItem>
                         {products.map((p) => (
-                          <MenuItem key={p.id} value={p.id}>
+                          <MenuItem
+                            key={p.id}
+                            value={p.id}
+                            disabled={p.outOfStock && !inOrder.has(p.id)}
+                          >
                             {p.name} — {formatCOP(p.salePrice)}
+                            {p.outOfStock ? ' (agotado)' : ''}
                           </MenuItem>
                         ))}
                       </TextField>
@@ -136,10 +150,20 @@ export default function EditOrderItemsDrawer({
                     name={`items.${index}.quantity`}
                     control={control}
                     render={({ field: qtyField }) => (
-                      <TextField {...qtyField} label="Cant." type="number" size="small" sx={{ width: 90 }} />
+                      <TextField
+                        {...qtyField}
+                        label="Cant."
+                        type="number"
+                        size="small"
+                        sx={{ width: 90 }}
+                      />
                     )}
                   />
-                  <IconButton size="small" onClick={() => remove(index)} disabled={fields.length === 1}>
+                  <IconButton
+                    size="small"
+                    onClick={() => remove(index)}
+                    disabled={fields.length === 1}
+                  >
                     <Trash2 size={15} />
                   </IconButton>
                 </Stack>
@@ -147,7 +171,12 @@ export default function EditOrderItemsDrawer({
                   name={`items.${index}.notes`}
                   control={control}
                   render={({ field: notesField }) => (
-                    <TextField {...notesField} label="Nota del producto (opcional)" size="small" fullWidth />
+                    <TextField
+                      {...notesField}
+                      label="Nota del producto (opcional)"
+                      size="small"
+                      fullWidth
+                    />
                   )}
                 />
               </Stack>

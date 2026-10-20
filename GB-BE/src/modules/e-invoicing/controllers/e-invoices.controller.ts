@@ -23,6 +23,7 @@ import {
   IssueEInvoiceDto,
 } from '../dto/e-invoicing.dto';
 import { EInvoicingService } from '../services/e-invoicing.service';
+import { BranchOperation } from '../../../common/decorators/branch-operation.decorator';
 
 function toBuyer(dto: EInvoiceBuyerDto): EInvoiceBuyer {
   if (dto.kind === 'FINAL_CONSUMER') return { kind: 'FINAL_CONSUMER' };
@@ -43,6 +44,7 @@ function toBuyer(dto: EInvoiceBuyerDto): EInvoiceBuyer {
 @ApiTags('Electronic invoicing')
 @ApiBearerAuth()
 @RequiresFeature('einvoicing')
+@BranchOperation()
 @Controller()
 export class EInvoicesController {
   constructor(private readonly eInvoicingService: EInvoicingService) {}

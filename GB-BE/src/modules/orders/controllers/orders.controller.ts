@@ -19,10 +19,12 @@ import { ReplaceOrderItemsDto } from '../dto/replace-order-items.dto';
 import { UpdateOrderStatusDto } from '../dto/update-order-status.dto';
 import { OrdersService } from '../services/orders.service';
 import { RequiresFeature } from '../../../common/decorators/requires-feature.decorator';
+import { BranchOperation } from '../../../common/decorators/branch-operation.decorator';
 
 @ApiTags('Orders')
 @ApiBearerAuth()
 @RequiresFeature('orders')
+@BranchOperation()
 @Controller('orders')
 export class OrdersController {
   constructor(private readonly ordersService: OrdersService) {}

@@ -8,6 +8,7 @@ import {
   Param,
   Patch,
   Post,
+  Put,
   Query,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
@@ -20,6 +21,11 @@ import { InventoryItemQueryDto } from '../dto/inventory-item-query.dto';
 import { SetInventoryItemStatusDto } from '../dto/set-inventory-item-status.dto';
 import { UpdateInventoryItemDto } from '../dto/update-inventory-item.dto';
 import { InventoryItemsService } from '../services/inventory-items.service';
+import { InventoryItemBranchesService } from '../services/inventory-item-branches.service';
+import {
+  BranchMinimumsQueryDto,
+  SetBranchMinimumDto,
+} from '../dto/set-branch-minimum.dto';
 import { RequiresFeature } from '../../../common/decorators/requires-feature.decorator';
 
 @ApiTags('Inventory Items')
@@ -27,7 +33,10 @@ import { RequiresFeature } from '../../../common/decorators/requires-feature.dec
 @RequiresFeature('inventory')
 @Controller('inventory-items')
 export class InventoryItemsController {
-  constructor(private readonly inventoryItemsService: InventoryItemsService) {}
+  constructor(
+    private readonly inventoryItemsService: InventoryItemsService,
+    private readonly itemBranchesService: InventoryItemBranchesService,
+  ) {}
 
   @Post()
   @Permissions('inventory.manage')
@@ -58,6 +67,49 @@ export class InventoryItemsController {
       isActive: query.isActive,
       search: query.search,
     });
+  }
+
+  @Get('branch-minimums')
+  @Permissions('inventory.read')
+  @ApiOperation({
+    summary: 'The items with a minimum of their own at a branch',
+  })
+  branchMinimums(
+    @CurrentBusiness() businessId: string,
+    @Query() query: BranchMinimumsQueryDto,
+  ) {
+    return query.branchId
+      ? this.itemBranchesService.minimumsAt(businessId, query.branchId)
+      : [];
+  }
+
+  @Get(':id/branches')
+  @Permissions('inventory.read')
+  @ApiOperation({
+    summary:
+      "An item at each branch: its stock there and the minimum it's held to",
+  })
+  findBranches(@CurrentBusiness() businessId: string, @Param('id') id: string) {
+    return this.itemBranchesService.findForItem(businessId, id);
+  }
+
+  @Put(':id/branches/:branchId')
+  @Permissions('inventory.manage')
+  @ApiOperation({ summary: "Set a branch's own minimum stock for an item" })
+  setBranchMinimum(
+    @CurrentBusiness() businessId: string,
+    @CurrentUser('userId') actorUserId: string,
+    @Param('id') id: string,
+    @Param('branchId') branchId: string,
+    @Body() dto: SetBranchMinimumDto,
+  ) {
+    return this.itemBranchesService.setMinimum(
+      businessId,
+      id,
+      branchId,
+      dto.minimumStock ?? null,
+      actorUserId,
+    );
   }
 
   @Get(':id')

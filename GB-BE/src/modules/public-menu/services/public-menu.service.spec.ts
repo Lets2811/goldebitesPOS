@@ -7,17 +7,30 @@ describe('PublicMenuService', () => {
   let productCategoriesService: { findAll: jest.Mock };
   let productsService: { findAll: jest.Mock };
   let optionGroupsService: { findAll: jest.Mock };
+  let branchMenuService: { forBranch: jest.Mock };
+  let branchesService: {
+    isActiveBranch: jest.Mock;
+    findOnlyActiveBranchId: jest.Mock;
+  };
   let service: PublicMenuService;
 
   const businessId = 'business-1';
 
   beforeEach(() => {
-    businessesService = { findById: jest.fn().mockResolvedValue({ id: businessId, name: 'Golden Bites' }) };
+    businessesService = {
+      findById: jest
+        .fn()
+        .mockResolvedValue({ id: businessId, name: 'Golden Bites' }),
+    };
     productCategoriesService = {
       findAll: jest.fn().mockResolvedValue({
         data: [
           { id: 'cat-drinks', name: 'Bebidas', builderDisplayOrder: 2 },
-          { id: 'cat-empty', name: 'Sin productos activos', builderDisplayOrder: 1 },
+          {
+            id: 'cat-empty',
+            name: 'Sin productos activos',
+            builderDisplayOrder: 1,
+          },
         ],
       }),
     };
@@ -76,22 +89,47 @@ describe('PublicMenuService', () => {
           ],
         },
         // Turned off by the business.
-        { id: 'g-off', name: 'Hielo', singularName: 'Hielo', isActive: false, isRequired: false, items: [{ id: 'h1', name: 'Sin hielo', isActive: true }] },
+        {
+          id: 'g-off',
+          name: 'Hielo',
+          singularName: 'Hielo',
+          isActive: false,
+          isRequired: false,
+          items: [{ id: 'h1', name: 'Sin hielo', isActive: true }],
+        },
         // Nothing active to pick.
-        { id: 'g-empty', name: 'Tamaño', singularName: 'Tamaño', isActive: true, isRequired: false, items: [{ id: 't1', name: 'XL', isActive: false }] },
+        {
+          id: 'g-empty',
+          name: 'Tamaño',
+          singularName: 'Tamaño',
+          isActive: true,
+          isRequired: false,
+          items: [{ id: 't1', name: 'XL', isActive: false }],
+        },
       ]),
+    };
+    branchMenuService = { forBranch: jest.fn().mockResolvedValue(new Map()) };
+    branchesService = {
+      isActiveBranch: jest.fn().mockResolvedValue(true),
+      findOnlyActiveBranchId: jest.fn().mockResolvedValue(null),
     };
     service = new PublicMenuService(
       businessesService as never,
       productCategoriesService as never,
       productsService as never,
       optionGroupsService as never,
+      branchMenuService as never,
+      branchesService as never,
     );
   });
 
   it('propagates EntityNotFoundException for an unknown business', async () => {
-    businessesService.findById.mockRejectedValue(new EntityNotFoundException('Business', 'bogus'));
-    await expect(service.getMenu('bogus')).rejects.toThrow(EntityNotFoundException);
+    businessesService.findById.mockRejectedValue(
+      new EntityNotFoundException('Business', 'bogus'),
+    );
+    await expect(service.getMenu('bogus')).rejects.toThrow(
+      EntityNotFoundException,
+    );
   });
 
   it('only fetches products that are both active and visible — hidden surcharges never reach the public menu', async () => {
@@ -99,6 +137,42 @@ describe('PublicMenuService', () => {
     expect(productsService.findAll).toHaveBeenCalledWith(
       expect.objectContaining({ isActive: true, isVisible: true }),
     );
+  });
+
+  describe("a branch's menu", () => {
+    it("reads the menu of the table's branch", async () => {
+      await service.getMenu(businessId, 'branch-2');
+      expect(branchMenuService.forBranch).toHaveBeenCalledWith(
+        businessId,
+        'branch-2',
+      );
+    });
+
+    it('takes the only branch when none is given', async () => {
+      branchesService.findOnlyActiveBranchId.mockResolvedValue('branch-1');
+      await service.getMenu(businessId);
+      expect(branchMenuService.forBranch).toHaveBeenCalledWith(
+        businessId,
+        'branch-1',
+      );
+    });
+
+    it("leaves out what the branch doesn't offer or ran out of, at the branch's prices", async () => {
+      branchMenuService.forBranch.mockResolvedValue(
+        new Map([
+          ['p1', { salePrice: 9000, isAvailable: true, outOfStock: false }],
+          ['p2', { salePrice: 3000, isAvailable: true, outOfStock: true }],
+          ['p3', { salePrice: 25000, isAvailable: false, outOfStock: false }],
+        ]),
+      );
+
+      const menu = await service.getMenu(businessId, 'branch-1');
+
+      const all = menu.categories.flatMap((c) => c.products);
+      expect(all.map((p) => [p.name, p.salePrice])).toEqual([
+        ['Limonada', 9000],
+      ]);
+    });
   });
 
   it('groups active products by category, sorted by name within each category', async () => {
@@ -111,7 +185,9 @@ describe('PublicMenuService', () => {
 
   it('includes the image and the option groups each product offers, leaving out groups that are off or empty', async () => {
     const menu = await service.getMenu(businessId);
-    const combo = menu.categories.flatMap((c) => c.products).find((p) => p.id === 'p3');
+    const combo = menu.categories
+      .flatMap((c) => c.products)
+      .find((p) => p.id === 'p3');
 
     expect(combo).toEqual(
       expect.objectContaining({
@@ -142,19 +218,50 @@ describe('PublicMenuService', () => {
     it('keeps builder-only products out of the regular menu and shows "both" products in each', async () => {
       productsService.findAll.mockResolvedValue({
         data: [
-          { id: 'menu', name: 'Limonada', salePrice: 8000, description: null, categoryId: 'cat-drinks', imageUrl: null, optionGroups: [], menuAvailability: ProductMenuAvailability.MENU },
-          { id: 'both', name: 'Agua', salePrice: 3000, description: null, categoryId: 'cat-drinks', imageUrl: null, optionGroups: [], menuAvailability: ProductMenuAvailability.BOTH },
-          { id: 'builder', name: 'Tenders x3', salePrice: 15000, description: null, categoryId: null, imageUrl: null, optionGroups: [{ groupId: 'g-salsas', maxChoices: 1 }], menuAvailability: ProductMenuAvailability.BUILDER },
+          {
+            id: 'menu',
+            name: 'Limonada',
+            salePrice: 8000,
+            description: null,
+            categoryId: 'cat-drinks',
+            imageUrl: null,
+            optionGroups: [],
+            menuAvailability: ProductMenuAvailability.MENU,
+          },
+          {
+            id: 'both',
+            name: 'Agua',
+            salePrice: 3000,
+            description: null,
+            categoryId: 'cat-drinks',
+            imageUrl: null,
+            optionGroups: [],
+            menuAvailability: ProductMenuAvailability.BOTH,
+          },
+          {
+            id: 'builder',
+            name: 'Tenders x3',
+            salePrice: 15000,
+            description: null,
+            categoryId: null,
+            imageUrl: null,
+            optionGroups: [{ groupId: 'g-salsas', maxChoices: 1 }],
+            menuAvailability: ProductMenuAvailability.BUILDER,
+          },
         ],
       });
 
       const menu = await service.getMenu('business-1');
 
-      const ids = (categories: typeof menu.categories) => categories.flatMap((c) => c.products.map((p) => p.id)).sort();
+      const ids = (categories: typeof menu.categories) =>
+        categories.flatMap((c) => c.products.map((p) => p.id)).sort();
       expect(ids(menu.categories)).toEqual(['both', 'menu']);
       expect(ids(menu.builderCategories)).toEqual(['both', 'builder']);
       // Uncategorized builder products still get the "Otros" bucket.
-      expect(menu.builderCategories.map((c) => c.name)).toEqual(['Bebidas', 'Otros']);
+      expect(menu.builderCategories.map((c) => c.name)).toEqual([
+        'Bebidas',
+        'Otros',
+      ]);
     });
 
     it('orders the builder sections by their own order, not the menu one', async () => {
@@ -167,21 +274,47 @@ describe('PublicMenuService', () => {
       });
       productsService.findAll.mockResolvedValue({
         data: [
-          { id: 'drink', name: 'Agua', salePrice: 3000, description: null, categoryId: 'cat-drinks', imageUrl: null, optionGroups: [], menuAvailability: ProductMenuAvailability.BOTH },
-          { id: 'tender', name: 'Tenders x3', salePrice: 15000, description: null, categoryId: 'cat-tenders', imageUrl: null, optionGroups: [{ groupId: 'g-salsas', maxChoices: 1 }], menuAvailability: ProductMenuAvailability.BOTH },
+          {
+            id: 'drink',
+            name: 'Agua',
+            salePrice: 3000,
+            description: null,
+            categoryId: 'cat-drinks',
+            imageUrl: null,
+            optionGroups: [],
+            menuAvailability: ProductMenuAvailability.BOTH,
+          },
+          {
+            id: 'tender',
+            name: 'Tenders x3',
+            salePrice: 15000,
+            description: null,
+            categoryId: 'cat-tenders',
+            imageUrl: null,
+            optionGroups: [{ groupId: 'g-salsas', maxChoices: 1 }],
+            menuAvailability: ProductMenuAvailability.BOTH,
+          },
         ],
       });
 
       const menu = await service.getMenu('business-1');
 
-      expect(menu.categories.map((c) => c.name)).toEqual(['Bebidas', 'Tenders']);
-      expect(menu.builderCategories.map((c) => c.name)).toEqual(['Tenders', 'Bebidas']);
+      expect(menu.categories.map((c) => c.name)).toEqual([
+        'Bebidas',
+        'Tenders',
+      ]);
+      expect(menu.builderCategories.map((c) => c.name)).toEqual([
+        'Tenders',
+        'Bebidas',
+      ]);
     });
 
     it('offers no builder when no product is marked for it', async () => {
       const menu = await service.getMenu('business-1');
 
-      expect(menu.builderCategories.flatMap((c) => c.products.map((p) => p.id))).toEqual(['p2']);
+      expect(
+        menu.builderCategories.flatMap((c) => c.products.map((p) => p.id)),
+      ).toEqual(['p2']);
     });
   });
 
@@ -199,7 +332,17 @@ describe('PublicMenuService', () => {
 
   it('omits the "Otros" bucket entirely when every active product has a category', async () => {
     productsService.findAll.mockResolvedValue({
-      data: [{ id: 'p1', name: 'Limonada', salePrice: 8000, description: null, categoryId: 'cat-drinks', imageUrl: null, optionGroups: [] }],
+      data: [
+        {
+          id: 'p1',
+          name: 'Limonada',
+          salePrice: 8000,
+          description: null,
+          categoryId: 'cat-drinks',
+          imageUrl: null,
+          optionGroups: [],
+        },
+      ],
     });
 
     const menu = await service.getMenu(businessId);

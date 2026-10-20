@@ -92,8 +92,12 @@ export interface LowStockAlert {
   inventoryItemId: string;
   name: string;
   unit: string;
+  /** The branch's own minimum, or the item's general one. */
   minimumStock: number;
   currentStock: number;
+  /** Each alert is one branch's: an item can be low at one and fine at another. */
+  branchId: string;
+  branchName: string;
 }
 
 export interface CreateAdjustmentPayload {

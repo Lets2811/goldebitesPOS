@@ -7,6 +7,10 @@ import { BranchesService } from '../../branches/services/branches.service';
 import { InventoryMovementsService } from '../../inventory-movements/services/inventory-movements.service';
 import { Product } from '../../products/domain/product.interface';
 import { ProductsService } from '../../products/services/products.service';
+import {
+  BranchMenuEntry,
+  BranchMenuService,
+} from '../../products/services/branch-menu.service';
 import { ProductInventoryLink } from '../../recipes/domain/recipe.interface';
 import { RecipesService } from '../../recipes/services/recipes.service';
 import {
@@ -30,7 +34,22 @@ export class AssistantProductsService {
     private readonly recipesService: RecipesService,
     private readonly movementsService: InventoryMovementsService,
     private readonly branchesService: BranchesService,
+    private readonly branchMenuService: BranchMenuService,
   ) {}
+
+  /** How the products sell at the caller's branch, when there is one to tell. */
+  private async branchMenu(
+    query: AssistantProductsQuery,
+    products: Product[],
+  ): Promise<Map<string, BranchMenuEntry>> {
+    const branchId = await this.resolveBranchId(query);
+    if (!branchId || products.length === 0) return new Map();
+    return this.branchMenuService.forBranch(
+      query.businessId,
+      branchId,
+      products.map((product) => product.id),
+    );
+  }
 
   async search(
     query: AssistantProductsQuery,
@@ -77,6 +96,7 @@ export class AssistantProductsService {
         ? await this.getStockByItem(query.businessId, stockBranchId)
         : new Map<string, number>();
 
+    const branchMenu = await this.branchMenu(query, tracked);
     const ranked: { item: AssistantProduct; stock: number }[] = [];
     for (const product of tracked) {
       const inventory = this.describeInventory(
@@ -90,7 +110,11 @@ export class AssistantProductsService {
       // ingredients, or no recipe at all, has no stock to compare.
       if (inventory.controlled && typeof inventory.currentStock === 'number') {
         ranked.push({
-          item: this.toAssistantProduct(product, inventory),
+          item: this.toAssistantProduct(
+            product,
+            inventory,
+            branchMenu.get(product.id),
+          ),
           stock: inventory.currentStock,
         });
       }
@@ -177,6 +201,7 @@ export class AssistantProductsService {
       }
     }
 
+    const branchMenu = await this.branchMenu(query, products);
     const items = products.map((product) =>
       this.toAssistantProduct(
         product,
@@ -187,6 +212,7 @@ export class AssistantProductsService {
           stockBranchId,
           stockByItem,
         ),
+        branchMenu.get(product.id),
       ),
     );
 
@@ -201,6 +227,7 @@ export class AssistantProductsService {
   private toAssistantProduct(
     product: Product,
     inventory: AssistantProductInventory,
+    atBranch?: BranchMenuEntry,
   ): AssistantProduct {
     return {
       id: product.id,
@@ -208,10 +235,16 @@ export class AssistantProductsService {
       description: product.description,
       sku: product.sku,
       categoryId: product.categoryId,
-      salePrice: product.salePrice,
+      salePrice: atBranch?.salePrice ?? product.salePrice,
       isActive: product.isActive,
       isVisible: product.isVisible,
       inventory,
+      ...(atBranch && {
+        atBranch: {
+          offered: atBranch.isAvailable,
+          soldOut: atBranch.outOfStock,
+        },
+      }),
     };
   }
 

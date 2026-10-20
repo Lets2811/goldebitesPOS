@@ -99,20 +99,23 @@ export default function WaiterKioskPage() {
     for (const order of orders) {
       const prev = previousStatuses.current.get(order.id);
       if (prev && prev !== 'READY' && order.status === 'READY') {
-        enqueueSnackbar(`¡Pedido #${order.orderNumber} listo! ${getOrderIdentifierLabel(order, tableNames)}`, {
-          variant: 'success',
-          persist: true,
-          // Ancla arriba (no abajo, el default) para no tapar el botón "Marcar
-          // como entregado" del panel de detalle, que también vive abajo — este
-          // aviso queda fijo hasta que el mesero lo cierra, así que si se
-          // superpusiera con ese botón, bloquearía justo la acción que sigue.
-          anchorOrigin: { vertical: 'top', horizontal: 'right' },
-          action: (key) => (
-            <Button color="inherit" size="small" onClick={() => closeSnackbar(key)}>
-              OK
-            </Button>
-          ),
-        });
+        enqueueSnackbar(
+          `¡Pedido #${order.orderNumber} listo! ${getOrderIdentifierLabel(order, tableNames)}`,
+          {
+            variant: 'success',
+            persist: true,
+            // Ancla arriba (no abajo, el default) para no tapar el botón "Marcar
+            // como entregado" del panel de detalle, que también vive abajo — este
+            // aviso queda fijo hasta que el mesero lo cierra, así que si se
+            // superpusiera con ese botón, bloquearía justo la acción que sigue.
+            anchorOrigin: { vertical: 'top', horizontal: 'right' },
+            action: (key) => (
+              <Button color="inherit" size="small" onClick={() => closeSnackbar(key)}>
+                OK
+              </Button>
+            ),
+          },
+        );
         addNotification({
           title: 'Pedido listo',
           message: `#${order.orderNumber} — ${getOrderIdentifierLabel(order, tableNames)}`,
@@ -145,9 +148,12 @@ export default function WaiterKioskPage() {
       return;
     }
     if (orderType === 'DINE_IN' && tableNumber && occupiedTables.has(tableNumber)) {
-      enqueueSnackbar('Esa mesa ya tiene un pedido activo. Usa "Agregar productos" desde ese pedido.', {
-        variant: 'error',
-      });
+      enqueueSnackbar(
+        'Esa mesa ya tiene un pedido activo. Usa "Agregar productos" desde ese pedido.',
+        {
+          variant: 'error',
+        },
+      );
       return;
     }
 
@@ -176,7 +182,15 @@ export default function WaiterKioskPage() {
   }
 
   return (
-    <Box sx={{ height: '100vh', width: '100vw', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+    <Box
+      sx={{
+        height: '100vh',
+        width: '100vw',
+        overflow: 'hidden',
+        display: 'flex',
+        flexDirection: 'column',
+      }}
+    >
       <Stack
         direction="row"
         sx={{
@@ -213,7 +227,9 @@ export default function WaiterKioskPage() {
             size="small"
             color="inherit"
             startIcon={<LogOut size={16} />}
-            onClick={() => logout.mutate(undefined, { onSettled: () => navigate('/login', { replace: true }) })}
+            onClick={() =>
+              logout.mutate(undefined, { onSettled: () => navigate('/login', { replace: true }) })
+            }
           >
             Salir
           </Button>
@@ -259,7 +275,11 @@ export default function WaiterKioskPage() {
             </Typography>
           </ButtonBase>
 
-          <Badge badgeContent={occupiedTables.size} color="secondary" sx={{ '& .MuiBadge-badge': { fontSize: 14, height: 24, minWidth: 24 } }}>
+          <Badge
+            badgeContent={occupiedTables.size}
+            color="secondary"
+            sx={{ '& .MuiBadge-badge': { fontSize: 14, height: 24, minWidth: 24 } }}
+          >
             <ButtonBase
               onClick={() => setScreen('tables')}
               sx={{
@@ -313,13 +333,21 @@ export default function WaiterKioskPage() {
             <Button startIcon={<ArrowLeft size={16} />} onClick={() => setScreen('menu')}>
               Volver
             </Button>
-            <Button variant="outlined" startIcon={<Share2 size={16} />} onClick={() => setShareMenuOpen(true)}>
+            <Button
+              variant="outlined"
+              startIcon={<Share2 size={16} />}
+              onClick={() => setShareMenuOpen(true)}
+            >
               Enviar menú
             </Button>
           </Stack>
           {/* Solo de consulta: el pedido lo sigue tomando el mesero desde "Pedido nuevo". */}
           <Box sx={{ px: 2 }}>
-            <PublicMenuBrowser businessId={business.data?.id} readOnly />
+            <PublicMenuBrowser
+              businessId={business.data?.id}
+              branchId={branchId ?? undefined}
+              readOnly
+            />
           </Box>
         </Box>
       )}
@@ -385,7 +413,10 @@ export default function WaiterKioskPage() {
 
       <Drawer anchor="right" open={myOrdersOpen} onClose={() => setMyOrdersOpen(false)}>
         <Box sx={{ width: 360, height: '100%', display: 'flex', flexDirection: 'column' }}>
-          <Stack direction="row" sx={{ alignItems: 'center', justifyContent: 'space-between', p: 2 }}>
+          <Stack
+            direction="row"
+            sx={{ alignItems: 'center', justifyContent: 'space-between', p: 2 }}
+          >
             <Typography variant="h6" sx={{ fontWeight: 800 }}>
               Mis pedidos ({orders.length})
             </Typography>

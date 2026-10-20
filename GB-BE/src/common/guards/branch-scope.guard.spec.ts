@@ -2,6 +2,7 @@ import { Controller, ExecutionContext, Get, Query } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { IsOptional, IsString, IsUUID } from 'class-validator';
 import { BranchSelectionExempt } from '../decorators/branch-selection-exempt.decorator';
+import { BranchOperation } from '../decorators/branch-operation.decorator';
 import { DomainException } from '../exceptions';
 import { AuthenticatedUser } from '../interfaces/authenticated-user.interface';
 import { BranchScopeGuard } from './branch-scope.guard';
@@ -19,6 +20,7 @@ class SearchQueryDto {
 }
 
 @Controller('sample')
+@BranchOperation()
 class SampleController {
   @Get('filtered')
   filtered(@Query() _query: FilteredQueryDto) {}
@@ -32,11 +34,16 @@ class SampleController {
   @Get('exempt')
   @BranchSelectionExempt()
   exempt() {}
+
+  @Get('config')
+  @BranchOperation(false)
+  config() {}
 }
 
 type Handler = keyof SampleController;
 
 interface FakeRequest {
+  method?: string;
   user?: Partial<AuthenticatedUser>;
   query?: Record<string, unknown>;
   body?: unknown;
@@ -135,5 +142,56 @@ describe('BranchScopeGuard', () => {
       guard.canActivate(contextFor('filtered', { user, query: {} })),
     ).toThrow(DomainException);
     expect(guard.canActivate(contextFor('exempt', { user }))).toBe(true);
+  });
+
+  describe('"Todas las sedes" is for review', () => {
+    const allBranches = cashier({
+      branchId: null,
+      permissions: ['branches.switch'],
+    });
+
+    it('reads a branch operation', () => {
+      expect(
+        guard.canActivate(
+          contextFor('filtered', {
+            method: 'GET',
+            user: allBranches,
+            query: {},
+          }),
+        ),
+      ).toBe(true);
+    });
+
+    it('refuses to record one', () => {
+      expect(() =>
+        guard.canActivate(
+          contextFor('filtered', {
+            method: 'POST',
+            user: allBranches,
+            body: {},
+          }),
+        ),
+      ).toThrow(DomainException);
+    });
+
+    it('records configuration', () => {
+      expect(
+        guard.canActivate(
+          contextFor('config', { method: 'PUT', user: allBranches, body: {} }),
+        ),
+      ).toBe(true);
+    });
+
+    it('records at a branch picked', () => {
+      expect(
+        guard.canActivate(
+          contextFor('filtered', {
+            method: 'POST',
+            user: { ...allBranches, branchId: 'branch-1' },
+            body: {},
+          }),
+        ),
+      ).toBe(true);
+    });
   });
 });

@@ -9,6 +9,7 @@ import { RouteParamtypes } from '@nestjs/common/enums/route-paramtypes.enum';
 import { Reflector } from '@nestjs/core';
 import { getMetadataStorage } from 'class-validator';
 import { BRANCH_SELECTION_EXEMPT_KEY } from '../decorators/branch-selection-exempt.decorator';
+import { BRANCH_OPERATION_KEY } from '../decorators/branch-operation.decorator';
 import { DomainException } from '../exceptions';
 import { AuthenticatedUser } from '../interfaces/authenticated-user.interface';
 
@@ -16,6 +17,7 @@ import { AuthenticatedUser } from '../interfaces/authenticated-user.interface';
 export const BRANCH_SWITCH_PERMISSION = 'branches.switch';
 
 interface ScopedRequest {
+  method?: string;
   user?: AuthenticatedUser;
   query?: Record<string, unknown>;
   body?: unknown;
@@ -37,6 +39,10 @@ interface RouteArg {
  *   branch (branchId in the query, body or path is refused), and a list that
  *   takes a branchId filter is filtered to theirs when none is sent: "no
  *   branch" means every branch, which is not theirs to see.
+ *
+ * - A session working across all branches ("Todas las sedes") is for
+ *   review: it reads everything but records nothing of a branch's daily
+ *   work (routes marked @BranchOperation()).
  *
  * Users who may work at every branch, and users with no branch at a business
  * with several (who have always seen them all), are not narrowed.
@@ -68,7 +74,22 @@ export class BranchScopeGuard implements CanActivate {
     }
 
     const own = user.branchId;
-    if (!own || user.permissions.includes(BRANCH_SWITCH_PERMISSION)) {
+    const canSwitch = user.permissions.includes(BRANCH_SWITCH_PERMISSION);
+    if (canSwitch && !own && request.method !== 'GET') {
+      const operational = this.reflector.getAllAndOverride<boolean>(
+        BRANCH_OPERATION_KEY,
+        [context.getHandler(), context.getClass()],
+      );
+      if (operational) {
+        throw new DomainException({
+          code: 'BRANCH_REVIEW_ONLY',
+          message:
+            'En «Todas las sedes» solo puedes revisar. Elige una sede para registrar.',
+          status: HttpStatus.FORBIDDEN,
+        });
+      }
+    }
+    if (!own || canSwitch) {
       return true;
     }
 

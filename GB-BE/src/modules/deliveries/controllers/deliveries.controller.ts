@@ -38,12 +38,14 @@ import {
 import { DeliveriesService } from '../services/deliveries.service';
 import { DeliveryLocationService } from '../services/delivery-location.service';
 import { DeliveryTrackingService } from '../services/delivery-tracking.service';
+import { BranchOperation } from '../../../common/decorators/branch-operation.decorator';
 
 const DELIVERIES_FEATURE = 'deliveries';
 
 @ApiTags('Deliveries')
 @ApiBearerAuth()
 @RequiresFeature(DELIVERIES_FEATURE)
+@BranchOperation()
 @Controller('deliveries')
 export class DeliveriesController {
   constructor(
@@ -62,6 +64,7 @@ export class DeliveriesController {
   }
 
   @Put('settings')
+  @BranchOperation(false)
   @Permissions('deliveries.configure')
   @ApiOperation({
     summary:
@@ -83,6 +86,7 @@ export class DeliveriesController {
   }
 
   @Put('branch-locations/:branchId')
+  @BranchOperation(false)
   @Permissions('deliveries.configure')
   @ApiOperation({
     summary: 'Place a branch on the map (the start of its deliveries)',
@@ -119,6 +123,7 @@ export class DeliveriesController {
   }
 
   @Post('resolve-location')
+  @BranchOperation(false)
   @Permissions('deliveries.manage')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({

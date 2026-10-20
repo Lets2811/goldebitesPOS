@@ -21,6 +21,7 @@ describe('InventoryItemsController', () => {
     };
     controller = new InventoryItemsController(
       service as unknown as InventoryItemsService,
+      {} as never,
     );
   });
 

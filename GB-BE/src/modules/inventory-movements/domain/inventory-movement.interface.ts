@@ -54,12 +54,18 @@ export interface LowStockRow {
   unit: string;
   minimum_stock: string;
   current_stock: string;
+  branch_id: string;
+  branch_name: string;
 }
 
+/** An item below its minimum at one branch (each branch keeps and is measured by its own stock). */
 export interface LowStockAlert {
   inventoryItemId: string;
   name: string;
   unit: string;
+  /** The branch's own minimum, or the item's general one. */
   minimumStock: number;
   currentStock: number;
+  branchId: string;
+  branchName: string;
 }

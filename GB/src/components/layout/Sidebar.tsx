@@ -9,6 +9,19 @@ import { useState } from 'react';
 import ButtonBase from '@mui/material/ButtonBase';
 import { ArrowLeftRight, ChevronsLeft, ChevronsRight, Crown } from 'lucide-react';
 import BranchSwitchDialog from '../../modules/branches/components/BranchSwitchDialog';
+import { useAllBranchesReview } from '../../modules/auth/hooks/use-branch-mode';
+import type { ModuleKey } from '../../types/nav';
+
+/** A branch's day-to-day work: done at a branch, not from "Todas las sedes" (review only). */
+const OPERATIONAL_MODULES: ReadonlySet<ModuleKey> = new Set([
+  'orders',
+  'ordersBacklog',
+  'kitchen',
+  'deliveries',
+  'cash-register',
+  'checklists',
+  'waste',
+]);
 import { useLocation } from 'react-router-dom';
 import { alpha } from '@mui/material/styles';
 import { MODULE_PERMISSIONS, NAV_ENTRIES } from '../../routes/navConfig';
@@ -182,8 +195,10 @@ function SidebarContent({
   const toggleCollapsed = useUiStore((s) => s.toggleSidebarCollapsed);
   const hrSections = useHrSections();
   const hasSeveralBranches = useHasSeveralBranches();
+  const reviewOnly = useAllBranchesReview();
 
   const can = (module: keyof typeof MODULE_PERMISSIONS): boolean => {
+    if (reviewOnly && OPERATIONAL_MODULES.has(module)) return false;
     // Recursos Humanos reúne varios módulos: basta con poder abrir una de sus pestañas.
     if (module === 'hr') return hrSections.length > 0;
     // Comparar necesita más de una sede.

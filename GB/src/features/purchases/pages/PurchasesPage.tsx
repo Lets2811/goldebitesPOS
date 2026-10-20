@@ -16,6 +16,7 @@ import EmptyState from '../../../components/common/EmptyState';
 import ConfirmDialog from '../../../components/common/ConfirmDialog';
 import { Can } from '../../../modules/auth/components/can';
 import { useAuthStore } from '../../../modules/auth/store/auth.store';
+import { useAllBranchesReview } from '../../../modules/auth/hooks/use-branch-mode';
 import { useLowStock } from '../../../modules/inventory/hooks/use-low-stock';
 import { useExpenses } from '../../../modules/finances/hooks/use-expenses';
 import { useCreateExpense } from '../../../modules/finances/hooks/use-create-expense';
@@ -48,6 +49,7 @@ import type { CreateExpensePayload } from '../../../modules/finances/types/expen
 export default function PurchasesPage() {
   const { enqueueSnackbar } = useSnackbar();
   const branchId = useAuthStore((s) => s.user?.branchId ?? null);
+  const reviewOnly = useAllBranchesReview();
 
   const [tab, setTab] = useState<'sugerencia' | 'gastos' | 'por-pagar'>('sugerencia');
   const [expenseFormOpen, setExpenseFormOpen] = useState(false);
@@ -70,10 +72,13 @@ export default function PurchasesPage() {
         enqueueSnackbar('Gasto registrado correctamente', { variant: 'success' });
         setExpenseFormOpen(false);
       },
-      onError: (error) => enqueueSnackbar(
+      onError: (error) =>
+        enqueueSnackbar(
           expenseErrorMessage(
             error,
-            (values.paymentMode === 'PARTIAL' ? values.initialSource : values.paymentSource) as Parameters<typeof expenseErrorMessage>[1],
+            (values.paymentMode === 'PARTIAL'
+              ? values.initialSource
+              : values.paymentSource) as Parameters<typeof expenseErrorMessage>[1],
           ),
           { variant: 'error' },
         ),
@@ -101,23 +106,36 @@ export default function PurchasesPage() {
                       `Compra registrada, pero no se pudo subir: ${failed.join(', ')}. Agrégalo desde el clip de la compra.`,
                       { variant: 'warning' },
                     )
-                  : enqueueSnackbar('Compra registrada con sus comprobantes', { variant: 'success' }),
+                  : enqueueSnackbar('Compra registrada con sus comprobantes', {
+                      variant: 'success',
+                    }),
             },
           );
         },
         onError: (error) =>
-          enqueueSnackbar(expenseErrorMessage(error, source as Parameters<typeof expenseErrorMessage>[1]), {
-            variant: 'error',
-          }),
+          enqueueSnackbar(
+            expenseErrorMessage(error, source as Parameters<typeof expenseErrorMessage>[1]),
+            {
+              variant: 'error',
+            },
+          ),
       },
     );
   }
 
   const expenseColumns: ColumnDef<Expense, unknown>[] = [
-    { id: 'date', header: 'Fecha', cell: ({ row }) => <DateDisplay value={row.original.expenseDate} variant="body2" /> },
+    {
+      id: 'date',
+      header: 'Fecha',
+      cell: ({ row }) => <DateDisplay value={row.original.expenseDate} variant="body2" />,
+    },
     { id: 'name', header: 'Nombre', cell: ({ row }) => row.original.name ?? '—' },
     { accessorKey: 'description', header: 'Motivo' },
-    { id: 'responsible', header: 'Responsable', cell: ({ row }) => row.original.responsible ?? '—' },
+    {
+      id: 'responsible',
+      header: 'Responsable',
+      cell: ({ row }) => row.original.responsible ?? '—',
+    },
     { id: 'category', header: 'Tipo', cell: ({ row }) => categoryLabel(row.original.category) },
     { id: 'supplier', header: 'Proveedor', cell: ({ row }) => row.original.supplierName ?? '—' },
     {
@@ -139,7 +157,9 @@ export default function PurchasesPage() {
       cell: ({ row }) => {
         const count = row.original.attachmentCount ?? 0;
         return (
-          <Tooltip title={count > 0 ? `${count} comprobante${count === 1 ? '' : 's'}` : 'Sin comprobantes'}>
+          <Tooltip
+            title={count > 0 ? `${count} comprobante${count === 1 ? '' : 's'}` : 'Sin comprobantes'}
+          >
             <IconButton
               size="small"
               aria-label="Comprobantes"
@@ -190,9 +210,16 @@ export default function PurchasesPage() {
                     Registrar gasto
                   </Button>
                 )}
-                <Button variant="contained" startIcon={<Plus size={16} />} onClick={() => setPurchaseFormOpen(true)}>
-                  Registrar compra
-                </Button>
+                {/* A purchase comes into a branch's stock: not from "Todas las sedes". */}
+                {!reviewOnly && (
+                  <Button
+                    variant="contained"
+                    startIcon={<Plus size={16} />}
+                    onClick={() => setPurchaseFormOpen(true)}
+                  >
+                    Registrar compra
+                  </Button>
+                )}
               </Stack>
             </Can>
           ) : undefined
@@ -218,12 +245,14 @@ export default function PurchasesPage() {
           <DataTable
             columns={[
               { accessorKey: 'name', header: 'Insumo' },
+              // Across all branches each alert is one branch's.
+              ...(branchId ? [] : [{ accessorKey: 'branchName' as const, header: 'Sede' }]),
               { accessorKey: 'currentStock', header: 'Stock actual' },
               { accessorKey: 'minimumStock', header: 'Mínimo' },
               { id: 'unit', header: 'Unidad', cell: ({ row }) => row.original.unit },
             ]}
             data={lowStock}
-            getRowId={(row) => row.inventoryItemId}
+            getRowId={(row) => `${row.inventoryItemId}-${row.branchId}`}
             hidePagination
           />
         )
@@ -265,7 +294,8 @@ export default function PurchasesPage() {
           if (!deletingExpense) return;
           deleteExpense.mutate(deletingExpense.id, {
             onSuccess: () => enqueueSnackbar('Gasto eliminado', { variant: 'success' }),
-            onError: (error) => enqueueSnackbar(normalizeApiError(error).message, { variant: 'error' }),
+            onError: (error) =>
+              enqueueSnackbar(normalizeApiError(error).message, { variant: 'error' }),
             onSettled: () => setDeletingExpense(null),
           });
         }}

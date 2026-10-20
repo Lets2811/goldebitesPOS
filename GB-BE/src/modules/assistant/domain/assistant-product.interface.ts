@@ -55,6 +55,12 @@ export interface AssistantProduct {
   isActive: boolean;
   isVisible: boolean;
   inventory: AssistantProductInventory;
+  /**
+   * At the caller's branch, when it can be told (salePrice is then the
+   * branch's): whether the branch offers it, and whether it ran out there.
+   * Neither can be ordered.
+   */
+  atBranch?: { offered: boolean; soldOut: boolean };
 }
 
 export interface AssistantProductsResult {

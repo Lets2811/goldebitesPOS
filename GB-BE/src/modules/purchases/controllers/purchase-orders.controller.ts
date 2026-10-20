@@ -7,10 +7,12 @@ import { CreatePurchaseOrderDto } from '../dto/create-purchase-order.dto';
 import { PurchaseOrderQueryDto } from '../dto/purchase-order-query.dto';
 import { PurchaseOrdersService } from '../services/purchase-orders.service';
 import { RequiresFeature } from '../../../common/decorators/requires-feature.decorator';
+import { BranchOperation } from '../../../common/decorators/branch-operation.decorator';
 
 @ApiTags('Purchases')
 @ApiBearerAuth()
 @RequiresFeature('purchases')
+@BranchOperation()
 @Controller('purchase-orders')
 export class PurchaseOrdersController {
   constructor(private readonly purchaseOrdersService: PurchaseOrdersService) {}

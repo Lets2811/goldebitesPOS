@@ -7,10 +7,12 @@ import { CreateTransferDto } from '../dto/create-transfer.dto';
 import { TransferQueryDto } from '../dto/transfer-query.dto';
 import { InventoryTransfersService } from '../services/inventory-transfers.service';
 import { RequiresFeature } from '../../../common/decorators/requires-feature.decorator';
+import { BranchOperation } from '../../../common/decorators/branch-operation.decorator';
 
 @ApiTags('Inventory Transfers')
 @ApiBearerAuth()
 @RequiresFeature('inventory')
+@BranchOperation()
 @Controller('inventory/transfers')
 export class InventoryTransfersController {
   constructor(private readonly transfersService: InventoryTransfersService) {}

@@ -128,7 +128,9 @@ export default function AppRoutes() {
             />
           </Route>
           <Route
-            element={<ProtectedRoute permission={MODULE_PERMISSIONS.orders} module="orders" />}
+            element={
+              <ProtectedRoute operational permission={MODULE_PERMISSIONS.orders} module="orders" />
+            }
           >
             <Route
               path={MODULE_PATHS.orders}
@@ -141,7 +143,11 @@ export default function AppRoutes() {
           </Route>
           <Route
             element={
-              <ProtectedRoute permission={MODULE_PERMISSIONS.ordersBacklog} module="orders" />
+              <ProtectedRoute
+                operational
+                permission={MODULE_PERMISSIONS.ordersBacklog}
+                module="orders"
+              />
             }
           >
             <Route
@@ -154,7 +160,13 @@ export default function AppRoutes() {
             />
           </Route>
           <Route
-            element={<ProtectedRoute permission={MODULE_PERMISSIONS.kitchen} module="kitchen" />}
+            element={
+              <ProtectedRoute
+                operational
+                permission={MODULE_PERMISSIONS.kitchen}
+                module="kitchen"
+              />
+            }
           >
             <Route
               path={MODULE_PATHS.kitchen}
@@ -167,7 +179,11 @@ export default function AppRoutes() {
           </Route>
           <Route
             element={
-              <ProtectedRoute permission={MODULE_PERMISSIONS.deliveries} module="deliveries" />
+              <ProtectedRoute
+                operational
+                permission={MODULE_PERMISSIONS.deliveries}
+                module="deliveries"
+              />
             }
           >
             <Route
@@ -206,6 +222,7 @@ export default function AppRoutes() {
           <Route
             element={
               <ProtectedRoute
+                operational
                 permission={MODULE_PERMISSIONS['cash-register']}
                 module="cash-register"
               />
@@ -452,7 +469,11 @@ export default function AppRoutes() {
           </Route>
           <Route
             element={
-              <ProtectedRoute permission={MODULE_PERMISSIONS.checklists} module="checklists" />
+              <ProtectedRoute
+                operational
+                permission={MODULE_PERMISSIONS.checklists}
+                module="checklists"
+              />
             }
           >
             <Route
@@ -464,7 +485,11 @@ export default function AppRoutes() {
               }
             />
           </Route>
-          <Route element={<ProtectedRoute permission={MODULE_PERMISSIONS.waste} module="waste" />}>
+          <Route
+            element={
+              <ProtectedRoute operational permission={MODULE_PERMISSIONS.waste} module="waste" />
+            }
+          >
             <Route
               path={MODULE_PATHS.waste}
               element={
@@ -579,7 +604,7 @@ export default function AppRoutes() {
           <Route path="*" element={<NotFoundPage />} />
         </Route>
 
-        <Route element={<ProtectedRoute permission={KIOSK_PERMISSIONS.waiter} />}>
+        <Route element={<ProtectedRoute operational permission={KIOSK_PERMISSIONS.waiter} />}>
           <Route
             path={KIOSK_PATHS.waiter}
             element={
@@ -589,7 +614,7 @@ export default function AppRoutes() {
             }
           />
         </Route>
-        <Route element={<ProtectedRoute permission={KIOSK_PERMISSIONS.kitchen} />}>
+        <Route element={<ProtectedRoute operational permission={KIOSK_PERMISSIONS.kitchen} />}>
           <Route
             path={KIOSK_PATHS.kitchen}
             element={
@@ -609,7 +634,7 @@ export default function AppRoutes() {
             }
           />
         </Route>
-        <Route element={<ProtectedRoute permission={KIOSK_PERMISSIONS.carService} />}>
+        <Route element={<ProtectedRoute operational permission={KIOSK_PERMISSIONS.carService} />}>
           <Route
             path={KIOSK_PATHS.carService}
             element={

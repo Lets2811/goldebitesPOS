@@ -38,6 +38,8 @@ import InventoryMovementDrawer from '../components/InventoryMovementDrawer';
 import InventoryItemFormDrawer from '../components/InventoryItemFormDrawer';
 import InventoryCategoryManagerDialog from '../components/InventoryCategoryManagerDialog';
 import SpecializedQueriesTab from '../components/SpecializedQueriesTab';
+import { useBranchMinimums } from '../../../modules/inventory/branch-minimums';
+import { useAllBranchesReview } from '../../../modules/auth/hooks/use-branch-mode';
 
 type TabKey = 'inventario' | 'consultas';
 
@@ -71,6 +73,18 @@ export default function InventoryPage() {
   const { data: itemsData, isLoading, isError, refetch } = useInventoryItems(itemFilters);
   const { data: stockLevels } = useStock({ branchId });
   const { data: lowStock } = useLowStock(branchId);
+  // At a branch, each item is held to the branch's own minimum (or the general one).
+  const branchMinimums = useBranchMinimums(branchId);
+  const reviewOnly = useAllBranchesReview();
+  /** In "Todas las sedes": the items low at some branch, with which. */
+  const lowAt = useMemo(() => {
+    const map = new Map<string, string[]>();
+    for (const alert of lowStock ?? []) {
+      map.set(alert.inventoryItemId, [...(map.get(alert.inventoryItemId) ?? []), alert.branchName]);
+    }
+    return map;
+  }, [lowStock]);
+  const minimumOf = (item: InventoryItem) => branchMinimums.get(item.id) ?? item.minimumStock;
   const { data: categoriesData } = useInventoryItemCategories({ limit: 100 });
   const createItem = useCreateInventoryItem();
   const updateItem = useUpdateInventoryItem();
@@ -117,7 +131,8 @@ export default function InventoryPage() {
             enqueueSnackbar('Insumo actualizado correctamente', { variant: 'success' });
             setFormOpen(false);
           },
-          onError: (error) => enqueueSnackbar(normalizeApiError(error).message, { variant: 'error' }),
+          onError: (error) =>
+            enqueueSnackbar(normalizeApiError(error).message, { variant: 'error' }),
         },
       );
     } else {
@@ -136,7 +151,9 @@ export default function InventoryPage() {
       { id: item.id, isActive: !item.isActive },
       {
         onSuccess: (updated) => {
-          enqueueSnackbar(updated.isActive ? 'Insumo activado' : 'Insumo desactivado', { variant: 'success' });
+          enqueueSnackbar(updated.isActive ? 'Insumo activado' : 'Insumo desactivado', {
+            variant: 'success',
+          });
           setSelectedItem(updated);
         },
         onError: (error) => enqueueSnackbar(normalizeApiError(error).message, { variant: 'error' }),
@@ -188,13 +205,23 @@ export default function InventoryPage() {
       header: 'Stock',
       cell: ({ row }) => {
         const stock = stockByItemId.get(row.original.id) ?? 0;
-        const ratio = row.original.minimumStock > 0 ? Math.min(1, stock / (row.original.minimumStock * 2)) : 1;
-        const isLow = stock <= row.original.minimumStock;
+        const minimum = minimumOf(row.original);
+        const ratio = minimum > 0 ? Math.min(1, stock / (minimum * 2)) : 1;
+        // Across all branches the total can look fine while one branch is out: go by each branch's alert.
+        const lowBranches = reviewOnly ? lowAt.get(row.original.id) : undefined;
+        const isLow = reviewOnly ? Boolean(lowBranches) : stock <= minimum;
         return (
           <Stack sx={{ minWidth: 140 }}>
             <Typography variant="caption">
-              {stock} / mín. {row.original.minimumStock} {row.original.unit}
+              {reviewOnly
+                ? `${stock} ${row.original.unit} entre todas las sedes`
+                : `${stock} / mín. ${minimum} ${row.original.unit}`}
             </Typography>
+            {lowBranches && (
+              <Typography variant="caption" color="error.main">
+                Bajo en: {lowBranches.join(', ')}
+              </Typography>
+            )}
             <LinearProgress
               variant="determinate"
               value={ratio * 100}
@@ -210,7 +237,7 @@ export default function InventoryPage() {
       header: 'Categoría',
       cell: ({ row }) =>
         row.original.categoryId ? (
-          categoryNameById.get(row.original.categoryId) ?? '—'
+          (categoryNameById.get(row.original.categoryId) ?? '—')
         ) : (
           <Typography variant="body2" color="text.secondary">
             Sin categoría
@@ -259,16 +286,18 @@ export default function InventoryPage() {
             >
               Nuevo insumo
             </Button>
-            <Button
-              variant="contained"
-              startIcon={<PackagePlus size={16} />}
-              onClick={() => {
-                setMovementDefaultItemId(undefined);
-                setMovementDrawerOpen(true);
-              }}
-            >
-              Ajustar stock
-            </Button>
+            {!reviewOnly && (
+              <Button
+                variant="contained"
+                startIcon={<PackagePlus size={16} />}
+                onClick={() => {
+                  setMovementDefaultItemId(undefined);
+                  setMovementDrawerOpen(true);
+                }}
+              >
+                Ajustar stock
+              </Button>
+            )}
           </Can>
         }
       />
@@ -282,81 +311,90 @@ export default function InventoryPage() {
 
       {tab === 'inventario' && (
         <>
-      <Grid container spacing={2} sx={{ mb: 3 }}>
-        <Grid size={{ xs: 12, sm: 6, md: 4 }}>
-          <StatCard label="Valor total en inventario" value={formatCOP(totalValue)} icon={Wallet2} />
-        </Grid>
-        <Grid size={{ xs: 12, sm: 6, md: 4 }}>
-          <StatCard label="Insumos activos" value={String(items.length)} icon={Boxes} />
-        </Grid>
-        <Grid size={{ xs: 12, sm: 6, md: 4 }}>
-          <StatCard
-            label="Stock bajo el mínimo"
-            value={String(lowStock?.length ?? 0)}
-            icon={AlertTriangle}
-            accent="#D9A441"
-          />
-        </Grid>
-      </Grid>
+          <Grid container spacing={2} sx={{ mb: 3 }}>
+            <Grid size={{ xs: 12, sm: 6, md: 4 }}>
+              <StatCard
+                label="Valor total en inventario"
+                value={formatCOP(totalValue)}
+                icon={Wallet2}
+              />
+            </Grid>
+            <Grid size={{ xs: 12, sm: 6, md: 4 }}>
+              <StatCard label="Insumos activos" value={String(items.length)} icon={Boxes} />
+            </Grid>
+            <Grid size={{ xs: 12, sm: 6, md: 4 }}>
+              <StatCard
+                label="Stock bajo el mínimo"
+                value={String(lowStock?.length ?? 0)}
+                icon={AlertTriangle}
+                accent="#D9A441"
+              />
+            </Grid>
+          </Grid>
 
-      <FilterBar
-        onClear={() => {
-          setSearch('');
-          setStatusFilter('activos');
-          setCategoryFilter('todas');
-        }}
-        hasActiveFilters={Boolean(search) || statusFilter !== 'activos' || categoryFilter !== 'todas'}
-      >
-        <SearchInput value={search} onChange={setSearch} placeholder="Buscar insumo..." />
-        <TextField
-          select
-          size="small"
-          label="Categoría"
-          value={categoryFilter}
-          onChange={(e) => setCategoryFilter(e.target.value)}
-          sx={{ minWidth: 180 }}
-        >
-          <MenuItem value="todas">Todas las categorías</MenuItem>
-          {categories.map((category) => (
-            <MenuItem key={category.id} value={category.id}>
-              {category.name}
-            </MenuItem>
-          ))}
-        </TextField>
-        <TextField
-          select
-          size="small"
-          label="Estado"
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value as typeof statusFilter)}
-          sx={{ minWidth: 180 }}
-        >
-          <MenuItem value="todos">Todos</MenuItem>
-          <MenuItem value="activos">Activos</MenuItem>
-          <MenuItem value="inactivos">Inactivos</MenuItem>
-        </TextField>
-      </FilterBar>
+          <FilterBar
+            onClear={() => {
+              setSearch('');
+              setStatusFilter('activos');
+              setCategoryFilter('todas');
+            }}
+            hasActiveFilters={
+              Boolean(search) || statusFilter !== 'activos' || categoryFilter !== 'todas'
+            }
+          >
+            <SearchInput value={search} onChange={setSearch} placeholder="Buscar insumo..." />
+            <TextField
+              select
+              size="small"
+              label="Categoría"
+              value={categoryFilter}
+              onChange={(e) => setCategoryFilter(e.target.value)}
+              sx={{ minWidth: 180 }}
+            >
+              <MenuItem value="todas">Todas las categorías</MenuItem>
+              {categories.map((category) => (
+                <MenuItem key={category.id} value={category.id}>
+                  {category.name}
+                </MenuItem>
+              ))}
+            </TextField>
+            <TextField
+              select
+              size="small"
+              label="Estado"
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value as typeof statusFilter)}
+              sx={{ minWidth: 180 }}
+            >
+              <MenuItem value="todos">Todos</MenuItem>
+              <MenuItem value="activos">Activos</MenuItem>
+              <MenuItem value="inactivos">Inactivos</MenuItem>
+            </TextField>
+          </FilterBar>
 
-      {isError ? (
-        <ErrorState onRetry={() => refetch()} />
-      ) : (
-        <DataTable
-          columns={columns}
-          data={items}
-          isLoading={isLoading}
-          onRowClick={(item) => setSelectedItem(item)}
-          emptyTitle="No hay insumos con estos filtros"
-          emptyDescription="Ajusta la búsqueda o los filtros seleccionados."
-          pageSize={10}
-        />
-      )}
+          {isError ? (
+            <ErrorState onRetry={() => refetch()} />
+          ) : (
+            <DataTable
+              columns={columns}
+              data={items}
+              isLoading={isLoading}
+              onRowClick={(item) => setSelectedItem(item)}
+              emptyTitle="No hay insumos con estos filtros"
+              emptyDescription="Ajusta la búsqueda o los filtros seleccionados."
+              pageSize={10}
+            />
+          )}
         </>
       )}
 
       <InventoryDetailDrawer
         item={selectedItem}
-        categoryName={selectedItem?.categoryId ? (categoryNameById.get(selectedItem.categoryId) ?? null) : null}
+        categoryName={
+          selectedItem?.categoryId ? (categoryNameById.get(selectedItem.categoryId) ?? null) : null
+        }
         currentStock={selectedItem ? (stockByItemId.get(selectedItem.id) ?? 0) : 0}
+        minimumStock={selectedItem ? minimumOf(selectedItem) : undefined}
         onClose={() => setSelectedItem(null)}
         onRegisterMovement={(item) => {
           setSelectedItem(null);

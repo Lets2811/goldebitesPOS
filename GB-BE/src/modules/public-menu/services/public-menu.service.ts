@@ -5,6 +5,8 @@ import { BusinessesService } from '../../businesses/services/businesses.service'
 import { ProductCategoriesService } from '../../product-categories/services/product-categories.service';
 import { OptionGroupsService } from '../../option-groups/services/option-groups.service';
 import { ProductsService } from '../../products/services/products.service';
+import { BranchMenuService } from '../../products/services/branch-menu.service';
+import { BranchesService } from '../../branches/services/branches.service';
 import {
   PublicMenu,
   PublicMenuCategory,
@@ -21,6 +23,8 @@ export class PublicMenuService {
     private readonly productCategoriesService: ProductCategoriesService,
     private readonly productsService: ProductsService,
     private readonly optionGroupsService: OptionGroupsService,
+    private readonly branchMenuService: BranchMenuService,
+    private readonly branchesService: BranchesService,
   ) {}
 
   /**
@@ -36,14 +40,40 @@ export class PublicMenuService {
    * carries which of them it offers and how many can be picked. A group that's
    * off or has nothing active to pick is left out everywhere.
    */
-  async getMenu(businessId: string): Promise<PublicMenu> {
+  async getMenu(businessId: string, branchId?: string): Promise<PublicMenu> {
     const business = await this.businessesService.findById(businessId);
+    // The branch's menu: the table's (NFC) or, at a business with a single
+    // branch, that one. Without one, the catalog as is.
+    const branch =
+      branchId &&
+      (await this.branchesService.isActiveBranch(businessId, branchId))
+        ? branchId
+        : await this.branchesService.findOnlyActiveBranchId(businessId);
 
-    const [categoriesResult, productsResult, allGroups] = await Promise.all([
-      this.productCategoriesService.findAll({ businessId, isActive: true, page: 1, limit: 200 }),
-      this.productsService.findAll({ businessId, isActive: true, isVisible: true, page: 1, limit: 500 }),
-      this.optionGroupsService.findAll(businessId),
-    ]);
+    const [categoriesResult, productsResult, allGroups, branchMenu] =
+      await Promise.all([
+        this.productCategoriesService.findAll({
+          businessId,
+          isActive: true,
+          page: 1,
+          limit: 200,
+        }),
+        this.productsService.findAll({
+          businessId,
+          isActive: true,
+          isVisible: true,
+          page: 1,
+          limit: 500,
+        }),
+        this.optionGroupsService.findAll(businessId),
+        this.branchMenuService.forBranch(businessId, branch),
+      ]);
+    // What the branch doesn't offer, or ran out of, isn't on its menu; the rest at its prices.
+    const sellable = productsResult.data.flatMap((product) => {
+      const entry = branchMenu.get(product.id);
+      if (entry && (!entry.isAvailable || entry.outOfStock)) return [];
+      return [{ ...product, salePrice: entry?.salePrice ?? product.salePrice }];
+    });
     const optionGroups: PublicMenuOptionGroup[] = allGroups
       .filter((group) => group.isActive)
       .map((group) => ({
@@ -51,19 +81,35 @@ export class PublicMenuService {
         name: group.name,
         singularName: group.singularName,
         isRequired: group.isRequired,
-        items: group.items.filter((item) => item.isActive).map((item) => ({ id: item.id, name: item.name })),
+        items: group.items
+          .filter((item) => item.isActive)
+          .map((item) => ({ id: item.id, name: item.name })),
       }))
       .filter((group) => group.items.length > 0);
     const offerable = new Set(optionGroups.map((group) => group.id));
 
-    const inMenu = productsResult.data.filter((p) => p.menuAvailability !== ProductMenuAvailability.BUILDER);
-    const inBuilder = productsResult.data.filter((p) => p.menuAvailability !== ProductMenuAvailability.MENU);
-    const categories = this.groupByCategory(inMenu, categoriesResult.data, offerable);
+    const inMenu = sellable.filter(
+      (p) => p.menuAvailability !== ProductMenuAvailability.BUILDER,
+    );
+    const inBuilder = sellable.filter(
+      (p) => p.menuAvailability !== ProductMenuAvailability.MENU,
+    );
+    const categories = this.groupByCategory(
+      inMenu,
+      categoriesResult.data,
+      offerable,
+    );
     // "Arma tu combo" has its own section order; the regular menu keeps display_order (the list's own order).
     const builderOrder = [...categoriesResult.data].sort(
-      (a, b) => a.builderDisplayOrder - b.builderDisplayOrder || a.name.localeCompare(b.name),
+      (a, b) =>
+        a.builderDisplayOrder - b.builderDisplayOrder ||
+        a.name.localeCompare(b.name),
     );
-    const builderCategories = this.groupByCategory(inBuilder, builderOrder, offerable);
+    const builderCategories = this.groupByCategory(
+      inBuilder,
+      builderOrder,
+      offerable,
+    );
 
     return {
       businessName: business.name,
@@ -89,7 +135,9 @@ export class PublicMenuService {
         salePrice: product.salePrice,
         description: product.description,
         imageUrl: product.imageUrl,
-        optionGroups: product.optionGroups.filter((offered) => offerable.has(offered.groupId)),
+        optionGroups: product.optionGroups.filter((offered) =>
+          offerable.has(offered.groupId),
+        ),
       });
       productsByCategory.set(key, list);
     }
@@ -108,7 +156,11 @@ export class PublicMenuService {
 
     const uncategorized = productsByCategory.get(null) ?? [];
     if (uncategorized.length > 0) {
-      categories.push({ id: null, name: UNCATEGORIZED_LABEL, products: uncategorized });
+      categories.push({
+        id: null,
+        name: UNCATEGORIZED_LABEL,
+        products: uncategorized,
+      });
     }
 
     return categories;

@@ -16,6 +16,7 @@ import { InventoryMovementType } from '../../inventory-movements/domain/inventor
 import { InventoryMovementsService } from '../../inventory-movements/services/inventory-movements.service';
 import { LoyaltyService } from '../../loyalty/services/loyalty.service';
 import { ProductsService } from '../../products/services/products.service';
+import { BranchMenuService } from '../../products/services/branch-menu.service';
 import { RecipesService } from '../../recipes/services/recipes.service';
 import { OptionGroupsService } from '../../option-groups/services/option-groups.service';
 import { resolveOptionSelections } from '../../option-groups/domain/resolve-option-selections';
@@ -81,6 +82,7 @@ export class OrdersService {
     private readonly transactionService: TransactionService,
     private readonly auditService: AuditService,
     private readonly discountsService: DiscountsService,
+    private readonly branchMenuService: BranchMenuService,
   ) {}
 
   async create(
@@ -106,7 +108,12 @@ export class OrdersService {
       );
     }
 
-    const computedItems = await this.computeItems(data.businessId, items);
+    const computedItems = await this.computeItems(
+      data.businessId,
+      data.branchId,
+      items,
+      'all',
+    );
     const taxRate = await this.businessesService.getTaxRate(data.businessId);
     const timezone = await this.businessesService.getTimezone(data.businessId);
     const totals = this.computeTotals(
@@ -325,7 +332,12 @@ export class OrdersService {
       }
     }
 
-    const computedItems = await this.computeItems(businessId, items);
+    const computedItems = await this.computeItems(
+      businessId,
+      order.branch_id,
+      items,
+      'all',
+    );
     const taxRate = await this.businessesService.getTaxRate(businessId);
     const additionalSubtotal = round2(
       computedItems.reduce((sum, item) => sum + item.totalPrice, 0),
@@ -427,7 +439,23 @@ export class OrdersService {
       );
     }
 
-    const computedItems = await this.computeItems(businessId, items);
+    // What the order already had keeps going through even if it ran out since
+    // (its own stock may be what used it up); only new products are checked.
+    const alreadyOrdered = new Set(
+      (await this.ordersRepository.findItems(id)).map(
+        (item) => item.product_id,
+      ),
+    );
+    const computedItems = await this.computeItems(
+      businessId,
+      order.branch_id,
+      items,
+      new Set(
+        items
+          .map((item) => item.productId)
+          .filter((productId) => !alreadyOrdered.has(productId)),
+      ),
+    );
     const taxRate = await this.businessesService.getTaxRate(businessId);
     const itemsSubtotal = round2(
       computedItems.reduce((sum, item) => sum + item.totalPrice, 0),
@@ -720,16 +748,24 @@ export class OrdersService {
     }
   }
 
+  /**
+   * The items as the branch sells them: at its price, refusing what it does
+   * not offer and, for the products in `checkStock` (all of them, or a set),
+   * what it ran out of.
+   */
   private async computeItems(
     businessId: string,
+    branchId: string,
     items: OrderItemInput[],
+    checkStock: 'all' | Set<string>,
   ): Promise<OrderItemComputed[]> {
     const productIds = [...new Set(items.map((item) => item.productId))];
     // The business's whole option catalog and what each product offers, once
     // per order — not per item.
-    const [optionGroups, offeredByProduct] = await Promise.all([
+    const [optionGroups, offeredByProduct, branchMenu] = await Promise.all([
       this.optionGroupsService.findAll(businessId),
       this.optionGroupsService.getProductGroups(productIds),
+      this.branchMenuService.forBranch(businessId, branchId, productIds),
     ]);
     const computed: OrderItemComputed[] = [];
     for (const item of items) {
@@ -749,7 +785,23 @@ export class OrdersService {
           'ORDER_ITEM_PRODUCT_INACTIVE',
         );
       }
-      const unitPrice = parseFloat(product.sale_price);
+      const atBranch = branchMenu.get(product.id);
+      if (atBranch && !atBranch.isAvailable) {
+        throw new BusinessRuleException(
+          `"${product.name}" no se vende en esta sede`,
+          'ORDER_ITEM_NOT_AT_BRANCH',
+        );
+      }
+      if (
+        atBranch?.outOfStock &&
+        (checkStock === 'all' || checkStock.has(product.id))
+      ) {
+        throw new BusinessRuleException(
+          `"${product.name}" está agotado en esta sede: no hay insumos para prepararlo`,
+          'ORDER_ITEM_OUT_OF_STOCK',
+        );
+      }
+      const unitPrice = atBranch?.salePrice ?? parseFloat(product.sale_price);
       const discountAmount = item.discountAmount ?? 0;
       const totalPrice = round2(unitPrice * item.quantity - discountAmount);
       if (totalPrice < 0) {

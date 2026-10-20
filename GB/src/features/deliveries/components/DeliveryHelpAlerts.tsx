@@ -5,6 +5,7 @@ import Stack from '@mui/material/Stack';
 import { BellRing } from 'lucide-react';
 import { useSnackbar } from 'notistack';
 import { usePermissions } from '../../../modules/auth/hooks/use-permissions';
+import { useAllBranchesReview } from '../../../modules/auth/hooks/use-branch-mode';
 import {
   useAttendDeliveryHelpRequest,
   useDeliveryHelpRequests,
@@ -31,7 +32,9 @@ function WaitingTime({ since }: { since: string }) {
 /** "Domicilio K7P2QX · Ana (Pedido #1017) — Calle 10 #43-20". */
 function describe(request: DeliveryHelpRequest): string {
   const d = request.delivery;
-  const who = [d.customerName, d.orderNumber && `pedido #${d.orderNumber}`].filter(Boolean).join(', ');
+  const who = [d.customerName, d.orderNumber && `pedido #${d.orderNumber}`]
+    .filter(Boolean)
+    .join(', ');
   return `Domicilio ${d.trackingCode}${who ? ` (${who})` : ''} · ${d.address}`;
 }
 
@@ -51,7 +54,9 @@ function caller(request: DeliveryHelpRequest): string {
 export default function DeliveryHelpAlerts() {
   const { enqueueSnackbar } = useSnackbar();
   const { hasPermission, hasFeature } = usePermissions();
-  const enabled = hasFeature('deliveries') && hasPermission('deliveries.read');
+  // Calls are attended at a branch, not from "Todas las sedes" (review only).
+  const reviewOnly = useAllBranchesReview();
+  const enabled = hasFeature('deliveries') && hasPermission('deliveries.read') && !reviewOnly;
   const { data } = useDeliveryHelpRequests(enabled);
   const attend = useAttendDeliveryHelpRequest();
   const addNotification = useNotificationsStore((s) => s.addNotification);
@@ -67,7 +72,12 @@ export default function DeliveryHelpAlerts() {
     if (fresh.length > 0) {
       playTableHelpAlertSound();
       for (const request of fresh) {
-        notify(caller(request), describe(request), `delivery-help-${request.id}`, [300, 120, 300, 120, 300]);
+        notify(
+          caller(request),
+          describe(request),
+          `delivery-help-${request.id}`,
+          [300, 120, 300, 120, 300],
+        );
         addNotification({
           title: caller(request),
           message: `${describe(request)}${request.reason ? ` — «${request.reason}»` : ''}`,
@@ -105,14 +115,21 @@ export default function DeliveryHelpAlerts() {
                     setChat({
                       deliveryId: request.deliveryId,
                       subtitle: describe(request),
-                      open: request.delivery.status !== 'DELIVERED' && request.delivery.status !== 'CANCELLED',
+                      open:
+                        request.delivery.status !== 'DELIVERED' &&
+                        request.delivery.status !== 'CANCELLED',
                     })
                   }
                 >
                   Chat
                 </Button>
                 {request.delivery.customerPhone && request.requestedBy === 'CUSTOMER' && (
-                  <Button color="inherit" size="small" variant="outlined" href={`tel:${request.delivery.customerPhone}`}>
+                  <Button
+                    color="inherit"
+                    size="small"
+                    variant="outlined"
+                    href={`tel:${request.delivery.customerPhone}`}
+                  >
                     Llamar
                   </Button>
                 )}
@@ -123,7 +140,8 @@ export default function DeliveryHelpAlerts() {
                   loading={attend.isPending && attend.variables === request.id}
                   onClick={() =>
                     attend.mutate(request.id, {
-                      onError: () => enqueueSnackbar('Esa llamada ya fue atendida', { variant: 'info' }),
+                      onError: () =>
+                        enqueueSnackbar('Esa llamada ya fue atendida', { variant: 'info' }),
                     })
                   }
                 >

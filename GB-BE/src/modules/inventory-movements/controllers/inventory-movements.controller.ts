@@ -9,10 +9,12 @@ import { MovementQueryDto } from '../dto/movement-query.dto';
 import { StockQueryDto } from '../dto/stock-query.dto';
 import { InventoryMovementsService } from '../services/inventory-movements.service';
 import { RequiresFeature } from '../../../common/decorators/requires-feature.decorator';
+import { BranchOperation } from '../../../common/decorators/branch-operation.decorator';
 
 @ApiTags('Inventory')
 @ApiBearerAuth()
 @RequiresFeature('inventory')
+@BranchOperation()
 @Controller('inventory')
 export class InventoryMovementsController {
   constructor(private readonly movementsService: InventoryMovementsService) {}

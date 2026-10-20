@@ -11,6 +11,7 @@ import {
   Param,
   Patch,
   Post,
+  Put,
   Query,
   UploadedFile,
   UseInterceptors,
@@ -33,6 +34,11 @@ import { SetProductStatusDto } from '../dto/set-product-status.dto';
 import { SetProductVisibilityDto } from '../dto/set-product-visibility.dto';
 import { UpdateProductDto } from '../dto/update-product.dto';
 import { ProductsService } from '../services/products.service';
+import { BranchMenuService } from '../services/branch-menu.service';
+import {
+  BranchMenuQueryDto,
+  SetProductBranchDto,
+} from '../dto/branch-menu.dto';
 import {
   ALLOWED_PRODUCT_IMAGE_MIME_TYPES,
   MAX_PRODUCT_IMAGE_SIZE_BYTES,
@@ -48,7 +54,10 @@ import { RequiresFeature } from '../../../common/decorators/requires-feature.dec
 @RequiresFeature('products')
 @Controller('products')
 export class ProductsController {
-  constructor(private readonly productsService: ProductsService) {}
+  constructor(
+    private readonly productsService: ProductsService,
+    private readonly branchMenuService: BranchMenuService,
+  ) {}
 
   @Post()
   @Permissions('products.create')
@@ -86,6 +95,56 @@ export class ProductsController {
   })
   findAvailableForSale(@CurrentBusiness() businessId: string) {
     return this.productsService.findAvailableForSale(businessId);
+  }
+
+  @Get('menu')
+  @Permissions('products.read')
+  @ApiOperation({
+    summary:
+      'What a branch sells: the active products it offers, at its prices, and which ran out there',
+  })
+  getBranchMenu(
+    @CurrentBusiness() businessId: string,
+    @Query() query: BranchMenuQueryDto,
+  ) {
+    return this.branchMenuService.sellingMenu(
+      businessId,
+      query.branchId ?? null,
+    );
+  }
+
+  @Get(':id/branches')
+  @Permissions('products.read')
+  @ApiOperation({
+    summary:
+      'How a product sells at each branch: offered or not, its price there, sold out',
+  })
+  getProductBranches(
+    @CurrentBusiness() businessId: string,
+    @Param('id') id: string,
+  ) {
+    return this.branchMenuService.productBranches(businessId, id);
+  }
+
+  @Put(':id/branches/:branchId')
+  @Permissions('products.update')
+  @ApiOperation({
+    summary: "Leave a product out of a branch's menu, or set its price there",
+  })
+  setProductBranch(
+    @CurrentBusiness() businessId: string,
+    @CurrentUser('userId') actorUserId: string,
+    @Param('id') id: string,
+    @Param('branchId') branchId: string,
+    @Body() dto: SetProductBranchDto,
+  ) {
+    return this.branchMenuService.setProductBranch(
+      businessId,
+      id,
+      branchId,
+      { isAvailable: dto.isAvailable, salePrice: dto.salePrice ?? null },
+      actorUserId,
+    );
   }
 
   @Get(':id')

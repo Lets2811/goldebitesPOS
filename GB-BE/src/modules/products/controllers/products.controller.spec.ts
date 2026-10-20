@@ -30,7 +30,10 @@ describe('ProductsController', () => {
       setVisible: jest.fn(),
       softDelete: jest.fn(),
     };
-    controller = new ProductsController(service as unknown as ProductsService);
+    controller = new ProductsController(
+      service as unknown as ProductsService,
+      {} as never,
+    );
   });
 
   it('create() scopes to the current business', async () => {

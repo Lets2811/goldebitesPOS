@@ -54,6 +54,7 @@ describe('OrdersService', () => {
   let optionGroupsService: { findAll: jest.Mock; getProductGroups: jest.Mock };
   let transactionService: { execute: jest.Mock };
   let auditService: { record: jest.Mock };
+  let branchMenuService: { forBranch: jest.Mock };
   let discountsService: {
     resolve: jest.Mock;
     takeUse: jest.Mock;
@@ -187,6 +188,8 @@ describe('OrdersService', () => {
       releaseUse: jest.fn().mockResolvedValue(undefined),
     };
 
+    branchMenuService = { forBranch: jest.fn().mockResolvedValue(new Map()) };
+
     service = new OrdersService(
       repository,
       branchesService as never,
@@ -200,6 +203,7 @@ describe('OrdersService', () => {
       transactionService as never,
       auditService as never,
       discountsService as never,
+      branchMenuService as never,
     );
   });
 
@@ -229,6 +233,70 @@ describe('OrdersService', () => {
         ]),
       ).rejects.toThrow(BusinessRuleException);
       expect(repository.create).not.toHaveBeenCalled();
+    });
+
+    describe("the branch's menu", () => {
+      const order = () =>
+        service.create({ businessId, branchId, orderType: OrderType.DINE_IN }, [
+          { productId, quantity: 2 },
+        ]);
+
+      it("charges the branch's own price", async () => {
+        branchMenuService.forBranch.mockResolvedValue(
+          new Map([
+            [
+              productId,
+              { salePrice: 6000, isAvailable: true, outOfStock: false },
+            ],
+          ]),
+        );
+        repository.create.mockResolvedValue(makeOrderRow());
+
+        await order();
+
+        expect(branchMenuService.forBranch).toHaveBeenCalledWith(
+          businessId,
+          branchId,
+          [productId],
+        );
+        expect(repository.addItems).toHaveBeenCalledWith(
+          expect.anything(),
+          [expect.objectContaining({ unitPrice: 6000, totalPrice: 12000 })],
+          expect.anything(),
+        );
+      });
+
+      it('refuses a product the branch does not offer', async () => {
+        branchMenuService.forBranch.mockResolvedValue(
+          new Map([
+            [
+              productId,
+              { salePrice: 5000, isAvailable: false, outOfStock: false },
+            ],
+          ]),
+        );
+
+        await expect(order()).rejects.toMatchObject({
+          code: 'ORDER_ITEM_NOT_AT_BRANCH',
+        });
+        expect(repository.create).not.toHaveBeenCalled();
+      });
+
+      it('refuses a product that ran out at the branch', async () => {
+        branchMenuService.forBranch.mockResolvedValue(
+          new Map([
+            [
+              productId,
+              { salePrice: 5000, isAvailable: true, outOfStock: true },
+            ],
+          ]),
+        );
+
+        await expect(order()).rejects.toMatchObject({
+          code: 'ORDER_ITEM_OUT_OF_STOCK',
+        });
+        expect(repository.create).not.toHaveBeenCalled();
+      });
     });
 
     describe('option groups', () => {

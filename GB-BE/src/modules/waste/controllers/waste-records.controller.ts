@@ -7,10 +7,12 @@ import { CreateWasteRecordDto } from '../dto/create-waste-record.dto';
 import { WasteRecordQueryDto } from '../dto/waste-record-query.dto';
 import { WasteRecordsService } from '../services/waste-records.service';
 import { RequiresFeature } from '../../../common/decorators/requires-feature.decorator';
+import { BranchOperation } from '../../../common/decorators/branch-operation.decorator';
 
 @ApiTags('Waste')
 @ApiBearerAuth()
 @RequiresFeature('waste')
+@BranchOperation()
 @Controller('waste')
 export class WasteRecordsController {
   constructor(private readonly wasteRecordsService: WasteRecordsService) {}
