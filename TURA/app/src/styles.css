@@ -693,3 +693,84 @@ button {
   font-size: 0.8125rem;
   color: var(--gray);
 }
+
+/* A change TURA prepared: nothing happens until the user confirms it. */
+.action-card {
+  align-self: stretch;
+  padding: 14px;
+  border: 1px solid var(--gold);
+  border-radius: 16px;
+  background: var(--graphite);
+}
+
+.action-card__label {
+  margin: 0 0 6px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--gold);
+}
+
+.action-card__summary {
+  margin: 0;
+}
+
+.action-card__result {
+  margin: 10px 0 0;
+  font-weight: 600;
+}
+
+.action-card__buttons {
+  display: flex;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.action-card__buttons .button {
+  flex: 1;
+}
+
+.button--ghost {
+  color: var(--gold);
+  background: none;
+  border: 1px solid var(--border);
+}
+
+.button--ghost:active {
+  background: var(--graphite);
+}
+
+.action-card--done {
+  border-color: #4caf7a;
+}
+
+.action-card--done .action-card__label {
+  color: #4caf7a;
+}
+
+.action-card--failed {
+  border-color: var(--error);
+}
+
+.action-card--failed .action-card__label,
+.action-card--failed .action-card__result {
+  color: var(--error);
+}
+
+.action-card--cancelled {
+  opacity: 0.6;
+  border-color: var(--border);
+}
+
+.action-card--cancelled .action-card__label {
+  color: var(--gray);
+}
+
+.voice__actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: min(100%, 420px);
+  margin: 12px auto 0;
+}

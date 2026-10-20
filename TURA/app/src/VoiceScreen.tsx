@@ -5,7 +5,8 @@ import { BackIcon, MicIcon, MicOffIcon } from './icons';
 import { getLink } from './link';
 import { onboardingOpening, onboardingReply } from './onboarding';
 import { navigate } from './route';
-import { NotLinkedError, streamChat, type ChatTurn } from './tura-client';
+import { NotLinkedError, streamChat, type ChatTurn, type PendingChange } from './tura-client';
+import { ActionCard, describeChangeOutcome, type ActionOutcome } from './ActionCard';
 import {
   canListen,
   say,
@@ -118,6 +119,22 @@ export function VoiceScreen() {
   const [caption, setCaption] = useState(opening);
   const [failure, setFailure] = useState('');
   const history = useRef<ChatTurn[]>([]);
+  /** Changes TURA prepared: confirmed with a tap, never by voice (a transcription can be wrong). */
+  const [changes, setChanges] = useState<{ action: PendingChange; outcome?: ActionOutcome }[]>([]);
+
+  function settle(action: PendingChange, outcome: ActionOutcome) {
+    setChanges((current) =>
+      current.map((change) => (change.action.id === action.id ? { ...change, outcome } : change)),
+    );
+    // TURA hears what became of it on the next turn.
+    const said = describeChangeOutcome(action.summary, outcome);
+    const last = history.current.at(-1);
+    if (last?.role === 'assistant') {
+      history.current = [...history.current.slice(0, -1), { ...last, content: `${last.content}\n\n${said}` }];
+    } else {
+      history.current = [...history.current, { role: 'assistant', content: said }];
+    }
+  }
   // The microphone stays closed until TURA has said its opening line. The
   // shared state cannot say so by itself: on the first render it still holds
   // whatever it was when the screen was last left.
@@ -161,6 +178,8 @@ export function VoiceScreen() {
       },
       onPhrase(text) {
         setCaption(text);
+        // A new question: the changes already settled leave the screen.
+        setChanges((current) => current.filter((change) => !change.outcome));
         setQuestion({ text });
         setState('thinking');
       },
@@ -259,6 +278,9 @@ export function VoiceScreen() {
             sentences.forEach(sayAloud);
           } else if (event.type === 'tool') {
             setCaption('Consultando el POS…');
+          } else if (event.type === 'confirm') {
+            const action = event.action;
+            setChanges((current) => [...current, { action }]);
           } else if (event.type === 'error') {
             cancelled = true;
             fail(event.message);
@@ -339,6 +361,14 @@ export function VoiceScreen() {
             <p className="voice__hint">{copy.hint}</p>
           </div>
         </div>
+
+        {changes.length > 0 && (
+          <div className="voice__actions">
+            {changes.map(({ action }) => (
+              <ActionCard key={action.id} action={action} onSettled={(outcome) => settle(action, outcome)} />
+            ))}
+          </div>
+        )}
 
         <button
           type="button"

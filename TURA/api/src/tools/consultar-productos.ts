@@ -17,6 +17,7 @@ type PosProductInventory =
   | { controlled: true; mode: 'UNLINKED'; currentStock: null };
 
 interface PosProduct {
+  id: string;
   name: string;
   description: string | null;
   sku: string | null;
@@ -76,7 +77,8 @@ export const consultarProductos = defineReadTool({
   description:
     'Busca productos del menú del POS por nombre o SKU y devuelve su precio de venta, si están ' +
     'activos y visibles en el menú, y sus existencias. Úsala para preguntas sobre un producto: ' +
-    'si existe, cuánto cuesta, cuántas unidades quedan o si está disponible. ' +
+    'si existe, cuánto cuesta, cuántas unidades quedan o si está disponible. Devuelve el "id" que ' +
+    'modificar_producto necesita. ' +
     'Las existencias solo se informan para productos que se venden tal cual desde un artículo de ' +
     'inventario (una botella de agua, una gaseosa); para los demás "existencias" es null y ' +
     '"motivo_sin_existencias" explica por qué — eso NO significa que haya cero. ' +
@@ -140,6 +142,7 @@ export const consultarProductos = defineReadTool({
     return {
       total_coincidencias: data.total,
       productos: data.items.map((product) => ({
+        id: product.id,
         nombre: product.name,
         ...(product.description && { descripcion: product.description }),
         ...(product.sku && { sku: product.sku }),

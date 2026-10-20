@@ -17,6 +17,9 @@ async function bootstrap(): Promise<void> {
   const appConfig = configService.getOrThrow<AppConfig>('app');
 
   app.set('trust proxy', 1);
+  // JSON bodies up to 300 KB (Express's default is 100 KB): room for an
+  // "Arma tu combo" template (up to 200 KB) inside its request.
+  app.useBodyParser('json', { limit: '300kb' });
   app.use(helmet());
   app.use(compression());
   app.enableCors({

@@ -34,19 +34,23 @@ export interface ReadToolSpec<Schema extends z.ZodType> extends ToolSpec<Schema>
 }
 
 /**
- * A tool that changes something in the POS. Not implemented yet: this is the
- * shape the agent will work with when the first one arrives.
+ * A tool that changes something in the POS.
  *
  * A write is never executed by the model's call. The call only *prepares* it:
  * `prepare` checks it can be done and returns a summary in plain words, the
- * agent stores it as a PendingAction and tells the user what is about to
- * happen. `commit` runs only once the user confirms that exact action.
+ * agent stores it as a PendingAction and shows the user what is about to
+ * happen, with a button to confirm. `commit` runs only once the user confirms
+ * that exact action (POST /tura/actions/:id/confirm), with the input it was
+ * prepared with — never re-read from the model.
  */
 export interface WriteToolSpec<Schema extends z.ZodType> extends ToolSpec<Schema> {
   /** Validates against the POS that the action is possible and describes it for the user. Changes nothing. */
   prepare(input: z.infer<Schema>, context: ToolContext): Promise<{ summary: string }>;
-  /** Performs the action. Called only for a confirmed PendingAction, with the input it was prepared with. */
-  commit(input: z.infer<Schema>, context: ToolContext): Promise<unknown>;
+  /**
+   * Performs the action. Called only for a confirmed PendingAction, with the
+   * input it was prepared with. Returns what to tell the user it did.
+   */
+  commit(input: z.infer<Schema>, context: ToolContext): Promise<{ message: string }>;
 }
 
 /** A write the model asked for, waiting for the user to confirm it. */
@@ -79,16 +83,27 @@ export interface PendingActionStore {
  */
 export class ToolRefusedError extends Error {}
 
-/** A tool as the agent holds it: its definition for the model, plus how to run it. */
-export interface AssistantTool {
-  kind: 'read' | 'write';
+interface AssistantToolBase {
   permission: string;
   definition: Anthropic.Tool;
   /** Parses the model's input; the error message is safe to return to the model. */
   parse(input: unknown): { ok: true; value: unknown } | { ok: false; error: string };
-  /** Runs a read. Write tools are not runnable yet. */
-  execute(input: unknown, context: ToolContext): Promise<unknown>;
 }
+
+export type ReadAssistantTool = AssistantToolBase & {
+  kind: 'read';
+  /** Runs the read. */
+  execute(input: unknown, context: ToolContext): Promise<unknown>;
+};
+
+export type WriteAssistantTool = AssistantToolBase & {
+  kind: 'write';
+  prepare(input: unknown, context: ToolContext): Promise<{ summary: string }>;
+  commit(input: unknown, context: ToolContext): Promise<{ message: string }>;
+};
+
+/** A tool as the agent holds it: its definition for the model, plus how to run it. */
+export type AssistantTool = ReadAssistantTool | WriteAssistantTool;
 
 function describeIssues(error: z.ZodError): string {
   return error.issues
@@ -96,12 +111,9 @@ function describeIssues(error: z.ZodError): string {
     .join('; ');
 }
 
-/** Declares a read tool. The input schema the model sees is derived from the same schema that validates it. */
-export function defineReadTool<Schema extends z.ZodType>(
-  spec: ReadToolSpec<Schema>,
-): AssistantTool {
+/** What the model is told about a tool, and how its input is checked: both from the same schema. */
+function describeTool<Schema extends z.ZodType>(spec: ToolSpec<Schema>): AssistantToolBase {
   return {
-    kind: 'read',
     permission: spec.permission,
     definition: {
       name: spec.name,
@@ -116,6 +128,24 @@ export function defineReadTool<Schema extends z.ZodType>(
         ? { ok: true, value: parsed.data }
         : { ok: false, error: describeIssues(parsed.error) };
     },
+  };
+}
+
+/** Declares a read tool. The input schema the model sees is derived from the same schema that validates it. */
+export function defineReadTool<Schema extends z.ZodType>(spec: ReadToolSpec<Schema>): ReadAssistantTool {
+  return {
+    ...describeTool(spec),
+    kind: 'read',
     execute: (input, context) => spec.execute(input as z.infer<Schema>, context),
+  };
+}
+
+/** Declares a write tool: the model's call prepares it, the user's confirmation commits it. */
+export function defineWriteTool<Schema extends z.ZodType>(spec: WriteToolSpec<Schema>): WriteAssistantTool {
+  return {
+    ...describeTool(spec),
+    kind: 'write',
+    prepare: (input, context) => spec.prepare(input as z.infer<Schema>, context),
+    commit: (input, context) => spec.commit(input as z.infer<Schema>, context),
   };
 }

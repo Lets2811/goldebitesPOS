@@ -25,16 +25,31 @@ export class PosApiError extends Error {
 }
 
 /**
- * Read-only client for GB-BE, bound to one user's access token. Every call
- * carries that token, so GB-BE's own guards decide what TURA may see — this
- * service holds no credentials of its own for the POS.
+ * Client for GB-BE, bound to one user's access token. Every call carries that
+ * token, so GB-BE's own guards decide what TURA may see or change — this
+ * service holds no credentials of its own for the POS. Writes go only through
+ * a write tool's `commit`, which runs once the user has confirmed it.
  */
 export class PosClient {
   constructor(private readonly accessToken: string) {}
 
-  async get<T>(
+  get<T>(path: string, query: Record<string, QueryValue> = {}): Promise<PosResult<T>> {
+    return this.request<T>('GET', path, query);
+  }
+
+  post<T>(path: string, body: unknown): Promise<PosResult<T>> {
+    return this.request<T>('POST', path, {}, body);
+  }
+
+  patch<T>(path: string, body: unknown): Promise<PosResult<T>> {
+    return this.request<T>('PATCH', path, {}, body);
+  }
+
+  private async request<T>(
+    method: 'GET' | 'POST' | 'PATCH',
     path: string,
-    query: Record<string, QueryValue> = {},
+    query: Record<string, QueryValue>,
+    body?: unknown,
   ): Promise<PosResult<T>> {
     const url = new URL(`${config.posApiUrl}${path}`);
     for (const [key, value] of Object.entries(query)) {
@@ -46,7 +61,12 @@ export class PosClient {
     let response: Response;
     try {
       response = await fetch(url, {
-        headers: { Authorization: `Bearer ${this.accessToken}` },
+        method,
+        headers: {
+          Authorization: `Bearer ${this.accessToken}`,
+          ...(body !== undefined && { 'Content-Type': 'application/json' }),
+        },
+        ...(body !== undefined && { body: JSON.stringify(body) }),
         signal: AbortSignal.timeout(config.posTimeoutMs),
       });
     } catch (error) {
@@ -58,17 +78,17 @@ export class PosClient {
       );
     }
 
-    const body: unknown = await response.json().catch(() => null);
+    const payload: unknown = await response.json().catch(() => null);
 
     if (!response.ok) {
       const message =
-        body && typeof body === 'object' && 'message' in body
-          ? String(body.message)
+        payload && typeof payload === 'object' && 'message' in payload
+          ? String(payload.message)
           : response.statusText;
       throw new PosApiError(response.status, message);
     }
 
-    const envelope = body as PosEnvelope<T>;
+    const envelope = payload as PosEnvelope<T>;
     return { data: envelope.data, meta: envelope.meta };
   }
 }

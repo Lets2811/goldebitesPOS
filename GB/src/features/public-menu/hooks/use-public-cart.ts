@@ -1,6 +1,9 @@
 import { useState } from 'react';
 import { generateId } from '../../../utils/generate-id';
-import type { PublicMenuOptionGroup, PublicMenuProduct } from '../../../modules/public-menu/types/public-menu.types';
+import type {
+  PublicMenuOptionGroup,
+  PublicMenuProduct,
+} from '../../../modules/public-menu/types/public-menu.types';
 import { noneLabel } from '../../../modules/option-groups/utils/option-group-utils';
 
 /**
@@ -32,10 +35,15 @@ export interface PublicCartLine extends CartSelection {
 }
 
 /** Lo elegido, en el orden de los grupos: ["BBQ, Ajo", "Sin hielo"]. */
-export function describeSelection(selection: CartSelection, groups: PublicMenuOptionGroup[]): string[] {
+export function describeSelection(
+  selection: CartSelection,
+  groups: PublicMenuOptionGroup[],
+): string[] {
   const parts: string[] = [];
   for (const group of groups) {
-    const names = group.items.filter((item) => selection.optionItemIds.includes(item.id)).map((item) => item.name);
+    const names = group.items
+      .filter((item) => selection.optionItemIds.includes(item.id))
+      .map((item) => item.name);
     if (names.length > 0) parts.push(names.join(', '));
     else if (selection.noneGroupIds.includes(group.id)) parts.push(noneLabel(group.name));
   }
@@ -92,7 +100,9 @@ export function usePublicCart() {
   }
 
   function increment(id: string) {
-    setCart((prev) => prev.map((line) => (line.id === id ? { ...line, quantity: line.quantity + 1 } : line)));
+    setCart((prev) =>
+      prev.map((line) => (line.id === id ? { ...line, quantity: line.quantity + 1 } : line)),
+    );
   }
 
   function decrement(id: string) {
@@ -115,5 +125,16 @@ export function usePublicCart() {
   const itemCount = cart.reduce((sum, line) => sum + line.quantity, 0);
   const total = cart.reduce((sum, line) => sum + line.unitPrice * line.quantity, 0);
 
-  return { cart, addToCart, addComboToCart, increment, decrement, remove, clear, itemCount, total, idempotencyKey };
+  return {
+    cart,
+    addToCart,
+    addComboToCart,
+    increment,
+    decrement,
+    remove,
+    clear,
+    itemCount,
+    total,
+    idempotencyKey,
+  };
 }

@@ -22,6 +22,9 @@ export function makeSession(overrides: Partial<Session> = {}): Session {
 export interface PosRequest {
   url: URL;
   authorization: string | null;
+  method: string;
+  /** The JSON body sent, for writes. */
+  body?: unknown;
 }
 
 /**
@@ -36,6 +39,8 @@ export function mockPos(
     const request: PosRequest = {
       url: new URL(String(input)),
       authorization: new Headers(init?.headers).get('authorization'),
+      method: init?.method ?? 'GET',
+      ...(typeof init?.body === 'string' && { body: JSON.parse(init.body) as unknown }),
     };
     requests.push(request);
     const answer = respond(request);

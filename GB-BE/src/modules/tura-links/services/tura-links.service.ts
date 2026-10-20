@@ -36,9 +36,11 @@ export const TURA_FEATURE = 'tura';
 
 /**
  * Everything TURA may do, whoever it acts for: of the user's own permissions
- * it only ever gets the ones listed here. All read-only on purpose. The link
- * token lives for a long time on the user's phone, and TURA only answers
- * questions, so it has no business holding a permission that changes data.
+ * it only ever gets the ones listed here. Mostly reading. The few that change
+ * data (stock, inventory items, products) are there because TURA can carry
+ * out those changes — but never on the model's word alone: TURA/api only
+ * prepares a change, and it runs once the user confirms it on their screen
+ * (see PendingAction there). Orders, cash and money stay out of reach.
  */
 export const TURA_PERMISSIONS = [
   'dashboard.read',
@@ -46,6 +48,9 @@ export const TURA_PERMISSIONS = [
   'orders.read',
   'inventory.read',
   'products.read',
+  'inventory.adjust',
+  'inventory.manage',
+  'products.update',
 ];
 
 const CODE_LENGTH = 6;

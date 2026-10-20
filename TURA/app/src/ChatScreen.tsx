@@ -4,12 +4,16 @@ import { BackIcon } from './icons';
 import { getLink, subscribe } from './link';
 import { onboardingOpening, onboardingReply } from './onboarding';
 import { navigate } from './route';
-import { NotLinkedError, streamChat, type ChatTurn } from './tura-client';
+import { NotLinkedError, streamChat, type ChatTurn, type PendingChange } from './tura-client';
+import { ActionCard, describeChangeOutcome, type ActionOutcome } from './ActionCard';
 
 interface Message {
   id: number;
-  role: 'user' | 'assistant' | 'error';
+  role: 'user' | 'assistant' | 'error' | 'action';
   content: string;
+  /** For an 'action' message: the change TURA prepared, and what became of it. */
+  action?: PendingChange;
+  outcome?: ActionOutcome;
   /**
    * Part of linking the app (the name, the code), handled on this device.
    * It is shown like any other message but never sent to the assistant.
@@ -27,19 +31,46 @@ const SUGGESTIONS = [
 const TOOL_STATUS: Record<string, string> = {
   consultar_productos: 'Buscando productos…',
   consultar_ventas: 'Consultando ventas…',
+  consultar_inventario: 'Revisando el inventario…',
+  ajustar_existencias: 'Preparando el ajuste…',
+  modificar_insumo: 'Preparando el cambio…',
+  modificar_producto: 'Preparando el cambio…',
 };
+
+/** What became of a change, told to TURA so the conversation knows (it never sees the buttons). */
+function describeOutcome(message: Message): string | null {
+  if (!message.action || !message.outcome) {
+    return null;
+  }
+  return describeChangeOutcome(message.action.summary, message.outcome);
+}
 
 /** TURA/api accepts at most this many turns; older ones are dropped. */
 const MAX_HISTORY = 40;
 
 /** The conversation as TURA/api expects it: text turns only, starting with the user. */
 function toHistory(messages: Message[]): ChatTurn[] {
-  const turns = messages
-    .filter((message) => !message.local && message.role !== 'error' && message.content.trim() !== '')
-    .map((message) => ({ role: message.role, content: message.content }) as ChatTurn)
-    .slice(-MAX_HISTORY);
-  const firstUserTurn = turns.findIndex((turn) => turn.role === 'user');
-  return turns.slice(firstUserTurn);
+  const turns: ChatTurn[] = [];
+  for (const message of messages) {
+    if (message.local || message.role === 'error') {
+      continue;
+    }
+    const content = message.role === 'action' ? describeOutcome(message) : message.content;
+    if (!content || content.trim() === '') {
+      continue;
+    }
+    const role = message.role === 'user' ? 'user' : 'assistant';
+    const last = turns.at(-1);
+    // A change's outcome joins TURA's answer it came with: one assistant turn.
+    if (last && last.role === role) {
+      last.content = `${last.content}\n\n${content}`;
+    } else {
+      turns.push({ role, content });
+    }
+  }
+  const recent = turns.slice(-MAX_HISTORY);
+  const firstUserTurn = recent.findIndex((turn) => turn.role === 'user');
+  return recent.slice(firstUserTurn);
 }
 
 export function ChatScreen({ hidden }: { hidden: boolean }) {
@@ -133,6 +164,12 @@ export function ChatScreen({ hidden }: { hidden: boolean }) {
           appendToAnswer(event.delta);
         } else if (event.type === 'tool') {
           setStatus(TOOL_STATUS[event.name] ?? 'Consultando el POS…');
+        } else if (event.type === 'confirm') {
+          const action = event.action;
+          setMessages((current) => [
+            ...current,
+            { id: nextId.current++, role: 'action', content: '', action },
+          ]);
         } else if (event.type === 'error') {
           showError(event.message);
         }
@@ -181,13 +218,24 @@ export function ChatScreen({ hidden }: { hidden: boolean }) {
 
       <main className="chat__messages">
         {messages.length > 0 ? (
-          messages.map(
-            (message) =>
+          messages.map((message) =>
+            message.role === 'action' && message.action ? (
+              <ActionCard
+                key={message.id}
+                action={message.action}
+                onSettled={(outcome) =>
+                  setMessages((current) =>
+                    current.map((m) => (m.id === message.id ? { ...m, outcome } : m)),
+                  )
+                }
+              />
+            ) : (
               message.content !== '' && (
                 <p key={message.id} className={`bubble bubble--${message.role}`}>
                   {message.content}
                 </p>
-              ),
+              )
+            ),
           )
         ) : ready ? (
           <section className="chat__welcome">

@@ -15,6 +15,7 @@ export class BusinessMapper {
       discountsAtCheckout: row.discounts_at_checkout,
       comboBuilderName: row.combo_builder_name,
       comboBuilderDescription: row.combo_builder_description,
+      hasComboBuilderTemplate: row.has_combo_builder_template,
       loyaltyPointsPerThousand: parseFloat(row.loyalty_points_per_thousand),
       loyaltyBirthdayBonusEnabled: row.loyalty_birthday_bonus_enabled,
       loyaltyBirthdayBonusPoints: row.loyalty_birthday_bonus_points,

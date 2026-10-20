@@ -121,8 +121,14 @@ export class PublicMenuService {
       builderName: business.comboBuilderName ?? DEFAULT_BUILDER_NAME,
       builderDescription:
         business.comboBuilderDescription ?? DEFAULT_BUILDER_DESCRIPTION,
+      hasBuilderTemplate: business.hasComboBuilderTemplate ?? false,
       optionGroups,
     };
+  }
+
+  /** The business's own template for "Arma tu combo", or null (the default view). */
+  async getBuilderTemplate(businessId: string): Promise<string | null> {
+    return this.businessesService.getComboBuilderTemplate(businessId);
   }
 
   /** Products into their categories (in the categories' display order), plus "Otros" for the uncategorized. */

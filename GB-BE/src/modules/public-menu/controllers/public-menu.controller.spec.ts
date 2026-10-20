@@ -19,6 +19,7 @@ describe('PublicMenuController', () => {
       builderCategories: [],
       builderName: 'Arma tu combo',
       builderDescription: 'Escoge lo que quieras, a tu gusto y a tu estilo.',
+      hasBuilderTemplate: false,
       optionGroups: [],
     });
     await controller.getMenu('business-1');

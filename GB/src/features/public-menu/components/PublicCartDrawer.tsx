@@ -47,9 +47,17 @@ export default function PublicCartDrawer({
   }
 
   return (
-    <Drawer anchor="right" open={open} onClose={onClose} slotProps={{ paper: { sx: { width: { xs: '100%', sm: 400 } } } }}>
+    <Drawer
+      anchor="right"
+      open={open}
+      onClose={onClose}
+      slotProps={{ paper: { sx: { width: { xs: '100%', sm: 400 } } } }}
+    >
       <Stack sx={{ height: '100%' }}>
-        <Stack direction="row" sx={{ alignItems: 'center', justifyContent: 'space-between', px: 2, py: 1.5 }}>
+        <Stack
+          direction="row"
+          sx={{ alignItems: 'center', justifyContent: 'space-between', px: 2, py: 1.5 }}
+        >
           <Typography variant="h6" sx={{ fontWeight: 800 }}>
             Tu pedido
           </Typography>
@@ -61,7 +69,16 @@ export default function PublicCartDrawer({
 
         <Box sx={{ flex: 1, overflowY: 'auto' }}>
           {cart.length === 0 ? (
-            <Stack sx={{ alignItems: 'center', justifyContent: 'center', height: '100%', p: 3, textAlign: 'center' }} spacing={1}>
+            <Stack
+              sx={{
+                alignItems: 'center',
+                justifyContent: 'center',
+                height: '100%',
+                p: 3,
+                textAlign: 'center',
+              }}
+              spacing={1}
+            >
               <ShoppingCart size={32} strokeWidth={1.5} />
               <Typography color="text.secondary">Todavía no has agregado productos.</Typography>
             </Stack>
@@ -70,14 +87,21 @@ export default function PublicCartDrawer({
               {cart.map((line) => {
                 const description = describeLine(line);
                 return (
-                  <Box key={line.id} sx={{ px: 2, py: 1.5, borderBottom: '1px solid', borderColor: 'divider' }}>
+                  <Box
+                    key={line.id}
+                    sx={{ px: 2, py: 1.5, borderBottom: '1px solid', borderColor: 'divider' }}
+                  >
                     <Stack direction="row" sx={{ alignItems: 'flex-start', gap: 1 }}>
                       <Box sx={{ flex: 1, minWidth: 0 }}>
                         <Typography variant="body2" sx={{ fontWeight: 700 }}>
                           {line.name}
                         </Typography>
                         {description && (
-                          <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+                          <Typography
+                            variant="caption"
+                            color="text.secondary"
+                            sx={{ display: 'block' }}
+                          >
                             {description}
                           </Typography>
                         )}
@@ -93,7 +117,9 @@ export default function PublicCartDrawer({
                       <IconButton size="small" onClick={() => onDecrement(line.id)}>
                         <Minus size={14} />
                       </IconButton>
-                      <Typography sx={{ minWidth: 20, textAlign: 'center', fontWeight: 700 }}>{line.quantity}</Typography>
+                      <Typography sx={{ minWidth: 20, textAlign: 'center', fontWeight: 700 }}>
+                        {line.quantity}
+                      </Typography>
                       <IconButton size="small" onClick={() => onIncrement(line.id)}>
                         <Plus size={14} />
                       </IconButton>

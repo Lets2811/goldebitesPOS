@@ -14,6 +14,8 @@ export interface Business {
   comboBuilderName: string | null;
   /** The line under it; null: the default. */
   comboBuilderDescription: string | null;
+  /** Whether "Arma tu combo" uses the business's own HTML template. */
+  hasComboBuilderTemplate: boolean;
   isActive: boolean;
   createdAt: string;
   updatedAt: string;

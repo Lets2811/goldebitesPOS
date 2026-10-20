@@ -13,6 +13,7 @@ import {
   Res,
   UploadedFile,
   UseInterceptors,
+  Put,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import {
@@ -35,6 +36,7 @@ import {
 import { SetBusinessStatusDto } from '../dto/set-business-status.dto';
 import { UpdateBusinessDto } from '../dto/update-business.dto';
 import { UpdateComboBuilderDto } from '../dto/update-combo-builder.dto';
+import { ComboBuilderTemplateDto } from '../dto/combo-builder-template.dto';
 import { BusinessesService } from '../services/businesses.service';
 import {
   BUSINESS_LOGOS_UPLOADS_DIR,
@@ -69,6 +71,33 @@ export class BusinessesController {
     @Body() dto: UpdateBusinessDto,
   ) {
     return this.businessesService.update(businessId, dto, actorUserId);
+  }
+
+  @Get('me/combo-builder/template')
+  @Permissions('products.read')
+  @ApiOperation({ summary: 'The HTML template of "Arma tu combo", or null' })
+  async getComboBuilderTemplate(@CurrentBusiness() businessId: string) {
+    return {
+      html: await this.businessesService.getComboBuilderTemplate(businessId),
+    };
+  }
+
+  @Put('me/combo-builder/template')
+  @Permissions('products.update')
+  @ApiOperation({
+    summary:
+      'Set the HTML template of "Arma tu combo" (null: back to the default view)',
+  })
+  setComboBuilderTemplate(
+    @CurrentBusiness() businessId: string,
+    @CurrentUser('userId') actorUserId: string,
+    @Body() dto: ComboBuilderTemplateDto,
+  ) {
+    return this.businessesService.setComboBuilderTemplate(
+      businessId,
+      dto.html ?? null,
+      actorUserId,
+    );
   }
 
   @Patch('me/combo-builder')

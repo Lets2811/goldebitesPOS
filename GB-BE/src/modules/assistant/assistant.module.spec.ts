@@ -2,6 +2,7 @@ import { MODULE_METADATA } from '@nestjs/common/constants';
 import { AssistantModule } from './assistant.module';
 import { AssistantController } from './controllers/assistant.controller';
 import { AssistantProductsService } from './services/assistant-products.service';
+import { AssistantInventoryService } from './services/assistant-inventory.service';
 import { AssistantSalesService } from './services/assistant-sales.service';
 import { AssistantService } from './services/assistant.service';
 
@@ -19,6 +20,7 @@ describe('AssistantModule', () => {
       AssistantService,
       AssistantProductsService,
       AssistantSalesService,
+      AssistantInventoryService,
     ]);
   });
 });

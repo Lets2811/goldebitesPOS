@@ -300,7 +300,7 @@ describe('what the model is sent', () => {
     assert.deepEqual(request.output_config, { effort: config.effort });
     assert.deepEqual(
       request.tools?.map((tool) => ('name' in tool ? tool.name : null)),
-      ['consultar_productos'],
+      ['consultar_productos', 'consultar_inventario'],
     );
   });
 
@@ -469,7 +469,73 @@ describe('sales questions', () => {
 
     assert.deepEqual(
       requests[0].tools?.map((tool) => ('name' in tool ? tool.name : null)),
-      ['consultar_productos'],
+      ['consultar_productos', 'consultar_inventario'],
     );
+  });
+});
+
+describe('changes (write tools)', () => {
+  const PRODUCT_ID = '1c8d9e3f-0a2b-4d4c-9e6f-7a8b9c0d1e2f';
+  const writer = makeSession({ permissions: ['products.read', 'products.update'] });
+
+  it('only prepares the change: the user is asked to confirm it, and nothing is written', async () => {
+    const requests = mockPos(() => ({
+      body: {
+        success: true,
+        data: { id: PRODUCT_ID, name: 'Papas fritas', salePrice: 8000, isActive: true, isVisible: true },
+      },
+    }));
+
+    const outcome = await ask(
+      [
+        {
+          content: [
+            { type: 'tool_use', id: 'w1', name: 'modificar_producto', input: { producto_id: PRODUCT_ID, accion: 'ocultar' } },
+          ],
+          stop_reason: 'tool_use',
+        },
+        say('Listo para ocultarlas: confírmalo en el botón.'),
+      ],
+      [{ role: 'user', content: 'Oculta las papas fritas del menú' }],
+      writer,
+    );
+
+    const confirm = outcome.events.find((event) => event.type === 'confirm');
+    assert.ok(confirm && confirm.type === 'confirm');
+    assert.equal(confirm.action.summary, 'Ocultar "Papas fritas" del menú de los clientes: se sigue vendiendo en el POS.');
+    assert.ok(requests.every((request) => request.method === 'GET'), 'nothing was written to the POS');
+
+    // The model is told it is pending, not done.
+    const toolResult = outcome.requests[1].messages.at(-1)?.content as Anthropic.ToolResultBlockParam[];
+    assert.match(String(toolResult[0].content), /todavía NO hecho/);
+    assert.equal(toolResult[0].is_error, undefined);
+  });
+
+  it('a change the POS would refuse is explained instead of prepared', async () => {
+    mockPos(() => ({
+      body: {
+        success: true,
+        data: { id: PRODUCT_ID, name: 'Papas fritas', salePrice: 8000, isActive: false, isVisible: true },
+      },
+    }));
+
+    const outcome = await ask(
+      [
+        {
+          content: [
+            { type: 'tool_use', id: 'w1', name: 'modificar_producto', input: { producto_id: PRODUCT_ID, accion: 'desactivar' } },
+          ],
+          stop_reason: 'tool_use',
+        },
+        say('Ya estaban desactivadas.'),
+      ],
+      [{ role: 'user', content: 'Desactiva las papas fritas' }],
+      writer,
+    );
+
+    assert.ok(!outcome.events.some((event) => event.type === 'confirm'));
+    const toolResult = outcome.requests[1].messages.at(-1)?.content as Anthropic.ToolResultBlockParam[];
+    assert.equal(toolResult[0].is_error, true);
+    assert.match(String(toolResult[0].content), /ya está desactivado/);
   });
 });

@@ -61,6 +61,7 @@ describe('AssistantController', () => {
       new AssistantService(),
       productsService as unknown as AssistantProductsService,
       {} as AssistantSalesService,
+      {} as never,
     );
   });
 

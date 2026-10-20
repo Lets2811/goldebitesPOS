@@ -13,7 +13,10 @@ import { Ban, ShoppingCart, UtensilsCrossed, X } from 'lucide-react';
 import { formatCOP } from '../../../utils/format';
 import { brand } from '../../../theme/palette';
 import { noneLabel } from '../../../modules/option-groups/utils/option-group-utils';
-import type { PublicMenuOptionGroup, PublicMenuProduct } from '../../../modules/public-menu/types/public-menu.types';
+import type {
+  PublicMenuOptionGroup,
+  PublicMenuProduct,
+} from '../../../modules/public-menu/types/public-menu.types';
 import { describeSelection, type CartSelection } from '../hooks/use-public-cart';
 
 interface ProductDetailDialogProps {
@@ -88,7 +91,9 @@ function ProductDetailContent({
     setNoneGroupIds((current) => current.filter((id) => id !== group.id));
     setSelectedIds((current) => {
       if (current.includes(itemId)) return current.filter((id) => id !== itemId);
-      const inGroup = group.items.filter((item) => current.includes(item.id)).map((item) => item.id);
+      const inGroup = group.items
+        .filter((item) => current.includes(item.id))
+        .map((item) => item.id);
       if (inGroup.length < max) return [...current, itemId];
       // Con máximo 1, tocar otra la cambia.
       if (max === 1) return [...current.filter((id) => !inGroup.includes(id)), itemId];
@@ -98,7 +103,9 @@ function ProductDetailContent({
 
   // "Sin..." excludes any real selection in its group — it's a visual cart choice, never a catalog id.
   const chooseNone = (group: PublicMenuOptionGroup) => {
-    setSelectedIds((current) => current.filter((id) => !group.items.some((item) => item.id === id)));
+    setSelectedIds((current) =>
+      current.filter((id) => !group.items.some((item) => item.id === id)),
+    );
     setNoneGroupIds((current) =>
       current.includes(group.id) ? current.filter((id) => id !== group.id) : [...current, group.id],
     );
@@ -106,7 +113,8 @@ function ProductDetailContent({
 
   // Cada grupo se decide eligiendo algo o marcando "Sin ..."; uno obligatorio solo eligiendo.
   const canAdd = offered.every(
-    ({ group }) => pickedIn(group).length > 0 || (!group.isRequired && noneGroupIds.includes(group.id)),
+    ({ group }) =>
+      pickedIn(group).length > 0 || (!group.isRequired && noneGroupIds.includes(group.id)),
   );
   const hasCustomization = !readOnly && offered.length > 0;
   const selection: CartSelection = { optionItemIds: selectedIds, noneGroupIds };
@@ -159,7 +167,10 @@ function ProductDetailContent({
       </Box>
 
       <DialogContent sx={{ pt: 2.5 }}>
-        <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'flex-start', gap: 2 }}>
+        <Stack
+          direction="row"
+          sx={{ justifyContent: 'space-between', alignItems: 'flex-start', gap: 2 }}
+        >
           <Typography variant="h6" sx={{ fontWeight: 800 }}>
             {product.name}
           </Typography>

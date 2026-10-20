@@ -35,6 +35,11 @@ export interface IBusinessesRepository {
     description: string | null,
     client?: DbClient,
   ): Promise<BusinessRow | null>;
+  getComboBuilderTemplate(id: string): Promise<string | null>;
+  setComboBuilderTemplate(
+    id: string,
+    html: string | null,
+  ): Promise<BusinessRow | null>;
   updateLoyaltyConfig(
     id: string,
     data: {

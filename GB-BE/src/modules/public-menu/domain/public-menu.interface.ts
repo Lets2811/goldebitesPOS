@@ -43,6 +43,8 @@ export interface PublicMenu {
   /** What the business calls "Arma tu combo", and the line under it (defaults applied). */
   builderName: string;
   builderDescription: string;
+  /** Whether "Arma tu combo" shows with the business's own template (fetched apart). */
+  hasBuilderTemplate: boolean;
   /** The business's active option groups, in display order, each with its active options. */
   optionGroups: PublicMenuOptionGroup[];
 }

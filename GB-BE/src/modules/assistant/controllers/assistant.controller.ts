@@ -1,4 +1,4 @@
-import { Controller, Get, Query } from '@nestjs/common';
+import { Controller, Get, Param, ParseUUIDPipe, Query } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { CurrentBusiness } from '../../../common/decorators/current-business.decorator';
 import { CurrentUser } from '../../../common/decorators/current-user.decorator';
@@ -7,6 +7,8 @@ import { RequiresFeature } from '../../../common/decorators/requires-feature.dec
 import type { AuthenticatedUser } from '../../../common/interfaces/authenticated-user.interface';
 import { AssistantProductsQueryDto } from '../dto/assistant-products-query.dto';
 import { AssistantSalesQueryDto } from '../dto/assistant-sales-query.dto';
+import { AssistantInventoryQueryDto } from '../dto/assistant-inventory-query.dto';
+import { AssistantInventoryService } from '../services/assistant-inventory.service';
 import { AssistantProductsService } from '../services/assistant-products.service';
 import { AssistantSalesService } from '../services/assistant-sales.service';
 import { AssistantService } from '../services/assistant.service';
@@ -28,7 +30,40 @@ export class AssistantController {
     private readonly assistantService: AssistantService,
     private readonly assistantProductsService: AssistantProductsService,
     private readonly assistantSalesService: AssistantSalesService,
+    private readonly assistantInventoryService: AssistantInventoryService,
   ) {}
+
+  @Get('inventory')
+  @RequiresFeature(INVENTORY_FEATURE)
+  @Permissions(INVENTORY_PERMISSION)
+  @ApiOperation({
+    summary:
+      "Search the caller's branch inventory items, with their stock there and whether they run below their minimum",
+  })
+  findInventory(
+    @CurrentBusiness() businessId: string,
+    @CurrentUser() user: AuthenticatedUser,
+    @Query() query: AssistantInventoryQueryDto,
+  ) {
+    return this.assistantInventoryService.search({
+      businessId,
+      branchId: user.branchId,
+      search: query.search?.trim() || undefined,
+      isActive: query.isActive,
+      limit: query.limit,
+    });
+  }
+
+  @Get('inventory/:id')
+  @RequiresFeature(INVENTORY_FEATURE)
+  @Permissions(INVENTORY_PERMISSION)
+  @ApiOperation({ summary: 'One inventory item, with its stock at its branch' })
+  findInventoryItem(
+    @CurrentBusiness() businessId: string,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
+    return this.assistantInventoryService.findOne(businessId, id);
+  }
 
   @Get('products')
   @RequiresFeature('products')

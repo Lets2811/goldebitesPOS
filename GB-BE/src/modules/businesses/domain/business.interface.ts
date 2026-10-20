@@ -14,6 +14,8 @@ export interface Business {
   comboBuilderName: string | null;
   /** The line under it; null: the default. */
   comboBuilderDescription: string | null;
+  /** Whether "Arma tu combo" uses the business's own HTML template (read apart: it can be large). */
+  hasComboBuilderTemplate: boolean;
   loyaltyPointsPerThousand: number;
   loyaltyBirthdayBonusEnabled: boolean;
   loyaltyBirthdayBonusPoints: number;
@@ -35,6 +37,7 @@ export interface BusinessRow {
   discounts_at_checkout: boolean;
   combo_builder_name: string | null;
   combo_builder_description: string | null;
+  has_combo_builder_template: boolean;
   loyalty_points_per_thousand: string;
   loyalty_birthday_bonus_enabled: boolean;
   loyalty_birthday_bonus_points: number;

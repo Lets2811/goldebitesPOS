@@ -1,7 +1,7 @@
 import { timingSafeEqual } from 'node:crypto';
 import Anthropic from '@anthropic-ai/sdk';
 import cors from 'cors';
-import express, { type Response } from 'express';
+import express, { type Request, type Response } from 'express';
 import { z } from 'zod';
 import {
   runTurn,
@@ -10,8 +10,11 @@ import {
   type TuraEvent,
 } from './agent/agent.service.js';
 import { runSimulatedTurn } from './agent/simulated-turn.js';
+import { pendingActions } from './agent/pending-actions.js';
+import { toolsFor } from './tools/registry.js';
+import { ToolRefusedError } from './tools/types.js';
 import { newAudit, recordAudit } from './audit/audit-log.js';
-import { authenticate, UnauthenticatedError } from './auth.js';
+import { authenticate, UnauthenticatedError, type Session } from './auth.js';
 import { config } from './config.js';
 import { PosApiError } from './pos/pos-client.js';
 import { newMeter, recordTurn, summarizeUsage, type TurnRecord } from './usage/usage-log.js';
@@ -81,16 +84,10 @@ app.get('/tura/health', (_req, res) => {
  * recent turns) and receives the answer as a stream of server-sent events —
  * see TuraEvent.
  */
-app.post('/tura/chat', async (req, res) => {
-  const parsed = chatRequestSchema.safeParse(req.body);
-  if (!parsed.success) {
-    res.status(400).json({ message: 'Solicitud inválida' });
-    return;
-  }
-
-  let session;
+/** The caller, or null once a response explaining why not was sent. */
+async function authenticateOrReply(req: Request, res: Response): Promise<Session | null> {
   try {
-    session = await authenticate(req);
+    return await authenticate(req);
   } catch (error) {
     if (error instanceof UnauthenticatedError) {
       res.status(401).json({ message: 'No autenticado' });
@@ -103,6 +100,19 @@ app.post('/tura/chat', async (req, res) => {
       console.error('Authentication failed unexpectedly', error);
       res.status(500).json({ message: 'Error interno' });
     }
+    return null;
+  }
+}
+
+app.post('/tura/chat', async (req, res) => {
+  const parsed = chatRequestSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ message: 'Solicitud inválida' });
+    return;
+  }
+
+  const session = await authenticateOrReply(req, res);
+  if (!session) {
     return;
   }
 
@@ -176,6 +186,88 @@ app.post('/tura/chat', async (req, res) => {
       ...audit,
     }).catch((error: unknown) => console.error('Could not record audit', error));
   }
+});
+
+/**
+ * The user confirms a change TURA prepared (see the 'confirm' event): it runs
+ * now, as that user, with exactly the input it was prepared with. A change
+ * runs once, only for the user it was prepared for, and only while that user
+ * still has the permission it needs.
+ */
+app.post('/tura/actions/:id/confirm', async (req, res) => {
+  const session = await authenticateOrReply(req, res);
+  if (!session) {
+    return;
+  }
+  const action = await pendingActions.take(String(req.params.id), session.userId ?? 'anonymous');
+  if (!action) {
+    res.status(404).json({
+      message: 'Este cambio ya no se puede confirmar: venció o ya se usó. Pídeselo de nuevo a TURA.',
+    });
+    return;
+  }
+  const tool = toolsFor(session).find((candidate) => candidate.definition.name === action.tool);
+  if (!tool || tool.kind !== 'write') {
+    res.status(403).json({ message: 'Tu usuario ya no tiene permiso para hacer este cambio.' });
+    return;
+  }
+
+  const startedAt = Date.now();
+  let message: string;
+  let failure: string | undefined;
+  try {
+    ({ message } = await tool.commit(action.input, { session }));
+    res.json({ message });
+  } catch (error) {
+    if (error instanceof ToolRefusedError) {
+      failure = error.message;
+      res.status(409).json({ message: `No hice el cambio: ${error.message}` });
+    } else if (error instanceof PosApiError) {
+      failure = `POS ${error.status}: ${error.message}`;
+      res
+        .status(error.status >= 500 ? 502 : 422)
+        .json({ message: `El POS no hizo el cambio: ${error.message}` });
+    } else {
+      failure = error instanceof Error ? `${error.name}: ${error.message}` : String(error);
+      console.error('Confirmed action failed', error);
+      res.status(500).json({ message: 'Ocurrió un error al hacer el cambio. Intenta de nuevo.' });
+    }
+    message = '';
+  }
+
+  recordAudit({
+    at: new Date(startedAt).toISOString(),
+    userId: session.userId,
+    businessId: session.businessId,
+    branchId: session.branchId,
+    role: session.roleName,
+    mode: 'action',
+    message: `Confirmó: ${action.summary}`,
+    outcome: failure ? 'error' : 'ok',
+    error: failure,
+    totalMs: Date.now() - startedAt,
+    iterations: 0,
+    limitReached: false,
+    tools: [
+      {
+        name: action.tool,
+        input: action.input,
+        ok: !failure,
+        ms: Date.now() - startedAt,
+        ...(failure ? { error: failure } : { result: message }),
+      },
+    ],
+  }).catch((error: unknown) => console.error('Could not record audit', error));
+});
+
+/** The user cancels a change TURA prepared: it can no longer be confirmed. */
+app.post('/tura/actions/:id/discard', async (req, res) => {
+  const session = await authenticateOrReply(req, res);
+  if (!session) {
+    return;
+  }
+  await pendingActions.discard(String(req.params.id), session.userId ?? 'anonymous');
+  res.status(204).end();
 });
 
 function isAdmin(header: string | undefined): boolean {

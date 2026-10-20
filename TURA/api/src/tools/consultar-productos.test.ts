@@ -126,7 +126,7 @@ describe('consultar_productos', () => {
     assert.deepEqual([...requests[0].url.searchParams.keys()], []);
   });
 
-  it('returns what the model needs, in its own words, without internal ids', async () => {
+  it('returns what the model needs, in its own words, with the id a change refers to', async () => {
     mockPos(() => ({ body: POS_ANSWER }));
 
     const result = await run({ buscar: 'a' });
@@ -135,6 +135,7 @@ describe('consultar_productos', () => {
       total_coincidencias: 12,
       productos: [
         {
+          id: 'p-1',
           nombre: 'Agua manantial',
           sku: 'Botella',
           precio: 6000,
@@ -145,6 +146,7 @@ describe('consultar_productos', () => {
           unidad: 'botella',
         },
         {
+          id: 'p-2',
           nombre: 'Combo Individual',
           descripcion: '3 tenders de pollo',
           precio: 20000,
@@ -153,6 +155,7 @@ describe('consultar_productos', () => {
           controla_inventario: false,
         },
         {
+          id: 'p-3',
           nombre: 'Nuggets x6',
           precio: 12000,
           activo: true,
@@ -163,6 +166,7 @@ describe('consultar_productos', () => {
             'se prepara con una receta de 2 ingredientes; el POS no calcula cuántas unidades se pueden preparar',
         },
         {
+          id: 'p-4',
           nombre: 'Gaseosa',
           precio: 4000,
           activo: true,
@@ -173,7 +177,8 @@ describe('consultar_productos', () => {
         },
       ],
     });
-    assert.ok(!JSON.stringify(result).includes('p-1'));
+    // The inventory item behind a product stays internal: only the product's own id is given.
+    assert.ok(!JSON.stringify(result).includes('i-1'));
   });
 
   it('keeps a real stock of zero as zero', async () => {
@@ -251,7 +256,7 @@ describe('consultar_productos', () => {
   });
 
   it('is offered only to a user who can read products', () => {
-    assert.deepEqual(toolsFor(makeSession()), [consultarProductos]);
-    assert.deepEqual(toolsFor(makeSession({ permissions: ['inventory.read'] })), []);
+    assert.ok(toolsFor(makeSession()).includes(consultarProductos));
+    assert.ok(!toolsFor(makeSession({ permissions: ['inventory.read'] })).includes(consultarProductos));
   });
 });

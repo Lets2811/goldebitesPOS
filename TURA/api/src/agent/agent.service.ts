@@ -4,7 +4,8 @@ import type { Session } from '../auth.js';
 import { config } from '../config.js';
 import { PosApiError } from '../pos/pos-client.js';
 import { toolsFor } from '../tools/registry.js';
-import { ToolRefusedError, type AssistantTool } from '../tools/types.js';
+import { ToolRefusedError, type AssistantTool, type PendingActionStore } from '../tools/types.js';
+import { PENDING_ACTION_TTL_MS, pendingActions } from './pending-actions.js';
 import type { TurnMeter } from '../usage/usage-log.js';
 import { buildSystemPrompt, type ConversationMode } from './system-prompt.js';
 
@@ -22,6 +23,8 @@ export interface ChatTurn {
 export type TuraEvent =
   | { type: 'text'; delta: string }
   | { type: 'tool'; name: string }
+  /** A change TURA prepared: shown with buttons to confirm or cancel it (see /tura/actions). */
+  | { type: 'confirm'; action: { id: string; summary: string; expiresAt: string } }
   | { type: 'done' };
 
 /** The model declined to answer (a safety classifier stopped the request). */
@@ -98,6 +101,8 @@ export interface TurnInput {
   isCancelled: () => boolean;
   model?: ModelClient;
   tools?: AssistantTool[];
+  /** Where prepared changes wait for the user's confirmation. */
+  actions?: PendingActionStore;
 }
 
 /**
@@ -117,6 +122,7 @@ export async function runTurn({
   isCancelled,
   model = claude(),
   tools = toolsFor(session),
+  actions = pendingActions,
 }: TurnInput): Promise<void> {
   const messages: Anthropic.MessageParam[] = recentHistory(history);
   const system = buildSystemPrompt(session, mode);
@@ -192,7 +198,9 @@ export async function runTurn({
     // Every result of the round in one user message, in the order of the calls.
     messages.push({
       role: 'user',
-      content: await Promise.all(calls.map((call) => runTool(call, tools, session, audit))),
+      content: await Promise.all(
+        calls.map((call) => runTool(call, tools, session, audit, emit, actions)),
+      ),
     });
   }
 
@@ -209,6 +217,8 @@ async function runTool(
   tools: AssistantTool[],
   session: Session,
   audit: TurnAudit,
+  emit: (event: TuraEvent) => void,
+  actions: PendingActionStore,
 ): Promise<Anthropic.ToolResultBlockParam> {
   const startedAt = Date.now();
   const entry: ToolAudit = { name: call.name, input: call.input, ok: false, ms: 0 };
@@ -224,15 +234,33 @@ async function runTool(
   if (!tool) {
     return fail(`La herramienta "${call.name}" no existe o no está disponible para este usuario.`);
   }
-  if (tool.kind !== 'read') {
-    return fail('Esta acción requiere confirmación del usuario y todavía no está disponible.');
-  }
   const input = tool.parse(call.input);
   if (!input.ok) {
     return fail(`Parámetros inválidos: ${input.error}`);
   }
 
   try {
+    if (tool.kind === 'write') {
+      // The model's call only prepares the change: it waits for the user's
+      // confirmation on their screen, with the input checked here.
+      const { summary } = await tool.prepare(input.value, { session });
+      const action = await actions.create({
+        tool: tool.definition.name,
+        summary,
+        input: input.value,
+        userId: session.userId ?? 'anonymous',
+        expiresAt: new Date(Date.now() + PENDING_ACTION_TTL_MS).toISOString(),
+      });
+      emit({ type: 'confirm', action: { id: action.id, summary, expiresAt: action.expiresAt } });
+      const content =
+        `Cambio preparado, todavía NO hecho: ${summary} El usuario ve ahora este cambio con botones ` +
+        'para confirmarlo o cancelarlo. Dile en una frase qué va a pasar y que lo confirme ahí; no digas ' +
+        'que ya quedó hecho.';
+      entry.ok = true;
+      entry.ms = Date.now() - startedAt;
+      entry.result = previewResult(`[pendiente ${action.id}] ${summary}`);
+      return { type: 'tool_result', tool_use_id: call.id, content };
+    }
     const content = JSON.stringify(await tool.execute(input.value, { session }));
     entry.ok = true;
     entry.ms = Date.now() - startedAt;

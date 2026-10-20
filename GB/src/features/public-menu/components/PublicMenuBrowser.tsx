@@ -12,7 +12,10 @@ import { ChevronRight, ShoppingCart, Sparkles, UtensilsCrossed } from 'lucide-re
 import LoadingSkeleton from '../../../components/common/LoadingSkeleton';
 import ErrorState from '../../../components/common/ErrorState';
 import StatusChip from '../../../components/common/StatusChip';
-import { usePublicMenu } from '../../../modules/public-menu/hooks/use-public-menu';
+import {
+  usePublicComboTemplate,
+  usePublicMenu,
+} from '../../../modules/public-menu/hooks/use-public-menu';
 import type { PublicMenuProduct } from '../../../modules/public-menu/types/public-menu.types';
 import { useSubmitNfcOrder } from '../../../modules/public-nfc-orders/hooks/use-submit-nfc-order';
 import type { PublicNfcOrder } from '../../../modules/public-nfc-orders/types/public-nfc-order.types';
@@ -75,6 +78,11 @@ export default function PublicMenuBrowser({
   const navigate = useNavigate();
   const [comboInPlace, setComboInPlace] = useState(false);
   const inCombo = comboInOwnRoute ? /\/combo\/?$/.test(location.pathname) : comboInPlace;
+  // The business's own look for "Arma tu combo", fetched only when it has one and it is shown.
+  const { data: comboTemplate } = usePublicComboTemplate(
+    businessId,
+    inCombo && Boolean(menu?.hasBuilderTemplate),
+  );
   const menuPath = location.pathname.replace(/\/combo\/?$/, '');
   const goToCombo = () =>
     comboInOwnRoute ? navigate(`${menuPath}/combo${location.search}`) : setComboInPlace(true);
@@ -184,6 +192,7 @@ export default function PublicMenuBrowser({
                 categories={menu.builderCategories}
                 optionGroups={menu.optionGroups}
                 readOnly={readOnly}
+                template={menu.hasBuilderTemplate ? comboTemplate : null}
                 onBack={goToMenu}
                 onAddCombo={(units) => {
                   addComboToCart(units);

@@ -197,6 +197,40 @@ export class BusinessesService {
     return BusinessMapper.toDomain(row);
   }
 
+  /** The business's own HTML template for "Arma tu combo", or null (the default view). */
+  async getComboBuilderTemplate(id: string): Promise<string | null> {
+    await this.getOrFail(id);
+    return this.businessesRepository.getComboBuilderTemplate(id);
+  }
+
+  /** Sets (or, with null or blank, removes) the business's template for "Arma tu combo". */
+  async setComboBuilderTemplate(
+    id: string,
+    html: string | null,
+    actorUserId?: string,
+  ): Promise<Business> {
+    await this.getOrFail(id);
+    const template = html?.trim() ? html : null;
+    const row = await this.businessesRepository.setComboBuilderTemplate(
+      id,
+      template,
+    );
+    if (!row) {
+      throw new EntityNotFoundException('Business', id);
+    }
+    await this.auditService.record({
+      businessId: id,
+      userId: actorUserId,
+      entityType: 'business',
+      entityId: id,
+      action: template
+        ? 'SET_COMBO_BUILDER_TEMPLATE'
+        : 'REMOVE_COMBO_BUILDER_TEMPLATE',
+      newValues: { size: template?.length ?? 0 },
+    });
+    return BusinessMapper.toDomain(row);
+  }
+
   /** Used by LoyaltyModule to compute earned points and read program settings. */
   async getLoyaltyConfig(businessId: string): Promise<{
     pointsPerThousand: number;

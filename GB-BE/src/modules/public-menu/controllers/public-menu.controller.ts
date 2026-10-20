@@ -24,4 +24,15 @@ export class PublicMenuController {
   ) {
     return this.publicMenuService.getMenu(businessId, branchId);
   }
+
+  @Get(':businessId/combo-template')
+  @ApiOperation({
+    summary:
+      'The business\'s HTML template for "Arma tu combo" (null: the default view)',
+  })
+  async getBuilderTemplate(@Param('businessId') businessId: string) {
+    return {
+      html: await this.publicMenuService.getBuilderTemplate(businessId),
+    };
+  }
 }

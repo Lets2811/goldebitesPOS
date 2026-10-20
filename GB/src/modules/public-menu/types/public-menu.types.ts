@@ -38,6 +38,8 @@ export interface PublicMenu {
   /** Cómo llama el negocio a "Arma tu combo", y la frase debajo (con los valores por defecto ya puestos). */
   builderName: string;
   builderDescription: string;
+  /** Si "Arma tu combo" se ve con la plantilla propia del negocio (se pide aparte). */
+  hasBuilderTemplate: boolean;
   /** Los grupos de opciones activos del negocio, en orden, cada uno con sus opciones activas. */
   optionGroups: PublicMenuOptionGroup[];
 }
