@@ -347,6 +347,7 @@ export default function WaiterKioskPage() {
               businessId={business.data?.id}
               branchId={branchId ?? undefined}
               readOnly
+              comboInOwnRoute={false}
             />
           </Box>
         </Box>

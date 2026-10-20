@@ -9,6 +9,9 @@ import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import { Copy, Check, ExternalLink, MessageCircle, Share2 } from 'lucide-react';
 import { useAuthStore } from '../../../modules/auth/store/auth.store';
+import ToggleButton from '@mui/material/ToggleButton';
+import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
+import { useComboBuilderName } from '../../../modules/products/combo-builder';
 
 interface PublicMenuLinkDialogProps {
   open: boolean;
@@ -43,12 +46,22 @@ export default function PublicMenuLinkDialog({
   const [phone, setPhone] = useState('');
   // The menu of the branch the session is at (what it offers, at its prices).
   const branchId = useAuthStore((s) => s.user?.branchId ?? null);
+  // The whole menu, or straight to "Arma tu combo" (its own address).
+  const comboName = useComboBuilderName();
+  const [target, setTarget] = useState<'menu' | 'combo'>('menu');
   const link = businessId
-    ? `${window.location.origin}/menu/${businessId}${branchId ? `?sede=${branchId}` : ''}`
+    ? `${window.location.origin}/menu/${businessId}${target === 'combo' ? '/combo' : ''}${
+        branchId ? `?sede=${branchId}` : ''
+      }`
     : '';
-  const message = businessName
-    ? `Te compartimos el menú de ${businessName}: ${link}`
-    : `Te compartimos nuestro menú: ${link}`;
+  const message =
+    target === 'combo'
+      ? businessName
+        ? `${comboName} en ${businessName}: ${link}`
+        : `${comboName}: ${link}`
+      : businessName
+        ? `Te compartimos el menú de ${businessName}: ${link}`
+        : `Te compartimos nuestro menú: ${link}`;
   const canNativeShare = typeof navigator !== 'undefined' && typeof navigator.share === 'function';
 
   const handleCopy = async () => {
@@ -87,6 +100,15 @@ export default function PublicMenuLinkDialog({
           el catálogo. Es solo de consulta: no identifica una mesa ni permite pedir.
         </Typography>
         <Stack spacing={2}>
+          <ToggleButtonGroup
+            exclusive
+            size="small"
+            value={target}
+            onChange={(_e, value: 'menu' | 'combo' | null) => value && setTarget(value)}
+          >
+            <ToggleButton value="menu">Menú completo</ToggleButton>
+            <ToggleButton value="combo">{comboName}</ToggleButton>
+          </ToggleButtonGroup>
           <TextField
             fullWidth
             label="Enlace"

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import Box from '@mui/material/Box';
 import ButtonBase from '@mui/material/ButtonBase';
 import Fab from '@mui/material/Fab';
@@ -20,7 +21,7 @@ import { ORDER_STATUS_LABELS, ORDER_STATUS_TONE } from '../../../modules/orders/
 import type { OrderStatus } from '../../../modules/orders/types/order.types';
 import { formatCOP } from '../../../utils/format';
 import { brand } from '../../../theme/palette';
-import ComboBuilderDialog from './ComboBuilderDialog';
+import ComboBuilderView from './ComboBuilderView';
 import ProductDetailDialog from './ProductDetailDialog';
 import PublicCartDrawer from './PublicCartDrawer';
 import { usePublicCart } from '../hooks/use-public-cart';
@@ -40,6 +41,11 @@ interface PublicMenuBrowserProps {
    * lo toma el mesero.
    */
   readOnly?: boolean;
+  /**
+   * Whether "Arma tu combo" lives at its own address (…/combo). Off where the
+   * menu is shown inside another screen (the waiter app): it opens in place.
+   */
+  comboInOwnRoute?: boolean;
 }
 
 /**
@@ -47,6 +53,9 @@ interface PublicMenuBrowserProps {
  * product customization, and the local cart. Used as-is by the generic
  * preview (`/menu/:businessId`, no branch/table context) and wrapped with a
  * fixed-table context header by the NFC gallo page (`/m/:token`).
+ *
+ * "Arma tu combo" has its own address under each (`…/combo`). Both addresses
+ * are one route, so this stays mounted between them and the cart is kept.
  */
 export default function PublicMenuBrowser({
   businessId,
@@ -55,13 +64,22 @@ export default function PublicMenuBrowser({
   token,
   orderType,
   readOnly = false,
+  comboInOwnRoute = true,
 }: PublicMenuBrowserProps) {
   const { enqueueSnackbar } = useSnackbar();
   const { data: menu, isLoading, isError } = usePublicMenu(businessId, branchId);
   const [selectedProduct, setSelectedProduct] = useState<PublicMenuProduct | null>(null);
   const [cartOpen, setCartOpen] = useState(false);
   const [activeOrder, setActiveOrder] = useState<PublicNfcOrder | null>(null);
-  const [builderOpen, setBuilderOpen] = useState(false);
+  const location = useLocation();
+  const navigate = useNavigate();
+  const [comboInPlace, setComboInPlace] = useState(false);
+  const inCombo = comboInOwnRoute ? /\/combo\/?$/.test(location.pathname) : comboInPlace;
+  const menuPath = location.pathname.replace(/\/combo\/?$/, '');
+  const goToCombo = () =>
+    comboInOwnRoute ? navigate(`${menuPath}/combo${location.search}`) : setComboInPlace(true);
+  const goToMenu = () =>
+    comboInOwnRoute ? navigate(`${menuPath}${location.search}`) : setComboInPlace(false);
   const {
     cart,
     addToCart,
@@ -87,7 +105,9 @@ export default function PublicMenuBrowser({
           quantity: line.quantity,
           optionItemIds: line.optionItemIds.length > 0 ? line.optionItemIds : undefined,
           // Cocina ve qué productos van juntos en un mismo combo armado.
-          notes: line.comboNumber ? `${menu?.builderName ?? 'Arma tu combo'} ${line.comboNumber}` : undefined,
+          notes: line.comboNumber
+            ? `${menu?.builderName ?? 'Arma tu combo'} ${line.comboNumber}`
+            : undefined,
         })),
       },
       {
@@ -157,10 +177,27 @@ export default function PublicMenuBrowser({
               </Stack>
             )}
 
-            {!readOnly &&
+            {inCombo && (
+              <ComboBuilderView
+                title={menu.builderName}
+                description={menu.builderDescription}
+                categories={menu.builderCategories}
+                optionGroups={menu.optionGroups}
+                readOnly={readOnly}
+                onBack={goToMenu}
+                onAddCombo={(units) => {
+                  addComboToCart(units);
+                  // Back to the menu with the cart open: the combo is seen inside the order, ready to send.
+                  goToMenu();
+                  setCartOpen(true);
+                }}
+              />
+            )}
+
+            {!inCombo &&
               menu.builderCategories.some((category) => category.products.length > 0) && (
                 <ButtonBase
-                  onClick={() => setBuilderOpen(true)}
+                  onClick={goToCombo}
                   sx={{
                     width: '100%',
                     mb: 4,
@@ -190,13 +227,13 @@ export default function PublicMenuBrowser({
                 </ButtonBase>
               )}
 
-            {menu.categories.length === 0 && (
+            {!inCombo && menu.categories.length === 0 && (
               <Typography variant="body1" color="text.secondary" sx={{ textAlign: 'center' }}>
                 Todavía no hay productos disponibles en el menú.
               </Typography>
             )}
 
-            <Stack spacing={5}>
+            <Stack spacing={5} sx={{ display: inCombo ? 'none' : undefined }}>
               {menu.categories.map((category) => (
                 <Box key={category.id ?? 'uncategorized'}>
                   <Typography
@@ -281,7 +318,7 @@ export default function PublicMenuBrowser({
         )}
       </Box>
 
-      {!readOnly && itemCount > 0 && (
+      {!readOnly && !inCombo && itemCount > 0 && (
         <Fab
           color="primary"
           variant="extended"
@@ -301,19 +338,6 @@ export default function PublicMenuBrowser({
         onAdd={addToCart}
         onClose={() => setSelectedProduct(null)}
         readOnly={readOnly}
-      />
-
-      <ComboBuilderDialog
-        title={menu?.builderName ?? 'Arma tu combo'}
-        open={builderOpen && !readOnly}
-        categories={menu?.builderCategories ?? []}
-        optionGroups={menu?.optionGroups ?? []}
-        onClose={() => setBuilderOpen(false)}
-        onAddCombo={(units) => {
-          addComboToCart(units);
-          // El carrito abierto es la confirmación: se ve el combo dentro del pedido, listo para enviar.
-          setCartOpen(true);
-        }}
       />
 
       <PublicCartDrawer

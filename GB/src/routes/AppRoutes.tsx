@@ -80,7 +80,8 @@ export default function AppRoutes() {
         }
       />
       <Route
-        path="/menu/:businessId"
+        // "/combo" too: "Arma tu combo" has its own address (see PublicMenuBrowser).
+        path="/menu/:businessId/*"
         element={
           <Loadable>
             <PublicMenuPage />
@@ -100,7 +101,7 @@ export default function AppRoutes() {
         />
       ))}
       <Route
-        path="/m/:token"
+        path="/m/:token/*"
         element={
           <Loadable>
             <NfcTableMenuPage />
