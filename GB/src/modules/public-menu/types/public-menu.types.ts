@@ -42,4 +42,10 @@ export interface PublicMenu {
   hasBuilderTemplate: boolean;
   /** Los grupos de opciones activos del negocio, en orden, cada uno con sus opciones activas. */
   optionGroups: PublicMenuOptionGroup[];
+  /**
+   * "Lo más pedido": los más vendidos de la sede, el primero el más vendido.
+   * TODAY cuando el día ya tiene suficientes ventas; RECENT (los de ayer)
+   * mientras tanto. Null si el negocio lo apagó o no hay nada que mostrar.
+   */
+  topSellers: { period: 'TODAY' | 'RECENT'; productIds: string[] } | null;
 }

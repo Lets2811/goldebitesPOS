@@ -7,11 +7,18 @@ import { OptionGroupsService } from '../../option-groups/services/option-groups.
 import { ProductsService } from '../../products/services/products.service';
 import { BranchMenuService } from '../../products/services/branch-menu.service';
 import { BranchesService } from '../../branches/services/branches.service';
+import { OrdersService } from '../../orders/services/orders.service';
+import {
+  addDays,
+  businessDayRange,
+  businessToday,
+} from '../../../common/utils/business-day.util';
 import {
   PublicMenu,
   PublicMenuCategory,
   PublicMenuOptionGroup,
   PublicMenuProduct,
+  PublicMenuTopSellers,
 } from '../domain/public-menu.interface';
 
 const UNCATEGORIZED_LABEL = 'Otros';
@@ -19,6 +26,13 @@ const UNCATEGORIZED_LABEL = 'Otros';
 export const DEFAULT_BUILDER_NAME = 'Arma tu combo';
 export const DEFAULT_BUILDER_DESCRIPTION =
   'Escoge lo que quieras, a tu gusto y a tu estilo.';
+
+/** How many best sellers the menu shows. */
+const TOP_SELLERS_SHOWN = 5;
+/** Below this many sales today, the day says too little: yesterday's are shown. */
+const TOP_SELLERS_MIN_TODAY_SALES = 5;
+/** Every customer opening the menu would count the day's sales again: it is kept this long. */
+const TOP_SELLERS_CACHE_MS = 60_000;
 
 @Injectable()
 export class PublicMenuService {
@@ -29,7 +43,17 @@ export class PublicMenuService {
     private readonly optionGroupsService: OptionGroupsService,
     private readonly branchMenuService: BranchMenuService,
     private readonly branchesService: BranchesService,
+    private readonly ordersService: OrdersService,
   ) {}
+
+  /** The best sellers by business and branch, for a minute (see TOP_SELLERS_CACHE_MS). */
+  private readonly topSellersCache = new Map<
+    string,
+    {
+      at: number;
+      value: { period: 'TODAY' | 'RECENT'; productIds: string[] }[];
+    }
+  >();
 
   /**
    * Live, always-current menu (no "generate" step) — reflects whatever
@@ -114,8 +138,18 @@ export class PublicMenuService {
       offerable,
     );
 
+    const topSellers = business.menuTopSellers
+      ? await this.topSellers(
+          businessId,
+          branch ?? undefined,
+          business.timezone,
+          new Set(inMenu.map((product) => product.id)),
+        )
+      : null;
+
     return {
       businessName: business.name,
+      topSellers,
       categories,
       builderCategories,
       builderName: business.comboBuilderName ?? DEFAULT_BUILDER_NAME,
@@ -124,6 +158,86 @@ export class PublicMenuService {
       hasBuilderTemplate: business.hasComboBuilderTemplate ?? false,
       optionGroups,
     };
+  }
+
+  /**
+   * The branch's best sellers on the menu: today's once the day has enough
+   * sales, yesterday's until then, and today's few if yesterday had none (a
+   * day the place was closed). Sales are what Analytics counts (paid
+   * orders), by units. Only products that can be ordered now count: one that
+   * ran out, was hidden or is only for "Arma tu combo" is skipped.
+   */
+  private async topSellers(
+    businessId: string,
+    branchId: string | undefined,
+    timezone: string,
+    orderable: Set<string>,
+  ): Promise<PublicMenuTopSellers | null> {
+    const candidates = await this.rankedDays(businessId, branchId, timezone);
+    for (const candidate of candidates) {
+      const productIds = candidate.productIds
+        .filter((id) => orderable.has(id))
+        .slice(0, TOP_SELLERS_SHOWN);
+      if (productIds.length > 0) {
+        return { period: candidate.period, productIds };
+      }
+    }
+    return null;
+  }
+
+  /** The rankings to try, in order: today's (with enough sales), yesterday's, today's anyway. */
+  private async rankedDays(
+    businessId: string,
+    branchId: string | undefined,
+    timezone: string,
+  ): Promise<{ period: 'TODAY' | 'RECENT'; productIds: string[] }[]> {
+    const key = `${businessId}:${branchId ?? ''}`;
+    const cached = this.topSellersCache.get(key);
+    if (cached && Date.now() - cached.at < TOP_SELLERS_CACHE_MS) {
+      return cached.value;
+    }
+    const today = businessToday(timezone);
+    const yesterday = addDays(today, -1);
+    const todayRange = businessDayRange(today, today, timezone);
+    const yesterdayRange = businessDayRange(yesterday, yesterday, timezone);
+    // More than shown: some may not be orderable right now.
+    const depth = TOP_SELLERS_SHOWN * 3;
+    const [todaySummary, todayTop, yesterdayTop] = await Promise.all([
+      this.ordersService.getSalesSummary(
+        businessId,
+        branchId,
+        todayRange.dateFrom,
+        todayRange.dateTo,
+      ),
+      this.ordersService.getTopProducts(
+        businessId,
+        branchId,
+        todayRange.dateFrom,
+        todayRange.dateTo,
+        depth,
+        'quantity',
+      ),
+      this.ordersService.getTopProducts(
+        businessId,
+        branchId,
+        yesterdayRange.dateFrom,
+        yesterdayRange.dateTo,
+        depth,
+        'quantity',
+      ),
+    ]);
+    const ids = (top: { productId: string | null }[]) =>
+      top.flatMap((product) => (product.productId ? [product.productId] : []));
+    const todayRanking = {
+      period: 'TODAY' as const,
+      productIds: ids(todayTop),
+    };
+    const value: { period: 'TODAY' | 'RECENT'; productIds: string[] }[] =
+      todaySummary.orderCount >= TOP_SELLERS_MIN_TODAY_SALES
+        ? [todayRanking]
+        : [{ period: 'RECENT', productIds: ids(yesterdayTop) }, todayRanking];
+    this.topSellersCache.set(key, { at: Date.now(), value });
+    return value;
   }
 
   /** The business's own template for "Arma tu combo", or null (the default view). */

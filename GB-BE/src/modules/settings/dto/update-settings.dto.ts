@@ -19,4 +19,11 @@ export class UpdateSettingsDto {
   @IsOptional()
   @IsBoolean()
   discountsAtCheckout?: boolean;
+
+  @ApiPropertyOptional({
+    description: 'Whether the customer\'s menu opens with "Lo más pedido hoy"',
+  })
+  @IsOptional()
+  @IsBoolean()
+  menuTopSellers?: boolean;
 }

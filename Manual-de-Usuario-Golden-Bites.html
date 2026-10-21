@@ -2,528 +2,1294 @@
 <html lang="es-CO">
 <head>
 <meta charset="UTF-8" />
-<title>Manual de Usuario — Golden Bites Admin</title>
+<title>Manual de Usuario — Golden Bites POS</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <style>
   :root {
-    --gold: #B8862B;
-    --gold-dark: #8a6420;
-    --ink: #1a1a1a;
-    --gray: #5a5a5a;
-    --line: #dcdcdc;
-    --bg-soft: #faf8f4;
+    --gold: #B8862B; --gold-dark: #8a6420; --ink: #1a1a1a; --gray: #5a5a5a; --line: #dcdcdc;
+    --bg-soft: #faf8f4; --blue: #2f6fae; --blue-soft: #eef4fb;
   }
   * { box-sizing: border-box; }
-  html, body {
-    margin: 0;
-    padding: 0;
-    background: #e9e9e9;
-    font-family: 'Georgia', 'Times New Roman', serif;
-    color: var(--ink);
-  }
-  body {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
-  }
-  .page {
-    max-width: 780px;
-    margin: 0 auto;
-    background: #fff;
-    padding: 56px 64px;
-  }
-  @media screen {
-    .page { margin: 24px auto; box-shadow: 0 0 24px rgba(0,0,0,0.15); }
-  }
+  html, body { margin: 0; padding: 0; background: #e9e9e9; color: var(--ink); }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif; }
+  .page { max-width: 840px; margin: 0 auto; background: #fff; padding: 56px 64px; }
+  @media screen { .page { margin: 24px auto; box-shadow: 0 0 24px rgba(0,0,0,0.15); } }
+  @media (max-width: 640px) { .page { padding: 28px 18px; } .two-col { flex-direction: column; } }
 
-  /* ---------- Cover ---------- */
-  .cover {
-    min-height: 90vh;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: flex-start;
-    border-top: 10px solid var(--gold);
-  }
-  .cover .crown {
-    width: 64px; height: 64px;
-    border-radius: 12px;
-    background: rgba(184,134,43,0.12);
-    border: 1px solid rgba(184,134,43,0.5);
-    display: flex; align-items: center; justify-content: center;
-    font-size: 32px;
-    margin-bottom: 32px;
-  }
+  .cover { min-height: 90vh; display: flex; flex-direction: column; justify-content: center; align-items: flex-start; border-top: 10px solid var(--gold); }
+  .cover .crown { width: 64px; height: 64px; border-radius: 12px; background: rgba(184,134,43,0.12); border: 1px solid rgba(184,134,43,0.5); display: flex; align-items: center; justify-content: center; font-size: 32px; margin-bottom: 32px; }
   .cover .brand { font-size: 15px; letter-spacing: 3px; text-transform: uppercase; color: var(--gold-dark); font-weight: 700; margin-bottom: 12px; }
   .cover h1 { font-size: 44px; margin: 0 0 12px 0; line-height: 1.15; }
-  .cover .subtitle { font-size: 18px; color: var(--gray); max-width: 480px; line-height: 1.5; margin-bottom: 40px; }
-  .cover .meta { font-size: 13px; color: var(--gray); border-top: 1px solid var(--line); padding-top: 16px; width: 100%; max-width: 480px; }
+  .cover .subtitle { font-size: 18px; color: var(--gray); max-width: 540px; line-height: 1.5; margin-bottom: 40px; }
+  .cover .meta { font-size: 13px; color: var(--gray); border-top: 1px solid var(--line); padding-top: 16px; width: 100%; max-width: 540px; }
   .cover .meta div { margin-bottom: 4px; }
 
-  /* ---------- Table of contents ---------- */
   .toc { page-break-before: always; }
   .toc h2 { font-size: 13px; letter-spacing: 2px; text-transform: uppercase; color: var(--gold-dark); margin-bottom: 24px; }
   .toc ol { list-style: none; margin: 0; padding: 0; counter-reset: toc; }
-  .toc li { counter-increment: toc; margin-bottom: 10px; font-size: 15px; }
+  .toc li { counter-increment: toc; margin-bottom: 8px; font-size: 15px; }
   .toc a { color: var(--ink); text-decoration: none; display: flex; align-items: baseline; }
   .toc a::before { content: counter(toc, decimal-leading-zero) "  "; color: var(--gold-dark); font-weight: 700; width: 34px; flex-shrink: 0; }
-  .toc .toc-sub { padding-left: 34px; font-size: 13.5px; color: var(--gray); margin-top: -2px; margin-bottom: 6px; }
-  .toc .toc-sub a::before { content: "–  "; color: var(--line); width: 18px; }
   .toc a::after { content: ""; flex: 1; border-bottom: 1px dotted var(--line); margin: 0 6px 3px 6px; }
 
-  /* ---------- Section headings ---------- */
-  section.chapter { page-break-before: always; }
-  section.chapter:first-of-type { page-break-before: auto; }
-  h2.chapter-title {
-    font-size: 26px;
-    margin: 0 0 4px 0;
-    padding-bottom: 14px;
-    border-bottom: 3px solid var(--gold);
-  }
+  section.chapter { page-break-before: always; padding-top: 8px; }
+  h2.chapter-title { font-size: 26px; margin: 0 0 4px 0; padding-bottom: 14px; border-bottom: 3px solid var(--gold); }
   .chapter-eyebrow { font-size: 12px; letter-spacing: 2px; text-transform: uppercase; color: var(--gold-dark); font-weight: 700; margin-bottom: 6px; }
-  .chapter-lede { color: var(--gray); font-size: 15px; margin: 14px 0 28px 0; line-height: 1.6; }
-
-  h3.module-title {
-    font-size: 18px;
-    margin: 34px 0 4px 0;
-    padding: 10px 14px;
-    background: var(--bg-soft);
-    border-left: 4px solid var(--gold);
-    page-break-after: avoid;
-  }
-  h3.module-title .path { font-weight: 400; color: var(--gray); font-size: 13px; float: right; font-family: 'SF Mono', Consolas, monospace; }
-  .module-desc { color: var(--gray); font-size: 14.5px; margin: 10px 0 12px 2px; }
-
-  ul.actions { margin: 8px 0 18px 2px; padding-left: 20px; }
+  .chapter-lede { color: var(--gray); font-size: 15px; margin: 14px 0 24px 0; line-height: 1.6; }
+  h3.module-title { font-size: 18px; margin: 30px 0 4px 0; padding: 10px 14px; background: var(--bg-soft); border-left: 4px solid var(--gold); page-break-after: avoid; }
+  h3.module-title .path { font-weight: 400; color: var(--gray); font-size: 12.5px; float: right; font-family: Consolas, 'SF Mono', monospace; }
+  h4 { font-size: 15px; margin: 20px 0 6px 0; color: var(--gold-dark); page-break-after: avoid; }
+  p { font-size: 14.5px; line-height: 1.6; margin: 8px 0; }
+  ul.actions { margin: 8px 0 16px 2px; padding-left: 20px; }
   ul.actions li { margin-bottom: 6px; font-size: 14.5px; line-height: 1.55; }
-  ul.actions li strong { color: var(--ink); }
+  ul.actions ul { margin-top: 4px; }
 
-  .note {
-    background: #fff8e8;
-    border: 1px solid #f0dfa8;
-    border-left: 4px solid var(--gold);
-    padding: 12px 16px;
-    font-size: 13.5px;
-    border-radius: 4px;
-    margin: 14px 0;
-    line-height: 1.5;
-  }
-  .note strong { color: var(--gold-dark); }
+  .note, .multi, .warn { padding: 12px 16px; font-size: 13.8px; border-radius: 4px; margin: 14px 0; line-height: 1.55; page-break-inside: avoid; }
+  .note { background: #fff8e8; border: 1px solid #f0dfa8; border-left: 4px solid var(--gold); }
+  .note strong:first-child { color: var(--gold-dark); }
+  .multi { background: var(--blue-soft); border: 1px solid #cfe0f2; border-left: 4px solid var(--blue); }
+  .multi::before { content: "VARIAS SEDES"; display: block; font-size: 11px; font-weight: 800; letter-spacing: 1.5px; color: var(--blue); margin-bottom: 4px; }
+  .warn { background: #fdf0ef; border: 1px solid #f1cfcb; border-left: 4px solid #b23b3b; }
+  .multi ul, .note ul, .warn ul { margin: 6px 0 0 0; padding-left: 18px; }
+  .multi li, .note li, .warn li { margin-bottom: 4px; }
 
   .steps { counter-reset: step; margin: 14px 0 20px 0; padding: 0; list-style: none; }
-  .steps li {
-    counter-increment: step;
-    position: relative;
-    padding-left: 38px;
-    margin-bottom: 14px;
-    font-size: 14.5px;
-    line-height: 1.55;
-  }
-  .steps li::before {
-    content: counter(step);
-    position: absolute; left: 0; top: -1px;
-    width: 26px; height: 26px;
-    background: var(--gold);
-    color: #fff;
-    border-radius: 50%;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 13px; font-weight: 700;
-  }
-  .steps li strong.lead { display: block; margin-bottom: 2px; }
+  .steps li { counter-increment: step; position: relative; padding-left: 38px; margin-bottom: 12px; font-size: 14.5px; line-height: 1.55; }
+  .steps li::before { content: counter(step); position: absolute; left: 0; top: -1px; width: 26px; height: 26px; background: var(--gold); color: #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; }
 
-  table.ref {
-    width: 100%;
-    border-collapse: collapse;
-    margin: 14px 0 22px 0;
-    font-size: 13.5px;
-  }
-  table.ref th, table.ref td {
-    border: 1px solid var(--line);
-    padding: 8px 10px;
-    text-align: left;
-    vertical-align: top;
-  }
+  table.ref { width: 100%; border-collapse: collapse; margin: 14px 0 22px 0; font-size: 13.2px; }
+  table.ref th, table.ref td { border: 1px solid var(--line); padding: 7px 10px; text-align: left; vertical-align: top; }
   table.ref th { background: var(--bg-soft); font-weight: 700; color: var(--gold-dark); }
   table.ref tr:nth-child(even) td { background: #fdfdfb; }
+  table.ref code { white-space: normal; word-break: break-word; }
 
-  .badge {
-    display: inline-block;
-    padding: 2px 9px;
-    border-radius: 20px;
-    font-size: 11.5px;
-    font-weight: 700;
-    color: #fff;
-  }
-  .badge.pending   { background: #6b7280; }
-  .badge.confirmed { background: var(--gold); }
-  .badge.preparing { background: #b8862b; }
-  .badge.ready     { background: #2f9e5c; }
-  .badge.delivered { background: #4a4a4a; }
-  .badge.cancelled { background: #b23b3b; }
+  .badge { display: inline-block; padding: 2px 9px; border-radius: 20px; font-size: 11.5px; font-weight: 700; color: #fff; white-space: nowrap; }
+  .badge.pending { background: #5b8dbe; } .badge.confirmed { background: var(--gold); } .badge.preparing { background: #d9a441; }
+  .badge.ready { background: #2f9e5c; } .badge.delivered { background: #6b6b6b; } .badge.cancelled { background: #b23b3b; }
+
+  figure.shot { margin: 16px 0 22px 0; page-break-inside: avoid; }
+  figure.shot img { display: block; width: 100%; border: 1px solid var(--line); border-radius: 6px; }
+  figure.shot figcaption { font-size: 12.5px; color: var(--gray); margin-top: 6px; text-align: center; }
+  .phones { display: flex; gap: 18px; justify-content: center; flex-wrap: wrap; page-break-inside: avoid; }
+  .phones figure.shot { flex: 0 1 220px; margin: 12px 0; }
 
   .two-col { display: flex; gap: 24px; }
   .two-col > div { flex: 1; }
-
+  .ui { font-weight: 700; }
   .footer-note { margin-top: 40px; padding-top: 16px; border-top: 1px solid var(--line); color: var(--gray); font-size: 12px; text-align: center; }
-
   a { color: var(--gold-dark); }
+  code { background: var(--bg-soft); padding: 1px 6px; border-radius: 3px; font-size: 0.92em; font-family: Consolas, 'SF Mono', monospace; }
 
-  code {
-    background: var(--bg-soft);
-    padding: 1px 6px;
-    border-radius: 3px;
-    font-size: 0.92em;
-    font-family: 'SF Mono', Consolas, monospace;
-  }
-
-  /* ---------- Print ---------- */
   @media print {
     html, body { background: #fff; }
     .page { box-shadow: none; margin: 0; padding: 0; max-width: none; }
     .cover { min-height: 100vh; }
-    section.chapter { page-break-before: always; }
-    h3.module-title { page-break-after: avoid; }
-    .steps li, ul.actions li, table.ref { page-break-inside: avoid; }
+    h3.module-title, h4 { page-break-after: avoid; }
+    .steps li, ul.actions li, table.ref tr, figure.shot { page-break-inside: avoid; }
     a { color: var(--ink); text-decoration: none; }
-    .toc a::after { border-bottom: 1px dotted #999; }
-    @page { size: A4; margin: 18mm 16mm; }
+    @page { size: A4; margin: 16mm 15mm; }
   }
 </style>
 </head>
 <body>
 <div class="page">
 
-  <!-- ============ COVER ============ -->
-  <div class="cover">
-    <div class="crown">♛</div>
-    <div class="brand">Golden Bites</div>
-    <h1>Manual de Usuario<br />del Panel Administrativo</h1>
-    <p class="subtitle">
-      Guía de uso del sistema de administración Golden Bites: pedidos, cocina, caja,
-      inventario, personal, roles y las pantallas de tablet para mesero y cocina.
-    </p>
-    <div class="meta">
-      <div><strong>Sistema:</strong> Golden Bites Admin</div>
-      <div><strong>Documento generado:</strong> 30 de julio de 2026</div>
-      <div><strong>Idioma:</strong> Español (Colombia)</div>
-    </div>
+<div class="cover">
+  <div class="crown">👑</div>
+  <div class="brand">Golden Bites POS</div>
+  <h1>Manual de Usuario</h1>
+  <div class="subtitle">Todo lo que hace el sistema, pantalla por pantalla y ventana por ventana: para un restaurante de una sola sede y para negocios con varias sedes.</div>
+  <div class="meta">
+    <div><strong>Versión:</strong> octubre de 2026</div>
+    <div><strong>Para:</strong> dueños, administradores, cajeros, meseros, cocina, inventario y domiciliarios</div>
+    <div><strong>Incluye:</strong> POS, modo tablet, app del domiciliario, menú del cliente y mesas NFC, "Arma tu combo" con plantilla propia, y TURA (el asistente)</div>
+    <div><strong>Imágenes:</strong> tomadas de un negocio de prueba; tus datos se verán distintos.</div>
+  </div>
+</div>
+
+<div class="toc">
+  <h2>Contenido</h2>
+  <ol>
+    <li><a href="#c-intro">Qué es Golden Bites POS</a></li>
+    <li><a href="#c-acceso">Entrar al sistema y moverse en él</a></li>
+    <li><a href="#c-sedes">Una sede o varias sedes</a></li>
+    <li><a href="#c-roles">Roles y permisos</a></li>
+    <li><a href="#c-centro">Centro de operaciones</a></li>
+    <li><a href="#c-pedidos">Pedidos</a></li>
+    <li><a href="#c-cocina">Cocina</a></li>
+    <li><a href="#c-tablet">Modo tablet: Mesero, Cocina y Car Service</a></li>
+    <li><a href="#c-domicilios">Domicilios y app del domiciliario</a></li>
+    <li><a href="#c-descuentos">Descuentos</a></li>
+    <li><a href="#c-caja">Caja</a></li>
+    <li><a href="#c-productos">Productos, categorías y opciones</a></li>
+    <li><a href="#c-menu">El menú del cliente: organizar, "Arma tu combo" y plantilla HTML</a></li>
+    <li><a href="#c-inventario">Inventario</a></li>
+    <li><a href="#c-compras">Compras, gastos y proveedores</a></li>
+    <li><a href="#c-finanzas">Finanzas</a></li>
+    <li><a href="#c-comparativo">Comparativo de sedes</a></li>
+    <li><a href="#c-rh">Recursos Humanos y Mi Perfil</a></li>
+    <li><a href="#c-control">Checklists, mermas y equipos</a></li>
+    <li><a href="#c-config">Configuración</a></li>
+    <li><a href="#c-cliente">Lo que ve el cliente</a></li>
+    <li><a href="#c-tura">TURA, el asistente</a></li>
+    <li><a href="#c-listas">Listas de referencia: estados y tipos</a></li>
+    <li><a href="#c-faq">Preguntas frecuentes</a></li>
+  </ol>
+</div>
+
+<!-- ======================= 1 ======================= -->
+<section class="chapter" id="c-intro">
+  <div class="chapter-eyebrow">Capítulo 1</div>
+  <h2 class="chapter-title">Qué es Golden Bites POS</h2>
+  <p class="chapter-lede">Golden Bites POS es el sistema con el que el restaurante toma pedidos, cobra, cuadra la caja, controla su inventario, sus gastos y su equipo. Funciona en el navegador: en un computador, una tablet o un celular, sin instalar nada.</p>
+
+  <h3 class="module-title">Las piezas del sistema</h3>
+  <table class="ref">
+    <tr><th>Pieza</th><th>Quién la usa</th><th>Para qué</th></tr>
+    <tr><td><strong>El POS</strong></td><td>Dueño, administrador, cajero, inventario</td><td>Todo el negocio: pedidos, caja, productos, inventario, gastos, personal y configuración.</td></tr>
+    <tr><td><strong>Modo tablet</strong></td><td>Meseros, cocina, servicio al carro</td><td>Pantallas grandes y simples a pantalla completa: tomar pedidos en mesa, ver la cocina, cobrar en el carro.</td></tr>
+    <tr><td><strong>App del domiciliario</strong></td><td>Domiciliarios</td><td>Sus domicilios, la ruta, el chat con el cliente y marcar entregas, desde el celular.</td></tr>
+    <tr><td><strong>Menú del cliente y mesas NFC</strong></td><td>Clientes</td><td>Ver el menú desde un enlace o tocando con el celular el "gallo NFC" de la mesa, pedir, armar combos y llamar al personal.</td></tr>
+    <tr><td><strong>Página de seguimiento</strong></td><td>Clientes de domicilio</td><td>Ver dónde va su domicilio en el mapa y escribirle al domiciliario.</td></tr>
+    <tr><td><strong>TURA</strong></td><td>Dueño y equipo</td><td>Un asistente al que le preguntas, escribiendo o hablando, cómo van las ventas o qué queda en inventario, y al que le pides cambios.</td></tr>
+  </table>
+
+  <div class="note"><strong>Cada quien ve lo suyo.</strong> El menú lateral solo muestra lo que el rol de cada persona puede usar, y solo los módulos que el negocio tiene contratados (los activa el equipo de Golden Bites). Si en este manual aparece algo que tú no ves, es por una de esas dos razones.</div>
+  <div class="note"><strong>Avisos en pantalla.</strong> Cada acción confirma lo que hizo con un mensaje en la parte inferior de la pantalla (por ejemplo, <em>"Pedido creado correctamente"</em>). Si algo falla, el mensaje dice por qué.</div>
+</section>
+
+<!-- ======================= 2 ======================= -->
+<section class="chapter" id="c-acceso">
+  <div class="chapter-eyebrow">Capítulo 2</div>
+  <h2 class="chapter-title">Entrar al sistema y moverse en él</h2>
+  <p class="chapter-lede">Iniciar sesión, cambiar la contraseña, el menú, el buscador, las notificaciones y tu menú de usuario.</p>
+
+  <h3 class="module-title">Iniciar sesión <span class="path">/login</span></h3>
+  <ol class="steps">
+    <li>Escribe tu <span class="ui">Correo electrónico</span> y tu <span class="ui">Contraseña</span> y toca <span class="ui">Ingresar</span>.</li>
+    <li>Los domiciliarios entran directo a su app de domicilios (capítulo 9).</li>
+  </ol>
+  <figure class="shot"><img src="Manual-de-Usuario-imagenes/login.jpg" alt="Inicio de sesión" /><figcaption>La pantalla de inicio de sesión.</figcaption></figure>
+
+  <h3 class="module-title">Cambiar la contraseña la primera vez</h3>
+  <p>Cuando a una persona se le crea su acceso, o se le restablece la contraseña, recibe una contraseña temporal. Al entrar con ella el sistema muestra <strong>Cambia tu contraseña</strong> y no deja hacer nada más hasta cambiarla:</p>
+  <ol class="steps">
+    <li>Escribe la <span class="ui">Contraseña actual</span> (la temporal), la <span class="ui">Nueva contraseña</span> y repítela en <span class="ui">Confirmar nueva contraseña</span>.</li>
+    <li>Toca <span class="ui">Guardar y continuar</span>. El sistema cierra la sesión: vuelve a entrar con la contraseña nueva.</li>
+  </ol>
+  <div class="phones"><figure class="shot phone"><img src="Manual-de-Usuario-imagenes/cambiar-contrasena.jpg" alt="Cambiar contraseña" /><figcaption>"Cambia tu contraseña", obligatoria con una contraseña temporal.</figcaption></figure></div>
+
+  <div class="multi">Si tu rol puede <strong>administrar todas las sedes</strong>, después de entrar ves <em>"¿En qué sede vas a trabajar?"</em>: eliges una sede o <strong>Todas las sedes</strong>. Mientras no elijas, el sistema no muestra datos. Los demás entran directamente a su sede. (Ver capítulo 3.)</div>
+
+  <h3 class="module-title">El menú lateral</h3>
+  <ul class="actions">
+    <li>Arriba: el <strong>logo</strong> y el nombre del negocio, con una etiqueta de la sede en la que estás (<em>PRINCIPAL</em> si el negocio tiene una sola).</li>
+    <li>Las secciones agrupadas en <em>Operación diaria</em>, <em>Catálogo e inventario</em>, <em>Gestión del negocio</em> y <em>Control operativo</em>, y al final <em>Configuración</em>.</li>
+    <li>Abajo, la flecha <span class="ui">Colapsar menú</span> lo reduce a íconos (al pasar el cursor se ve el nombre); <span class="ui">Expandir menú</span> lo vuelve a abrir.</li>
+  </ul>
+  <div class="multi">Debajo del nombre del negocio aparece <span class="ui">Cambiar de sede</span>, para pasar a otra sede o a "Todas las sedes" en cualquier momento.</div>
+
+  <h3 class="module-title">La barra superior</h3>
+  <ul class="actions">
+    <li><strong>Buscador</strong> (<em>Buscar pedidos, productos, clientes…</em>): desde 2 letras muestra los productos y pedidos que ya cargaste en esta sesión; toca uno para ir a su sección.</li>
+    <li><strong>Punto verde:</strong> indica que hay conexión con el servidor.</li>
+    <li><strong>Notificaciones</strong> (campana): los avisos de la operación. <span class="ui">Marcar todas como leídas</span> las limpia. Sin avisos dice <em>"Estás al día con la operación"</em>.</li>
+    <li><strong>Tu nombre y rol</strong>: abre tu menú con <span class="ui">Modo claro</span>/<span class="ui">Modo oscuro</span>, <span class="ui">Mi Perfil</span>, <span class="ui">Configuración</span> y <span class="ui">Cerrar sesión</span>.</li>
+  </ul>
+  <figure class="shot"><img src="Manual-de-Usuario-imagenes/menu-usuario.jpg" alt="Menú de usuario" /><figcaption>El menú de usuario, arriba a la derecha.</figcaption></figure>
+  <figure class="shot"><img src="Manual-de-Usuario-imagenes/notificaciones.jpg" alt="Notificaciones" /><figcaption>Las notificaciones.</figcaption></figure>
+
+  <h3 class="module-title">Avisos que suenan en cualquier pantalla</h3>
+  <p>Hay dos avisos que aparecen y suenan aunque no estés en su sección, porque nadie mira esas pantallas todo el tiempo:</p>
+  <ul class="actions">
+    <li><strong>Llamadas de mesa:</strong> un cliente tocó <em>Llamar al personal</em> en su mesa (en la pantalla de Pedidos).</li>
+    <li><strong>Llamadas de domicilio:</strong> un cliente o un domiciliario tocó <em>Llamar al restaurante</em> (en todas las pantallas del POS).</li>
+  </ul>
+  <p>Suenan al llegar y se repiten cada 20 segundos hasta que alguien toca <span class="ui">Atendida</span>/<span class="ui">Atendido</span>.</p>
+</section>
+
+<!-- ======================= 3 ======================= -->
+<section class="chapter" id="c-sedes">
+  <div class="chapter-eyebrow">Capítulo 3</div>
+  <h2 class="chapter-title">Una sede o varias sedes</h2>
+  <p class="chapter-lede">Casi todo funciona igual con una o con varias sedes. Este capítulo explica las reglas generales; en el resto del manual, los recuadros azules <strong>"Varias sedes"</strong> indican lo que cambia en cada pantalla.</p>
+
+  <h3 class="module-title">Si tu negocio tiene una sola sede</h3>
+  <p>No tienes que pensar en sedes: todo lo que registras es de tu sede y el sistema la usa sola. Puedes saltarte los recuadros azules.</p>
+
+  <h3 class="module-title">Si tu negocio tiene varias sedes</h3>
+  <p>Cada sede funciona como un negocio aparte que comparte la marca, el personal y la configuración general con las demás.</p>
+  <table class="ref">
+    <tr><th>Es de cada sede</th><th>Es de todo el negocio</th></tr>
+    <tr><td>
+      <ul class="actions" style="margin:0">
+        <li>Sus <strong>pedidos</strong> y su numeración.</li>
+        <li>Su <strong>caja</strong>: aperturas, movimientos y cierres.</li>
+        <li>Su <strong>catálogo de productos</strong>, con precios y recetas.</li>
+        <li>Sus <strong>insumos</strong> y existencias.</li>
+        <li>Sus <strong>mesas</strong> y gallos NFC.</li>
+        <li>Su <strong>cocina</strong>, sus <strong>domicilios</strong> y su ubicación en el mapa.</li>
+        <li>Sus <strong>mermas</strong>, checklists y normas de personal.</li>
+        <li>Su <strong>reserva de efectivo</strong> (Fondos).</li>
+      </ul>
+    </td><td>
+      <ul class="actions" style="margin:0">
+        <li>Nombre, logo, NIT e impuestos.</li>
+        <li>Roles y permisos.</li>
+        <li>Personal (cada empleado tiene una sede principal).</li>
+        <li>Descuentos (promociones y cupones).</li>
+        <li>Categorías de productos y grupos de opciones.</li>
+        <li>Nombre y plantilla de "Arma tu combo".</li>
+        <li>Proveedores y tipos de gasto.</li>
+        <li>Tarifa de domicilios y cuenta bancaria.</li>
+      </ul>
+    </td></tr>
+  </table>
+
+  <h4>Quién ve qué</h4>
+  <ul class="actions">
+    <li><strong>Usuarios asignados a una sede</strong> (cajeros, meseros, cocina…): solo ven y trabajan en su sede. Si intentan abrir datos de otra, el sistema dice <em>"No tienes acceso a esa sede"</em>.</li>
+    <li><strong>Usuarios con el permiso "Administrar todas las sedes"</strong> (normalmente el dueño): eligen la sede al entrar, cambian cuando quieran y ven el <a href="#c-comparativo">Comparativo de sedes</a>.</li>
+    <li>Un usuario <strong>sin sede asignada</strong> en un negocio con varias sedes no puede crear pedidos, operar la caja ni registrar mermas o checklists: un administrador debe asignarle una sede.</li>
+  </ul>
+  <figure class="shot"><img src="Manual-de-Usuario-imagenes/elegir-sede.jpg" alt="Elegir sede" /><figcaption>Al entrar, quien administra todas las sedes elige dónde trabajar.</figcaption></figure>
+
+  <h4>El modo "Todas las sedes": para revisar y gestionar</h4>
+  <p>Muestra la información de todas las sedes a la vez: lo vendido hoy por cada una, productos e insumos de todas (cada uno con su sede), compras, gastos, finanzas y el comparativo. <strong>No es para atender al público:</strong> el menú esconde <strong>Pedidos, Cocina, Domicilios, Caja, Checklists y Mermas</strong>, y no se pueden ajustar existencias ni crear productos o insumos (cada uno se crea en su sede). Una franja arriba de cada pantalla lo recuerda, con el botón <span class="ui">Elegir una sede</span>.</p>
+  <div class="note"><strong>Regla práctica:</strong> para <em>mirar y comparar</em>, "Todas las sedes"; para <em>trabajar</em>, elige la sede.</div>
+  <figure class="shot"><img src="Manual-de-Usuario-imagenes/todas-las-sedes.jpg" alt="Todas las sedes" /><figcaption>"Todas las sedes": la franja de aviso, el menú reducido y "Hoy por sede".</figcaption></figure>
+
+  <h4>Quién crea las sedes</h4>
+  <p>Las sedes las agrega, renombra o desactiva el equipo de Golden Bites, según lo contratado. Dentro del POS configuras lo de cada sede: número de mesas, gallos NFC y ubicación para domicilios.</p>
+</section>
+
+<!-- ======================= 4 ======================= -->
+<section class="chapter" id="c-roles">
+  <div class="chapter-eyebrow">Capítulo 4</div>
+  <h2 class="chapter-title">Roles y permisos</h2>
+  <p class="chapter-lede">Cada usuario tiene un rol y cada rol tiene permisos. El sistema trae roles listos y puedes crear los tuyos en Recursos Humanos → Roles y permisos (capítulo 18). Un cambio de permisos llega a las personas la próxima vez que inician sesión.</p>
+
+  <h3 class="module-title">Roles que trae el sistema</h3>
+  <table class="ref">
+    <tr><th>Rol</th><th>Qué puede hacer</th></tr>
+    <tr><td><strong>Dueño</strong></td><td>Todo, incluidas todas las sedes, la configuración y los roles.</td></tr>
+    <tr><td><strong>Gerente</strong></td><td>Casi todo lo del día a día y la gestión: pedidos, caja (sin rectificar), productos, inventario, compras, proveedores, personal, tareas, permisos de ausencia, checklists, equipos, finanzas, domicilios y descuentos. No administra roles ni todas las sedes.</td></tr>
+    <tr><td><strong>Cajero</strong></td><td>Pedidos (crear, cobrar, editar), factura electrónica, domicilios, aplicar descuentos, caja (abrir, cerrar, retirar), ver cocina y productos, checklists.</td></tr>
+    <tr><td><strong>Cocina</strong></td><td>Ver pedidos y la cocina, y avanzar la preparación. Checklists.</td></tr>
+    <tr><td><strong>Inventario</strong></td><td>Insumos y existencias, compras, proveedores, equipos y checklists.</td></tr>
+    <tr><td><strong>Empleado</strong></td><td>Consultar el centro de operaciones, pedidos y productos; su perfil y checklists.</td></tr>
+    <tr><td><strong>Domiciliario</strong></td><td>Solo su app de domicilios.</td></tr>
+  </table>
+
+  <h3 class="module-title">Todos los permisos</h3>
+  <table class="ref">
+    <tr><th>Área</th><th>Permisos</th></tr>
+    <tr><td>Panel</td><td>Ver el resumen del panel principal.</td></tr>
+    <tr><td>Pedidos</td><td>Ver · Crear · Actualizar · Cancelar pedidos · Emitir facturas electrónicas (DIAN).</td></tr>
+    <tr><td>Domicilios</td><td>Ver · Crear domicilios, asignar domiciliario y cambiar su estado · Llevar domicilios (domiciliario) · Configurar la tarifa y la ubicación de las sedes.</td></tr>
+    <tr><td>Descuentos</td><td>Crear y administrar promociones y cupones · Aplicar descuentos al cobrar.</td></tr>
+    <tr><td>Cocina</td><td>Ver la pantalla de cocina · Actualizar el estado de preparación.</td></tr>
+    <tr><td>Inventario</td><td>Ver · Ajustar existencias · Transferir · Crear, actualizar y desactivar insumos · Conteos físicos.</td></tr>
+    <tr><td>Productos</td><td>Ver · Crear · Actualizar.</td></tr>
+    <tr><td>Caja</td><td>Abrir · Cerrar · Retirar efectivo · Rectificar una sesión cerrada (requiere clave maestra).</td></tr>
+    <tr><td>Compras</td><td>Ver · Crear · Aprobar · Recibir mercancía · Cancelar órdenes de compra.</td></tr>
+    <tr><td>Proveedores</td><td>Ver · Crear, actualizar y desactivar.</td></tr>
+    <tr><td>Administración</td><td>Administrar usuarios · Administrar roles y permisos · Configuración del negocio · Administrar sedes · <strong>Administrar todas las sedes</strong> (cambiar de sede y comparativo) · Configuración general.</td></tr>
+    <tr><td>Personal</td><td>Ver personal · Administrar personal y turnos · Ver mi rol y normas · Configurar normas · Administrar tareas · Aprobar o rechazar permisos de ausencia.</td></tr>
+    <tr><td>Control</td><td>Checklists: ver, administrar plantillas, ejecutar · Equipos: ver, administrar e intervenciones.</td></tr>
+    <tr><td>Finanzas</td><td>Ver gastos y reportes · Registrar y actualizar gastos.</td></tr>
+  </table>
+</section>
+
+<!-- ======================= 5 ======================= -->
+<section class="chapter" id="c-centro">
+  <div class="chapter-eyebrow">Capítulo 5 · Operación diaria</div>
+  <h2 class="chapter-title">Centro de operaciones</h2>
+  <p class="chapter-lede">La pantalla de inicio: un resumen en vivo de cómo va el día.</p>
+  <h3 class="module-title">Qué muestra <span class="path">/</span></h3>
+  <ul class="actions">
+    <li><strong>Ventas del día</strong>, <strong>Pedidos realizados hoy</strong>, <strong>Pedidos activos</strong> y <strong>Ticket promedio</strong>. Las tarjetas con flecha llevan a su sección.</li>
+    <li><strong>Caja:</strong> <em>Abierta</em> o <em>Cerrada</em>; si está cerrada, un aviso arriba lo dice.</li>
+    <li><strong>Insumos con stock bajo:</strong> cuántos están por debajo de su mínimo.</li>
+    <li><strong>Ventas últimos 7 días</strong>, <strong>Ventas por hora</strong> (hoy, de 8 a. m. a 9 p. m.) y <strong>Productos más vendidos</strong> hoy.</li>
+    <li><strong>Pedidos en cocina</strong>, con <span class="ui">Ver cocina</span>.</li>
+  </ul>
+  <figure class="shot"><img src="Manual-de-Usuario-imagenes/dashboard.jpg" alt="Centro de operaciones" /><figcaption>El Centro de operaciones de una sede.</figcaption></figure>
+  <div class="multi">Muestra la sede en la que estás. En <strong>Todas las sedes</strong> aparece <strong>Hoy por sede</strong>: lo vendido, los pedidos y los que están en curso en cada sede, y si tiene la caja abierta, con <span class="ui">Ver comparativo</span>.</div>
+</section>
+
+<!-- ======================= 6 ======================= -->
+<section class="chapter" id="c-pedidos">
+  <div class="chapter-eyebrow">Capítulo 6 · Operación diaria</div>
+  <h2 class="chapter-title">Pedidos</h2>
+  <p class="chapter-lede">Desde que se toma el pedido hasta que se entrega y se cobra.</p>
+
+  <h3 class="module-title">Tipos de pedido</h3>
+  <table class="ref">
+    <tr><th>Tipo</th><th>Cuándo</th></tr>
+    <tr><td><strong>En mesa</strong></td><td>El cliente come en el local. Una mesa con un pedido activo queda ocupada.</td></tr>
+    <tr><td><strong>Para recoger</strong></td><td>El cliente se lo lleva.</td></tr>
+    <tr><td><strong>Domicilio</strong></td><td>Lleva dirección (obligatoria), instrucciones y costo de domicilio.</td></tr>
+    <tr><td><strong>Servicio en carro</strong></td><td>El cliente pide desde su vehículo; se registra la placa (Car Service).</td></tr>
+  </table>
+
+  <h3 class="module-title">Estados de un pedido</h3>
+  <table class="ref">
+    <tr><th>Estado</th><th>Qué significa</th></tr>
+    <tr><td><span class="badge pending">Pendiente</span></td><td>Recién creado (desde el POS o enviado por un cliente desde su mesa). Todavía no va a cocina.</td></tr>
+    <tr><td><span class="badge confirmed">Confirmado</span></td><td>Aceptado y enviado a cocina. <strong>En este momento se descuentan los insumos</strong> de la receta.</td></tr>
+    <tr><td><span class="badge preparing">En preparación</span></td><td>La cocina lo está haciendo.</td></tr>
+    <tr><td><span class="badge ready">Listo</span></td><td>Terminado, para entregar o despachar.</td></tr>
+    <tr><td><span class="badge delivered">Entregado</span></td><td>Cerrado.</td></tr>
+    <tr><td><span class="badge cancelled">Cancelado</span></td><td>Anulado con un motivo. Si ya estaba confirmado, los insumos vuelven al inventario.</td></tr>
+  </table>
+  <p>El pago va aparte: <strong>Sin pagar</strong>, <strong>Pago parcial</strong>, <strong>Pagado</strong> o <strong>Reembolsado</strong>. Un pedido puede entregarse antes o después de pagarse (menos en Car Service, que se cobra antes de ir a cocina). Los pedidos del mesero y de Car Service llegan a cocina ya confirmados.</p>
+
+  <h3 class="module-title">La pantalla de pedidos <span class="path">/pedidos</span></h3>
+  <ul class="actions">
+    <li><strong>Vista kanban</strong> (una columna por estado, con cuántos hay) o <strong>Vista tabla</strong> (Pedido, Cliente, Tipo, Estado, Pago, Total).</li>
+    <li>En cada tarjeta del kanban: número, mesa, cliente, tipo, pago, total, el ícono de impresora (<em>Imprimir comanda</em>) y la flecha <em>Avanzar a "…"</em>.</li>
+    <li><strong>Filtros:</strong> buscar por número o cliente, <em>Estado</em>, <em>Tipo</em>, y la fecha: <em>Solo hoy</em>, <em>Fecha específica</em> o <em>Todos los días</em>. <span class="ui">Limpiar filtros</span> los quita.</li>
+    <li><strong>Imprimir y notificar comandas automáticamente:</strong> si lo activas, este equipo imprime solo la comanda de cocina de cada pedido nuevo. Es una preferencia de cada equipo.</li>
+    <li>Si quedan pedidos de días anteriores sin cerrar, una franja lo avisa con <span class="ui">Ver pedidos atrasados</span>.</li>
+    <li>Cada pedido muestra un cronómetro; los que pasan de 15 minutos se marcan como retrasados.</li>
+    <li>Botones: <span class="ui">Abrir en modo tablet</span> y <span class="ui">Abrir Car Service</span> (capítulo 8), <span class="ui">Enviar menú</span> y <span class="ui">Nuevo pedido</span>.</li>
+    <li><strong>Llamadas de mesa:</strong> cuando un cliente toca <em>Llamar al personal</em> desde su mesa, aparece una franja con la mesa y cuánto lleva esperando, y suena. Toca <span class="ui">Atendida</span>.</li>
+  </ul>
+  <figure class="shot"><img src="Manual-de-Usuario-imagenes/pedidos.jpg" alt="Pedidos kanban" /><figcaption>Pedidos en vista kanban.</figcaption></figure>
+  <figure class="shot"><img src="Manual-de-Usuario-imagenes/pedidos-tabla.jpg" alt="Pedidos tabla" /><figcaption>La misma lista en vista tabla.</figcaption></figure>
+
+  <h3 class="module-title">Crear un pedido</h3>
+  <ol class="steps">
+    <li>Toca <span class="ui">Nuevo pedido</span>.</li>
+    <li>Opcional: <span class="ui">Cliente registrado</span> o <span class="ui">Nombre del cliente</span>.</li>
+    <li>Elige el <span class="ui">Tipo de pedido</span> y completa lo que pide: la mesa, la <span class="ui">Placa del vehículo</span>, o la <span class="ui">Dirección de entrega</span>, las <span class="ui">Instrucciones de entrega</span> y el <span class="ui">Costo de domicilio</span>.</li>
+    <li>Toca los productos para agregarlos (cada toque suma una unidad; ajusta cantidades en la lista). Si el producto tiene opciones (salsas, tamaño…), elígelas; cada unidad puede llevar opciones distintas. Los productos <strong>Agotado</strong> no se pueden elegir.</li>
+    <li>Opcional: un <span class="ui">Descuento (COP)</span> en pesos y <span class="ui">Notas del pedido</span>.</li>
+    <li>Toca <span class="ui">Crear pedido</span>. Queda <em>Pendiente</em>.</li>
+  </ol>
+  <div class="note"><strong>Mesa ocupada:</strong> si la mesa ya tiene un pedido activo, el sistema no deja abrir otro: abre el de esa mesa y usa <span class="ui">Agregar productos</span>.</div>
+  <figure class="shot"><img src="Manual-de-Usuario-imagenes/nuevo-pedido.jpg" alt="Nuevo pedido" /><figcaption>Nuevo pedido.</figcaption></figure>
+
+  <h3 class="module-title">El detalle de un pedido</h3>
+  <p>Toca un pedido para abrirlo. Arriba: número, tipo y estado. Luego el cliente (y mesa o dirección), los productos con sus opciones y notas, el subtotal, descuento, impuestos, domicilio y total.</p>
+  <ul class="actions">
+    <li><span class="ui">Avanzar a "…"</span> (abajo): lo pasa al siguiente estado.</li>
+    <li><span class="ui">Imprimir comanda</span> (para cocina) e <span class="ui">Imprimir factura</span> (para el cliente). Ambas llevan el logo del negocio.</li>
+    <li><span class="ui">Editar productos</span>: cambiar producto, cantidad o nota, o quitar productos, mientras el pedido siga activo (no entregado ni cancelado). Si ya estaba confirmado, el inventario se ajusta solo.</li>
+    <li><span class="ui">Agregar productos</span>: suma productos a la cuenta sin tocar lo ya pedido (ideal en mesa).</li>
+    <li><span class="ui">Cancelar</span> → <em>Cancelar pedido</em>: escribe el <span class="ui">Motivo de la cancelación</span> y confírmalo.</li>
+  </ul>
+  <figure class="shot"><img src="Manual-de-Usuario-imagenes/detalle-pedido.jpg" alt="Detalle del pedido" /><figcaption>El detalle de un pedido.</figcaption></figure>
+  <figure class="shot"><img src="Manual-de-Usuario-imagenes/pedido-editar.jpg" alt="Editar pedido" /><figcaption>Editar productos de un pedido.</figcaption></figure>
+  <figure class="shot"><img src="Manual-de-Usuario-imagenes/pedido-agregar.jpg" alt="Agregar productos" /><figcaption>Agregar productos a una cuenta abierta.</figcaption></figure>
+  <figure class="shot"><img src="Manual-de-Usuario-imagenes/pedido-cancelar.jpg" alt="Cancelar pedido" /><figcaption>Cancelar un pedido pide el motivo.</figcaption></figure>
+
+  <h4>Cobrar</h4>
+  <ol class="steps">
+    <li>En <strong>Pagos</strong> elige el <span class="ui">Método</span>: <strong>Efectivo, Tarjeta, Transferencia, Nequi, Daviplata</strong> u <strong>Otro</strong>.</li>
+    <li>Escribe el <span class="ui">Monto</span> (si lo dejas vacío se propone el saldo pendiente) y toca <span class="ui">Registrar</span>.</li>
+    <li>Puedes registrar varios pagos: una parte ahora (queda <em>Pago parcial</em>) y el resto después, o con métodos distintos.</li>
+    <li>La <span class="ui">Calculadora de cambio</span>: escribe con cuánto paga el cliente (<em>Paga con</em>) y te dice el cambio.</li>
+    <li>Cuando el pedido queda pagado completo, <strong>la factura se imprime sola</strong>.</li>
+  </ol>
+  <p><strong>Corregir el método de un pago</strong> ya registrado (por ejemplo, era Nequi y se marcó Efectivo): ábrelo en la lista de pagos, cámbialo y guarda (<em>"Método de pago corregido"</em>).</p>
+  <figure class="shot"><img src="Manual-de-Usuario-imagenes/pedido-cobro.jpg" alt="Cobro" /><figcaption>Pagos, dividir cuenta y calculadora de cambio.</figcaption></figure>
+
+  <h4>Dividir la cuenta</h4>
+  <ol class="steps">
+    <li>Toca <span class="ui">Dividir cuenta</span>. Arriba ves el <em>Saldo pendiente</em>.</li>
+    <li><strong>Partes iguales:</strong> escribe <em>¿Entre cuántas personas?</em> (mínimo 2) y el sistema reparte el saldo exacto. <strong>Montos personalizados:</strong> escribe el monto de cada persona; <span class="ui">Agregar persona</span> suma filas.</li>
+    <li>Para cada persona, opcionalmente su nombre, y el <span class="ui">Método</span> de pago.</li>
+    <li>Cuando aparece <em>"Los montos cuadran con el saldo pendiente"</em>, toca <span class="ui">Confirmar división</span>. Se registra un pago por persona; si uno falla, los anteriores quedan hechos y puedes reintentar.</li>
+  </ol>
+  <figure class="shot"><img src="Manual-de-Usuario-imagenes/pedido-dividir.jpg" alt="Dividir cuenta" /><figcaption>Dividir cuenta en partes iguales.</figcaption></figure>
+
+  <h4>Descuento al cobrar</h4>
+  <p>Si tu negocio tiene activada la sección (Configuración → Impuestos, pagos y canales de venta) y tu rol puede aplicar descuentos, el detalle muestra <strong>Descuento (opcional)</strong>. Uno por pedido, y solo mientras no tenga pagos:</p>
+  <ul class="actions">
+    <li><strong>Promoción:</strong> eliges una de las vigentes (si no hay, dice <em>"No hay promociones vigentes"</em>).</li>
+    <li><strong>Cupón:</strong> escribes el <span class="ui">Código del cupón</span> que trae el cliente.</li>
+    <li><strong>Porcentaje:</strong> un porcentaje manual (5 cobra el total menos el 5%).</li>
+  </ul>
+  <p>Toca <span class="ui">Aplicar</span>; después puedes <span class="ui">Cambiar</span> o quitarlo. Se calcula sobre el subtotal, antes de impuestos y domicilio, y en los totales aparece con su nombre.</p>
+  <figure class="shot"><img src="Manual-de-Usuario-imagenes/pedido-descuento.jpg" alt="Descuento" /><figcaption>La sección Descuento del pedido.</figcaption></figure>
+
+  <h4>Factura electrónica (DIAN)</h4>
+  <p>Si tu negocio tiene facturación electrónica, en un pedido <strong>pagado</strong> aparece <span class="ui">Factura electrónica</span>:</p>
+  <ol class="steps">
+    <li>Elige <strong>Consumidor final</strong> (lo normal en un restaurante) o <strong>Con datos del comprador</strong>.</li>
+    <li>Con datos: <strong>Persona</strong> o <strong>Empresa</strong>, el <span class="ui">Documento</span> (tipo y número; para NIT, sin dígito de verificación), <span class="ui">Nombre completo</span> o <span class="ui">Razón social</span>, el <span class="ui">Correo</span> (ahí recibe la factura), teléfono y dirección. Si el pedido tiene cliente, sus datos se llenan solos.</li>
+    <li>Toca <span class="ui">Emitir factura electrónica</span> (<em>"Enviando a la DIAN…"</em>).</li>
+    <li>El pedido muestra el número de la factura, con <span class="ui">PDF</span> e <span class="ui">Imprimir</span>. Si falló, dice el motivo: corrige y vuelve a intentar.</li>
+  </ol>
+  <div class="note"><strong>Ambiente de pruebas:</strong> mientras tu conexión con Factus esté en pruebas, la factura se valida con la DIAN de pruebas y no tiene validez fiscal. El equipo de Golden Bites configura la conexión.</div>
+  <figure class="shot"><img src="Manual-de-Usuario-imagenes/pedido-factura-electronica.jpg" alt="Factura electrónica" /><figcaption>Emitir la factura electrónica de un pedido pagado.</figcaption></figure>
+
+  <h3 class="module-title">Enviar menú</h3>
+  <p><span class="ui">Enviar menú</span> abre <strong>Compartir menú</strong>: el enlace público del menú (o directo a "Arma tu combo"), para <span class="ui">Copiar enlace</span>, <span class="ui">Abrir</span>, <span class="ui">Compartir</span> o <span class="ui">Enviar por WhatsApp</span> a un número (vacío: eliges el contacto en WhatsApp). Más detalle en el capítulo 13.</p>
+  <figure class="shot"><img src="Manual-de-Usuario-imagenes/enviar-menu.jpg" alt="Enviar menú" /><figcaption>Enviar el menú a un cliente.</figcaption></figure>
+
+  <h3 class="module-title">Pedidos atrasados <span class="path">/pedidos-atrasados</span></h3>
+  <p>Pedidos de días anteriores que quedaron sin cerrar (ni entregados ni cancelados). Desde aquí se avanzan o se cancelan para dejar la operación al día.</p>
+  <figure class="shot"><img src="Manual-de-Usuario-imagenes/pedidos-atrasados.jpg" alt="Pedidos atrasados" /><figcaption>Pedidos atrasados.</figcaption></figure>
+
+  <div class="multi">
+    <ul>
+      <li>Los pedidos se crean <strong>en la sede en la que estás</strong>, solo con productos de esa sede y a sus precios.</li>
+      <li>La numeración es por sede.</li>
+      <li>En <strong>Todas las sedes</strong> la sección Pedidos no aparece; lo vendido por cada sede se ve en el Centro de operaciones, Finanzas y el Comparativo.</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ======================= 7 ======================= -->
+<section class="chapter" id="c-cocina">
+  <div class="chapter-eyebrow">Capítulo 7 · Operación diaria</div>
+  <h2 class="chapter-title">Cocina</h2>
+  <p class="chapter-lede">La pantalla donde la cocina ve lo que tiene que preparar.</p>
+  <h3 class="module-title">Pantalla de cocina <span class="path">/cocina</span></h3>
+  <ul class="actions">
+    <li>Muestra los pedidos <strong>Confirmados</strong> y <strong>En preparación</strong>: productos, opciones, notas, mesa o tipo y el tiempo que llevan.</li>
+    <li><span class="ui">Iniciar preparación</span> lo pasa a <em>En preparación</em>; <span class="ui">Marcar como listo</span> a <em>Listo</em>.</li>
+    <li>Arriba: cuántos hay activos y cuántos van retrasados (más de 15 minutos).</li>
+    <li>Orden: <em>Más antiguos primero</em> o <em>Más recientes primero</em>. <span class="ui">Pantalla completa</span> para la pantalla de la cocina.</li>
+    <li>Los combos que arma el cliente llegan con la nota <em>"Arma tu combo 1"</em>, <em>"2"</em>… en cada producto, para saber cuáles van juntos.</li>
+    <li>Los pedidos nuevos aparecen solos. <span class="ui">Abrir en modo tablet</span> abre la versión para tablet.</li>
+  </ul>
+  <figure class="shot"><img src="Manual-de-Usuario-imagenes/cocina.jpg" alt="Cocina" /><figcaption>La pantalla de Cocina.</figcaption></figure>
+  <div class="multi">Cada sede tiene su cocina: solo se ven los pedidos de la sede en la que estás. En Todas las sedes la sección no aparece.</div>
+</section>
+
+<!-- ======================= 8 ======================= -->
+<section class="chapter" id="c-tablet">
+  <div class="chapter-eyebrow">Capítulo 8 · Operación diaria</div>
+  <h2 class="chapter-title">Modo tablet: Mesero, Cocina y Car Service</h2>
+  <p class="chapter-lede">Pantallas a pantalla completa, con botones grandes, para usar de pie. Se abren desde Pedidos o Cocina en una pestaña nueva y se quedan abiertas en la tablet. Si la pantalla completa no arranca sola, se activa con el primer toque.</p>
+
+  <h3 class="module-title">Mesero <span class="path">/tablet/mesero</span></h3>
+  <p>El inicio tiene tres botones grandes y, arriba, <span class="ui">Mis pedidos</span> (con cuántos tiene activos) y <span class="ui">Salir</span>.</p>
+  <figure class="shot"><img src="Manual-de-Usuario-imagenes/tablet-mesero.jpg" alt="Mesero inicio" /><figcaption>Modo tablet del mesero.</figcaption></figure>
+  <h4>Pedido nuevo</h4>
+  <ol class="steps">
+    <li>Arriba elige <em>En mesa</em> o <em>Para recoger</em>. En mesa, toca el número (las ocupadas se marcan: <em>"Mesa ocupada — ya tiene un pedido activo"</em>) o escribe otra (ej. "Terraza 2").</li>
+    <li>Toca los productos (por categoría o <em>Todos</em>); los que tienen opciones las piden. Los agotados no se pueden tocar.</li>
+    <li>Opcional: <span class="ui">Nombre del cliente</span> y <span class="ui">Comentario del pedido</span> (ej. "Sin cebolla").</li>
+    <li><span class="ui">Enviar a cocina</span>: el pedido llega a cocina ya confirmado.</li>
+  </ol>
+  <figure class="shot"><img src="Manual-de-Usuario-imagenes/mesero-pedido.jpg" alt="Pedido nuevo mesero" /><figcaption>Pedido nuevo: productos, mesa y total.</figcaption></figure>
+  <h4>Mesas activas y Mis pedidos</h4>
+  <ul class="actions">
+    <li><strong>Mesas activas:</strong> cada mesa con pedido en curso, con su estado y total; tócala para abrirla.</li>
+    <li><strong>Mis pedidos:</strong> los que tomaste, con su estado y cuánto llevan. En cada uno: <span class="ui">Confirmar pedido</span> (si estaba pendiente), <span class="ui">Agregar productos</span> y <span class="ui">Marcar como entregado</span>.</li>
+    <li>Cuando la cocina termina un pedido tuyo aparece el aviso <strong>"Pedido listo"</strong> arriba, hasta que lo cierres.</li>
+    <li><span class="ui">Mostrar menú</span> enseña la carta como la ve el cliente; <span class="ui">Enviar menú</span> se la manda.</li>
+  </ul>
+  <figure class="shot"><img src="Manual-de-Usuario-imagenes/mesero-mesas.jpg" alt="Mesas activas" /><figcaption>Mesas activas.</figcaption></figure>
+  <figure class="shot"><img src="Manual-de-Usuario-imagenes/mesero-mis-pedidos.jpg" alt="Mis pedidos" /><figcaption>Mis pedidos.</figcaption></figure>
+
+  <h3 class="module-title">Cocina <span class="path">/tablet/cocina</span></h3>
+  <p>Las comandas como tarjetas. <strong>Desliza una tarjeta</strong> hacia el lado para avanzarla (de confirmada a en preparación, y a lista). Los pedidos nuevos aparecen solos.</p>
+  <figure class="shot"><img src="Manual-de-Usuario-imagenes/tablet-cocina.jpg" alt="Tablet cocina" /><figcaption>Modo tablet de cocina.</figcaption></figure>
+
+  <h3 class="module-title">Car Service <span class="path">/tablet/servicio-carro</span></h3>
+  <ol class="steps">
+    <li>Escribe la <span class="ui">Placa o descripción del vehículo</span> (ej. "ABC-123 / Camioneta gris") y, si quieres, el nombre del cliente.</li>
+    <li>Toca los productos (<em>Todo el menú</em> o por categoría).</li>
+    <li><span class="ui">Cobrar y enviar a cocina</span>: elige <span class="ui">Cobrar en efectivo</span> o <span class="ui">Cobrar con tarjeta</span>. El pedido se cobra y pasa a cocina.</li>
+    <li>Entrega al cliente el <strong>número de pedido</strong>. Cuando está listo aparece <em>"¡Pedido #… listo! Vehículo …"</em>.</li>
+  </ol>
+  <div class="warn">El cobro con tarjeta de Car Service es una <strong>pasarela simulada</strong>: no procesa pagos reales. Registra el pago en el sistema, pero el cobro real con datáfono se hace aparte.</div>
+  <figure class="shot"><img src="Manual-de-Usuario-imagenes/tablet-carro.jpg" alt="Car Service" /><figcaption>Car Service.</figcaption></figure>
+  <div class="multi">La tablet trabaja en la sede del usuario con el que se inició sesión: en cada sede usa un usuario de esa sede.</div>
+</section>
+
+<!-- ======================= 9 ======================= -->
+<section class="chapter" id="c-domicilios">
+  <div class="chapter-eyebrow">Capítulo 9 · Operación diaria</div>
+  <h2 class="chapter-title">Domicilios y app del domiciliario</h2>
+  <p class="chapter-lede">Ruta y valor por distancia desde cada sede, quién lleva cada domicilio, seguimiento en vivo, chat con el cliente y la app del domiciliario.</p>
+  <p>La pantalla <span class="path">/domicilios</span> tiene cuatro pestañas: <strong>Nuevo domicilio</strong>, <strong>Domicilios</strong>, <strong>Seguimiento</strong> y <strong>Tarifa y sedes</strong> (cada una según los permisos del usuario).</p>
+
+  <h3 class="module-title">Tarifa y sedes (hacerlo primero)</h3>
+  <h4>Tarifa</h4>
+  <p>El valor de cada domicilio sale de la distancia <strong>por carretera</strong>. Mientras no se guarde la tarifa no se pueden crear domicilios.</p>
+  <ul class="actions">
+    <li><strong>Precio</strong> por cada cierta distancia (<em>Por cada</em> y <em>Unidad</em>: km o m). Ej.: 1.000 pesos por cada 1 km.</li>
+    <li><strong>Cómo contar la distancia:</strong> <em>Exacta</em> (3,4 km = 3,4) o <em>Por unidad iniciada</em> (3,4 km = 4).</li>
+    <li><strong>Base</strong> (opcional, se suma siempre), <strong>Valor mínimo</strong> (opcional) y <strong>Redondear a</strong> (0 = sin redondeo).</li>
+    <li>Debajo, un ejemplo con varias distancias muestra cuánto se cobraría. <span class="ui">Guardar tarifa</span>.</li>
+  </ul>
+  <h4>Ubicación de las sedes</h4>
+  <p>Es el punto A de los domicilios de cada sede (<em>Ubicada</em> / <em>Sin ubicar</em>). Búscala por dirección, usa <span class="ui">Estoy en la sede: usar mi ubicación</span>, o arrastra el pin; luego <span class="ui">Guardar ubicación</span>.</p>
+  <figure class="shot"><img src="Manual-de-Usuario-imagenes/domicilios-tarifa.jpg" alt="Tarifa y sedes" /><figcaption>Tarifa y sedes.</figcaption></figure>
+
+  <h3 class="module-title">Nuevo domicilio</h3>
+  <ol class="steps">
+    <li><strong>Punto A · sede:</strong> la sede de salida, o el botón de ubicación para elegir la más cercana a ti. Si la sede no está ubicada, arrastra el pin A hasta ella.</li>
+    <li><strong>Punto B · entrega:</strong> escribe la <span class="ui">Dirección de entrega</span> (con sugerencias), toca el mapa, o usa <span class="ui">Pegar ubicación de WhatsApp</span>: en WhatsApp mantén presionada la ubicación que mandó el cliente → <em>Copiar</em> (o en Google Maps <em>Compartir → Copiar enlace</em>), y pégala con <span class="ui">Pegar lo que copié</span> → <span class="ui">Ubicar en el mapa</span>. También sirven enlaces de Waze o coordenadas. (La ubicación <em>en tiempo real</em> de WhatsApp no se puede copiar: pide la ubicación actual.)</li>
+    <li>Completa <span class="ui">Apartamento, torre, indicaciones</span>, <span class="ui">Cliente</span>, <span class="ui">Teléfono</span> y <span class="ui">Notas</span>.</li>
+    <li>Opcional: el <span class="ui">Domiciliario</span> (se puede asignar después) y <span class="ui">Vincular a un pedido</span> (busca por número, cliente o dirección; pedidos recientes sin domicilio).</li>
+    <li>El sistema muestra la <strong>Distancia</strong>, el <strong>Tiempo aprox.</strong> y el <strong>Valor del domicilio</strong>, con la ruta en el mapa. Ambos pines se pueden arrastrar.</li>
+    <li><span class="ui">Crear domicilio</span>. Se abre <strong>Enlace de seguimiento</strong>: envíaselo al cliente por <span class="ui">WhatsApp</span>, <span class="ui">Compartir</span> o cópialo.</li>
+  </ol>
+  <figure class="shot"><img src="Manual-de-Usuario-imagenes/domicilios-nuevo.jpg" alt="Nuevo domicilio" /><figcaption>Nuevo domicilio: punto A, punto B y el mapa.</figcaption></figure>
+  <figure class="shot"><img src="Manual-de-Usuario-imagenes/domicilios-whatsapp.jpg" alt="Ubicación de WhatsApp" /><figcaption>Pegar la ubicación que mandó el cliente por WhatsApp.</figcaption></figure>
+
+  <h3 class="module-title">La lista del día (pestaña Domicilios)</h3>
+  <ul class="actions">
+    <li>Cada domicilio con su <strong>código</strong> (6 letras y números), pedido, hora, destino, distancia, valor, domiciliario y estado (<em>Sin asignar, Asignado, En camino, Entregado, Cancelado</em>).</li>
+    <li>Busca por código, pedido, cliente, teléfono o dirección; filtra por <em>Día</em> y <em>Estado</em>.</li>
+    <li>En cada fila: asignar o cambiar el domiciliario; pasar a <em>En camino</em> o <em>Entregado</em>; <strong>llamar al domiciliario</strong> (su teléfono suena hasta que lo vea); <span class="ui">Vincular a un pedido</span> (o cambiarlo o desvincularlo: el cliente verá el detalle y costos de ese pedido en su seguimiento); el <strong>enlace de seguimiento</strong>; el <strong>chat</strong>; <span class="ui">Ver ruta en Google Maps</span>; y <span class="ui">Cancelar domicilio</span>.</li>
+  </ul>
+  <figure class="shot"><img src="Manual-de-Usuario-imagenes/domicilios.jpg" alt="Lista de domicilios" /><figcaption>La lista de domicilios del día.</figcaption></figure>
+
+  <h3 class="module-title">Seguimiento, chat y llamadas</h3>
+  <ul class="actions">
+    <li><strong>Seguimiento:</strong> el mapa con dónde está cada domiciliario (según su teléfono, se actualiza cada 10 segundos), qué lleva y el recorrido hecho. Los domiciliarios comparten su ubicación mientras tienen la app abierta con domicilios asignados.</li>
+    <li><strong>Chat del domicilio:</strong> el restaurante, el cliente y el domiciliario se escriben (Enter envía; Mayúsculas+Enter, nueva línea). Respuestas rápidas: <em>"Ya revisamos tu domicilio"</em>, <em>"Tu pedido va en camino"</em>, <em>"Te llamamos en un momento"</em>, <em>"Disculpa la demora"</em>. Cuando el domicilio termina, el chat se cierra.</li>
+    <li><strong>Llamadas al restaurante:</strong> si el cliente o el domiciliario tocan <em>Llamar al restaurante</em> (con un motivo opcional), suena un aviso en <strong>todas las pantallas del POS</strong> con el código, el cliente y la dirección, cada 20 segundos hasta que alguien toca <span class="ui">Atendido</span>.</li>
+  </ul>
+  <figure class="shot"><img src="Manual-de-Usuario-imagenes/domicilios-seguimiento.jpg" alt="Seguimiento" /><figcaption>Seguimiento en vivo de los domiciliarios.</figcaption></figure>
+
+  <h3 class="module-title">La app del domiciliario <span class="path">/domiciliario</span></h3>
+  <p>El domiciliario entra con su usuario desde el celular. El inicio lo saluda y tiene cuatro opciones:</p>
+  <ul class="actions">
+    <li><strong>Mi ruta actual:</strong> el domicilio en camino con el mapa, el cliente y la ruta (<em>Recalcular la ruta desde donde estás</em>). Botones: <span class="ui">WhatsApp</span> y llamar al cliente, <span class="ui">Google Maps</span>, el chat (con mensajes sin leer) con respuestas rápidas (<em>"Voy en camino", "Llego en 5 minutos", "Ya llegué, estoy afuera", "No encuentro la dirección, ¿me ayudas?"</em>…), <span class="ui">Llamar al restaurante</span> (con motivos como <em>"El cliente no contesta"</em>, <em>"Problema con el pago"</em>, <em>"Problema con la moto"</em>) y <span class="ui">Marcar como entregado</span> (<em>"¿Entregaste el domicilio?" → "Sí, entregado"</em>).</li>
+    <li><strong>Pendientes:</strong> lo asignado y por salir; <span class="ui">Iniciar ruta</span> lo pone en camino.</li>
+    <li><strong>Mis domicilios:</strong> los entregados y cancelados, hoy y esta semana.</li>
+    <li><strong>Balance:</strong> valor de los domicilios entregados, cuántos, el recorrido, cancelados y promedio por domicilio. (Es lo que se cobró; lo que le corresponde al domiciliario lo define el negocio.)</li>
+  </ul>
+  <p>Cuando le asignan un domicilio nuevo, el celular suena, vibra y muestra <em>"Nuevo domicilio asignado"</em>. Si el restaurante o el cliente lo llaman, aparece una pantalla de llamada que suena hasta que la vea.</p>
+  <div class="note"><strong>Para que suene con el teléfono bloqueado:</strong> toca <span class="ui">Activar</span> en el aviso de notificaciones. En iPhone, primero Compartir → «Agregar a inicio», abre la app desde ese ícono y activa las notificaciones. Si están bloqueadas, se activan en los ajustes del navegador. La ubicación se comparte solo mientras la app está abierta: mantenla en pantalla mientras reparte.</div>
+  <div class="phones">
+    <figure class="shot phone"><img src="Manual-de-Usuario-imagenes/domiciliario-ruta.jpg" alt="Inicio domiciliario" /><figcaption>El inicio de la app del domiciliario.</figcaption></figure>
+    <figure class="shot phone"><img src="Manual-de-Usuario-imagenes/domiciliario-pendientes.jpg" alt="Pendientes" /><figcaption>Pendientes.</figcaption></figure>
   </div>
 
-  <!-- ============ TOC ============ -->
-  <div class="toc">
-    <h2>Contenido</h2>
-    <ol>
-      <li><a href="#intro">Primeros pasos</a></li>
-      <li><a href="#roles">Roles, permisos y personal</a></li>
-      <li><a href="#estados">Estados de un pedido</a></li>
-      <li><a href="#operacion">Operación diaria</a></li>
-      <div class="toc-sub"><a href="#m-pedidos">Pedidos</a></div>
-      <div class="toc-sub"><a href="#m-cocina">Cocina</a></div>
-      <div class="toc-sub"><a href="#m-caja">Caja</a></div>
-      <li><a href="#catalogo">Catálogo e inventario</a></li>
-      <div class="toc-sub"><a href="#m-productos">Productos</a></div>
-      <div class="toc-sub"><a href="#m-inventario">Inventario</a></div>
-      <div class="toc-sub"><a href="#m-compras">Compras</a></div>
-      <div class="toc-sub"><a href="#m-proveedores">Proveedores</a></div>
-      <li><a href="#clientes">Clientes</a></li>
-      <div class="toc-sub"><a href="#m-clientes">Clientes</a></div>
-      <div class="toc-sub"><a href="#m-fidelizacion">Fidelización</a></div>
-      <li><a href="#negocio">Gestión del negocio</a></li>
-      <div class="toc-sub"><a href="#m-finanzas">Finanzas</a></div>
-      <div class="toc-sub"><a href="#m-personal">Personal</a></div>
-      <div class="toc-sub"><a href="#m-analitica">Analítica</a></div>
-      <div class="toc-sub"><a href="#m-marketing">Marketing</a></div>
-      <li><a href="#control">Control operativo</a></li>
-      <div class="toc-sub"><a href="#m-checklists">Checklists</a></div>
-      <div class="toc-sub"><a href="#m-mermas">Mermas</a></div>
-      <div class="toc-sub"><a href="#m-mantenimiento">Mantenimiento</a></div>
-      <div class="toc-sub"><a href="#m-documentos">Documentos</a></div>
-      <li><a href="#config">Configuración</a></li>
-      <li><a href="#tablet">Modo Tablet: Mesero y Cocina</a></li>
-      <div class="toc-sub"><a href="#t-mesero">Pantalla de mesero</a></div>
-      <div class="toc-sub"><a href="#t-cocina">Pantalla de comandas de cocina</a></div>
-      <li><a href="#faq">Preguntas frecuentes</a></li>
-    </ol>
+  <h3 class="module-title">Lo que ve el cliente <span class="path">/seguimiento</span></h3>
+  <p>Con el enlace (o entrando a <code>/seguimiento</code> y escribiendo el código de 6 letras y números) el cliente ve:</p>
+  <ul class="actions">
+    <li>El estado: <em>Recibido → Domiciliario asignado → En camino → Entregado</em>; suena y avisa en cada cambio.</li>
+    <li>Al domiciliario en el mapa (en cuanto su teléfono comparte la ubicación).</li>
+    <li><strong>Detalle de tu domicilio:</strong> quién lo lleva, la dirección, y si hay pedido vinculado, sus productos, subtotal, descuento, impuestos, domicilio y total, con el estado del pago.</li>
+    <li>El chat con respuestas rápidas (<em>"¿Cuánto falta?", "Ya estoy afuera", "¿Dónde está mi pedido?", "Mi pedido llegó incompleto", "Quiero cambiar la dirección"</em>…), <span class="ui">Llamar a mi domiciliario</span> y <span class="ui">Llamar al restaurante</span>.</li>
+  </ul>
+  <div class="phones"><figure class="shot phone"><img src="Manual-de-Usuario-imagenes/seguimiento-publico.jpg" alt="Seguimiento cliente" /><figcaption>La página de seguimiento pide el código.</figcaption></figure></div>
+  <div class="multi">Cada sede es su propio punto de salida y tiene su lista de domicilios. La tarifa es la misma para todo el negocio. En Todas las sedes la sección no aparece.</div>
+</section>
+
+<!-- ======================= 10 ======================= -->
+<section class="chapter" id="c-descuentos">
+  <div class="chapter-eyebrow">Capítulo 10 · Operación diaria</div>
+  <h2 class="chapter-title">Descuentos</h2>
+  <p class="chapter-lede">Promociones para eventos y cupones con código, para aplicar al cobrar.</p>
+  <h3 class="module-title">Promociones y cupones <span class="path">/descuentos</span></h3>
+  <div class="two-col">
+    <div><h4>Promoción</h4><p>Para eventos y temporadas: se elige de la lista al cobrar mientras esté vigente.</p></div>
+    <div><h4>Cupón</h4><p>Tiene un código (ej. VERANO10: de 3 a 30 letras, números, guiones o guiones bajos) que el cliente presenta al pagar.</p></div>
+  </div>
+  <ol class="steps">
+    <li><span class="ui">Nueva promoción</span> o <span class="ui">Nuevo cupón</span>.</li>
+    <li><span class="ui">Nombre</span> (ej. "Día de la madre"), <span class="ui">Código</span> (cupón), <span class="ui">Porcentaje de descuento</span> (sobre el subtotal, antes de impuestos y domicilio) y <span class="ui">Descripción</span>.</li>
+    <li>Opcional: <span class="ui">Desde</span> y <span class="ui">Hasta</span> (debe ser después de "Desde"), y <span class="ui">Límite de usos</span> (vacío: sin límite).</li>
+    <li>Déjalo <strong>Activo</strong> y toca <span class="ui">Crear</span>.</li>
+  </ol>
+  <p>Cada uno muestra su estado (<strong>Vigente</strong>, <strong>Programado</strong>, <strong>Vencido</strong>, <strong>Desactivado</strong>), sus usos (<em>Sin usos</em>) y sus fechas (<em>Sin fecha límite</em>). <span class="ui">Editar</span> o <span class="ui">Eliminar</span>.</p>
+  <figure class="shot"><img src="Manual-de-Usuario-imagenes/descuentos.jpg" alt="Descuentos" /><figcaption>Descuentos.</figcaption></figure>
+  <figure class="shot"><img src="Manual-de-Usuario-imagenes/descuento-nuevo.jpg" alt="Nueva promoción" /><figcaption>Nueva promoción.</figcaption></figure>
+  <div class="note"><strong>Si no ves la sección Descuento al cobrar:</strong> actívala en Configuración → Impuestos, pagos y canales de venta.</div>
+  <div class="multi">Los descuentos son del negocio: sirven en todas las sedes.</div>
+</section>
+
+<!-- ======================= 11 ======================= -->
+<section class="chapter" id="c-caja">
+  <div class="chapter-eyebrow">Capítulo 11 · Operación diaria</div>
+  <h2 class="chapter-title">Caja</h2>
+  <p class="chapter-lede">Apertura, movimientos y cuadre de caja por turno.</p>
+
+  <h3 class="module-title">Abrir la caja <span class="path">/caja</span></h3>
+  <p>Con la caja cerrada la pantalla dice <em>"La caja está cerrada"</em>. Toca <span class="ui">Abrir caja</span>, escribe la <span class="ui">Base inicial</span> (el efectivo con que arranca el turno) y el <span class="ui">Responsable</span>, y confirma.</p>
+
+  <h3 class="module-title">Durante el turno</h3>
+  <ul class="actions">
+    <li>Tarjetas: <strong>Base inicial</strong>, <strong>Ventas en efectivo</strong> (y en cada otro método usado), <strong>Ventas del turno</strong> (cuántos pagos) y <strong>Movimientos manuales</strong>.</li>
+    <li><span class="ui">Registrar movimiento</span>: <strong>Ingreso</strong> (entra dinero que no es venta), <strong>Gasto</strong> (se paga algo con la caja) o <strong>Retiro</strong> (se saca efectivo), con monto y descripción.</li>
+    <li><strong>Movimientos del turno actual:</strong> fecha, tipo, descripción y monto (apertura, ventas, ingresos, gastos, retiros, reembolsos, reversiones de gasto y anulaciones de ingreso).</li>
+  </ul>
+  <figure class="shot"><img src="Manual-de-Usuario-imagenes/caja.jpg" alt="Caja abierta" /><figcaption>Caja abierta.</figcaption></figure>
+  <figure class="shot"><img src="Manual-de-Usuario-imagenes/caja-movimiento.jpg" alt="Registrar movimiento" /><figcaption>Registrar un movimiento de caja.</figcaption></figure>
+
+  <h3 class="module-title">Cerrar la caja</h3>
+  <ol class="steps">
+    <li><span class="ui">Cerrar caja</span>.</li>
+    <li>Cuenta el efectivo físico y escríbelo en <span class="ui">Efectivo contado</span>.</li>
+    <li>Opcional: <span class="ui">Transferencias recibidas</span>, si vas a verificarlas (vacío si no).</li>
+    <li><span class="ui">Observaciones del cierre</span> y <span class="ui">Cerrar caja</span>. El sistema calcula la diferencia y la muestra al cerrar.</li>
+  </ol>
+  <figure class="shot"><img src="Manual-de-Usuario-imagenes/caja-cerrar.jpg" alt="Cerrar caja" /><figcaption>Cierre de caja.</figcaption></figure>
+  <p>El <strong>Historial de sesiones</strong> guarda cada cierre: apertura, cierre, base inicial, efectivo contado, diferencia de efectivo, transferencias verificadas y su diferencia.</p>
+  <figure class="shot"><img src="Manual-de-Usuario-imagenes/caja-historial.jpg" alt="Historial" /><figcaption>Historial de sesiones de caja.</figcaption></figure>
+
+  <h3 class="module-title">Rectificar una caja cerrada</h3>
+  <ol class="steps">
+    <li>En el historial, <span class="ui">Rectificar</span> sobre esa sesión.</li>
+    <li>Escribe el <span class="ui">Motivo de la corrección</span> (mínimo 5 caracteres) y la <span class="ui">Clave maestra de administrador</span>; <span class="ui">Reabrir para corregir</span>.</li>
+    <li>La sesión aparece <em>En corrección</em>, junto a la de hoy: <span class="ui">Agregar movimiento</span> con lo que faltó y <span class="ui">Cerrar corrección</span>.</li>
+  </ol>
+  <div class="note"><strong>La caja de hoy no se toca</strong> y puedes seguir operando mientras corriges. La clave maestra la entrega el equipo de Golden Bites al dueño; además se necesita el permiso de rectificar.</div>
+  <figure class="shot"><img src="Manual-de-Usuario-imagenes/caja-rectificar.jpg" alt="Rectificar caja" /><figcaption>Rectificar una caja cerrada.</figcaption></figure>
+  <div class="multi">Cada sede tiene su caja: se abre y se cierra en la sede en la que estás. En Todas las sedes la sección no aparece; el Comparativo dice si cada sede tiene la caja abierta.</div>
+</section>
+<!-- ======================= 12 ======================= -->
+<section class="chapter" id="c-productos">
+  <div class="chapter-eyebrow">Capítulo 12 · Catálogo e inventario</div>
+  <h2 class="chapter-title">Productos, categorías y opciones</h2>
+  <p class="chapter-lede">Todo lo del catálogo y del menú que ve el cliente está en <strong>Productos y recetas</strong>.</p>
+
+  <h3 class="module-title">El centro de productos <span class="path">/productos</span></h3>
+  <p>Tarjetas con su estado actual, cada una abre su pantalla:</p>
+  <ul class="actions">
+    <li><strong>Catálogo:</strong> <em>Productos</em> (cuántos y cuántos activos) y <em>Categorías</em> (cuántas activas).</li>
+    <li><strong>Menú del cliente:</strong> <em>Organizar menú</em>, <em>Arma tu combo</em> (o el nombre que le pongas; dice cuántos productos tiene) y <em>Compartir menú</em> (capítulo 13).</li>
+    <li><strong>Opciones para elegir:</strong> una tarjeta por grupo ("Salsas", "Tamaños"…) con cuántas opciones activas tiene, <span class="ui">Ordenar</span> y <em>Nuevo grupo de opciones</em>.</li>
+    <li>Arriba: <span class="ui">Compartir menú</span> y <span class="ui">Nuevo producto</span>.</li>
+  </ul>
+  <figure class="shot"><img src="Manual-de-Usuario-imagenes/productos.jpg" alt="Productos y recetas" /><figcaption>Productos y recetas.</figcaption></figure>
+
+  <h3 class="module-title">El catálogo <span class="path">/productos/catalogo</span></h3>
+  <p>Cada producto en una tarjeta con su foto, precio, margen y etiquetas: <strong>Activo/Inactivo</strong>, <strong>Solo combo</strong> o <strong>Menú + combo</strong>, y <strong>Agotado</strong>. Buscador y filtros por <em>Categoría</em> y <em>Estado</em> (Activos, Inactivos).</p>
+  <figure class="shot"><img src="Manual-de-Usuario-imagenes/catalogo.jpg" alt="Catálogo" /><figcaption>El catálogo de productos.</figcaption></figure>
+
+  <h4>Crear o editar un producto</h4>
+  <ol class="steps">
+    <li><span class="ui">Nuevo producto</span> (o <span class="ui">Editar producto</span> en su detalle).</li>
+    <li><strong>Foto:</strong> <span class="ui">Subir foto</span> (JPG, PNG o WEBP; se reduce sola antes de subirla), <span class="ui">Cambiar foto</span> o <span class="ui">Quitar foto</span>. Se ve en el menú del cliente y en el punto de venta.</li>
+    <li><span class="ui">Nombre del producto</span>, <span class="ui">Descripción</span>, <span class="ui">Categoría</span> (o "Sin categoría"), <span class="ui">Referencia</span> y <span class="ui">Precio de venta</span>.</li>
+    <li><span class="ui">Controla inventario</span>: si está encendido, al venderlo se descuentan insumos. Para un producto que sale de <strong>un solo insumo</strong> (una botella de agua), aquí mismo eliges el <span class="ui">Artículo de inventario</span> y la <span class="ui">Cantidad por venta</span>. Si su receta tiene varios insumos, se edita desde "Vínculo con inventario".</li>
+    <li><span class="ui">Disponible para el cliente en</span>: <strong>Solo menú</strong> (aparece en el menú de la mesa), <strong>Menú y arma tu combo</strong> (en el menú y también para armar combos) o <strong>Solo arma tu combo</strong> (no aparece en el menú: solo para armar combos).</li>
+    <li><strong>Opciones para elegir:</strong> marca qué grupos ofrece este producto y el <em>Máx.</em> de cada uno (cuántas puede elegir el cliente).</li>
+    <li><span class="ui">Crear producto</span> / <span class="ui">Guardar cambios</span>.</li>
+  </ol>
+  <figure class="shot"><img src="Manual-de-Usuario-imagenes/producto-form.jpg" alt="Nuevo producto" /><figcaption>Nuevo producto.</figcaption></figure>
+  <figure class="shot"><img src="Manual-de-Usuario-imagenes/producto-form-opciones.jpg" alt="Producto con opciones" /><figcaption>La parte de abajo: controla inventario y opciones para elegir.</figcaption></figure>
+
+  <h4>El detalle de un producto</h4>
+  <p>Precio de venta, costo actual y margen; etiquetas de estado (<em>Activo, Visible en menú público, Controla inventario</em>) y su vínculo con el inventario. Abajo:</p>
+  <ul class="actions">
+    <li><span class="ui">Ocultar del menú</span> / <span class="ui">Mostrar en menú</span>: oculto se sigue vendiendo en el POS, pero el cliente no lo ve.</li>
+    <li><span class="ui">Desactivar</span> / <span class="ui">Activar</span>: inactivo no se vende en ningún lado.</li>
+    <li><span class="ui">Eliminar</span> (pide confirmación; no se puede deshacer) y <span class="ui">Editar producto</span>.</li>
+  </ul>
+  <figure class="shot"><img src="Manual-de-Usuario-imagenes/producto-detalle.jpg" alt="Detalle de producto" /><figcaption>El detalle de un producto.</figcaption></figure>
+
+  <h4>Recetas: el vínculo con el inventario</h4>
+  <p><span class="ui">Vincular inventario</span> o <span class="ui">Editar vínculo</span> abre <strong>Vínculo con inventario</strong>: qué insumos, y cuánto de cada uno, se descuentan cada vez que se vende una unidad. Ej.: "Hamburguesa" = 1 pan + 150 g de carne + 20 g de queso.</p>
+  <ol class="steps">
+    <li><span class="ui">Agregar artículo</span> por cada insumo: elige el <span class="ui">Artículo de inventario</span> y la <span class="ui">Cantidad</span>.</li>
+    <li>Abajo se ve el <strong>costo estimado por unidad vendida</strong>.</li>
+    <li><span class="ui">Guardar vínculo</span>. <span class="ui">Quitar vínculo</span> lo borra.</li>
+  </ol>
+  <ul class="actions">
+    <li>Los insumos se descuentan cuando el pedido pasa a <strong>Confirmado</strong>, y vuelven si se cancela después.</li>
+    <li>Si "Controla inventario" está apagado, el vínculo se guarda pero no descuenta nada (la ventana lo advierte).</li>
+  </ul>
+  <figure class="shot"><img src="Manual-de-Usuario-imagenes/producto-receta.jpg" alt="Vínculo con inventario" /><figcaption>Vínculo con inventario (receta).</figcaption></figure>
+  <div class="note"><strong>Agotado automático:</strong> si a un producto que controla inventario le falta algún insumo de su receta, el sistema lo marca <strong>Agotado</strong>: desaparece del menú del cliente y no se puede pedir en el POS ni en las tablets. Vuelve solo cuando entra stock del insumo.</div>
+
+  <h3 class="module-title">Categorías <span class="path">/productos/categorias</span></h3>
+  <p>Las secciones del menú (Hamburguesas, Bebidas…). <span class="ui">Nueva categoría</span>: nombre, descripción y orden de aparición. Cada una se puede editar y <span class="ui">Desactivar</span>/<span class="ui">Activar</span> (una categoría desactivada deja de mostrarse).</p>
+  <figure class="shot"><img src="Manual-de-Usuario-imagenes/categorias.jpg" alt="Categorías" /><figcaption>Categorías.</figcaption></figure>
+
+  <h3 class="module-title">Opciones para elegir</h3>
+  <p>Lo que el cliente escoge en algunos productos: "Salsas", "Tamaño", "Término", "Mezcladores", "Acompañantes".</p>
+  <h4>Crear un grupo</h4>
+  <ol class="steps">
+    <li><em>Nuevo grupo de opciones</em>: <span class="ui">Nombre (plural)</span> (ej. Mezcladores) y <span class="ui">Nombre (singular)</span> (ej. Mezclador), y si es <strong>Obligatorio</strong> (hay que elegir al menos una).</li>
+    <li><span class="ui">Crear grupo</span>: se abre su pantalla para agregarle las opciones.</li>
+  </ol>
+  <figure class="shot"><img src="Manual-de-Usuario-imagenes/nuevo-grupo-opciones.jpg" alt="Nuevo grupo" /><figcaption>Nuevo grupo de opciones.</figcaption></figure>
+  <h4>La pantalla de un grupo</h4>
+  <ul class="actions">
+    <li><strong>Cómo funciona este grupo:</strong> activo (los productos pueden ofrecerlo) o apagado (no aparece en ningún lado), los nombres, si es obligatorio y el <strong>Máximo sugerido</strong> (con el que arranca un producto al ofrecerlo). <span class="ui">Guardar</span> o <span class="ui">Descartar</span>.</li>
+    <li><strong>Las opciones:</strong> agregar (nombre, descripción, orden), editar, activar/desactivar o eliminar. Los pedidos ya hechos conservan la opción.</li>
+    <li><span class="ui">Desactivar grupo</span> (deja de usarse por un tiempo) o <span class="ui">Eliminar grupo</span> (para siempre, con sus opciones; avisa cuántos productos dejan de ofrecerlo).</li>
+  </ul>
+  <p>Así aparece en el punto de venta, la cocina, los tickets y el menú del cliente. Un grupo apagado no se muestra, pero los productos que lo tenían lo conservan por si se vuelve a activar.</p>
+  <figure class="shot"><img src="Manual-de-Usuario-imagenes/grupo-opciones.jpg" alt="Grupo de opciones" /><figcaption>La pantalla de un grupo de opciones.</figcaption></figure>
+  <h4>Ordenar grupos</h4>
+  <p><span class="ui">Ordenar</span> (en el centro de productos): con las flechas defines en qué orden se le preguntan al cliente y se imprimen en la comanda (primero "Tamaño", luego "Salsas"…). <span class="ui">Guardar orden</span>.</p>
+  <figure class="shot"><img src="Manual-de-Usuario-imagenes/ordenar-grupos.jpg" alt="Ordenar grupos" /><figcaption>Ordenar los grupos de opciones.</figcaption></figure>
+
+  <div class="multi">
+    <ul>
+      <li><strong>Cada sede tiene su catálogo:</strong> sus productos, precios y recetas. Lo que creas, lo creas en la sede en la que estás. En el detalle del producto se ve <em>Sede: …</em> y si está <strong>Agotado</strong> allí.</li>
+      <li><span class="ui">Llevar a otra sede</span>: crea una copia independiente en la sede que elijas, con su precio, opciones, foto y receta; allá se puede cambiar sin afectar el original. Los insumos de la receta que esa sede no tenga se crean sin stock, por eso la copia sale <strong>Agotado</strong> hasta que entre stock allá.</li>
+      <li>En <strong>Todas las sedes</strong> ves los productos de todas, cada uno con su sede; no se crean productos desde ahí.</li>
+      <li>Las categorías, los grupos de opciones y "Arma tu combo" son de todo el negocio.</li>
+    </ul>
+  </div>
+  <figure class="shot"><img src="Manual-de-Usuario-imagenes/llevar-otra-sede.jpg" alt="Llevar a otra sede" /><figcaption>Varias sedes: "Llevar a otra sede" desde el detalle del producto.</figcaption></figure>
+  <figure class="shot"><img src="Manual-de-Usuario-imagenes/productos-todas-sedes.jpg" alt="Productos todas las sedes" /><figcaption>Varias sedes: el catálogo en "Todas las sedes".</figcaption></figure>
+</section>
+
+<!-- ======================= 13 ======================= -->
+<section class="chapter" id="c-menu">
+  <div class="chapter-eyebrow">Capítulo 13 · Catálogo e inventario</div>
+  <h2 class="chapter-title">El menú del cliente: organizar, "Arma tu combo" y plantilla HTML</h2>
+  <p class="chapter-lede">Cómo se ordena lo que ve el cliente, cómo funciona "Arma tu combo", cómo ponerle un diseño propio con una plantilla HTML, y cómo compartir el menú.</p>
+
+  <h3 class="module-title">Organizar menú <span class="path">/productos/organizar</span></h3>
+  <p>Hay dos listas, cada una con su propio orden. Arriba eliges cuál: <strong>Menú</strong> o <strong>Arma tu combo</strong> (con el nombre que le hayas puesto).</p>
+  <ul class="actions">
+    <li>Cada sección (categoría) aparece con su número de orden y cuántos productos tiene en esa lista.</li>
+    <li><strong>Arrastra</strong> una sección por el ícono de la izquierda y suéltala donde va, o usa las flechas <strong>Subir</strong>/<strong>Bajar</strong>.</li>
+    <li>Cada cambio <strong>se guarda solo</strong> al soltar (<em>"Guardando…"</em> → <em>"Orden guardado"</em>).</li>
+    <li>A la derecha, <strong>Así lo verá el cliente</strong>: un celular con el menú en el orden que estás armando, que se mueve en vivo mientras arrastras.</li>
+    <li>Solo se ordenan las secciones que tienen productos para esa lista; las demás se nombran debajo (<em>"No aparecen en esta lista porque no tienen productos para ella"</em>). Los productos sin categoría salen al final, en "Otros".</li>
+    <li>El menú no muestra los productos "Solo arma tu combo", y "Arma tu combo" no muestra los "Solo menú".</li>
+  </ul>
+  <figure class="shot"><img src="Manual-de-Usuario-imagenes/organizar-menu.jpg" alt="Organizar menú" /><figcaption>Organizar menú: la lista Menú con su vista previa.</figcaption></figure>
+
+  <h3 class="module-title">"Arma tu combo"</h3>
+  <p>Una página aparte del menú (su propia dirección, terminada en <code>/combo</code>) donde el cliente junta los productos que quiera de los que el negocio ofrece para armar, cada uno con sus opciones, y los agrega al pedido como un solo combo. Reglas:</p>
+  <ul class="actions">
+    <li>Se arma con <strong>al menos 2 productos</strong> (un solo producto se pide desde el menú normal).</li>
+    <li><strong>Cuesta la suma</strong> de lo elegido.</li>
+    <li>Un producto sin opciones se agrega con un toque, sin preguntar; uno con opciones las pide.</li>
+    <li>En una mesa con autoservicio el combo se pide; desde el enlace público o una mesa sin autoservicio es <strong>solo de consulta</strong>.</li>
+    <li>En la cocina, los productos de un combo llegan marcados "Arma tu combo 1", "2"…</li>
+    <li>Qué productos entran: los marcados <em>Menú y arma tu combo</em> o <em>Solo arma tu combo</em> en cada producto.</li>
+  </ul>
+  <p>Al elegir <strong>Arma tu combo</strong> en Organizar menú aparecen, además del orden de sus secciones:</p>
+  <figure class="shot"><img src="Manual-de-Usuario-imagenes/organizar-combo.jpg" alt="Organizar Arma tu combo" /><figcaption>La lista "Arma tu combo": nombre, plantilla, secciones y vista previa en vivo.</figcaption></figure>
+
+  <h4>1. El nombre: "Cómo lo ve el cliente"</h4>
+  <ul class="actions">
+    <li><span class="ui">Nombre</span> (hasta 40 caracteres): por defecto "Arma tu combo"; puedes llamarlo como quieras (ej. "Arma tu granizado"). Ese nombre se usa en todos lados: el menú, el botón, la cocina, el carrito.</li>
+    <li><span class="ui">Frase debajo del nombre</span> (hasta 120 caracteres).</li>
+    <li><span class="ui">Guardar</span>; <span class="ui">Restaurar</span> vuelve a los valores por defecto.</li>
+  </ul>
+
+  <h4>2. Diseño propio (plantilla HTML)</h4>
+  <p>Sin plantilla, el cliente ve la <strong>vista por defecto</strong> del sistema. Con una plantilla, ve tu propio diseño (colores, fuentes, imágenes, distribución). La etiqueta dice <em>Vista por defecto</em> o <em>Plantilla propia</em>. Botones:</p>
+  <ul class="actions">
+    <li><span class="ui">Subir plantilla</span> (o <span class="ui">Reemplazar con un archivo</span>): elige un archivo <code>.html</code> de tu computador. Se abre en el editor para revisarlo antes de guardar.</li>
+    <li><span class="ui">Empezar desde el ejemplo</span>: abre el editor con una plantilla de ejemplo lista para adaptar.</li>
+    <li><span class="ui">Editar y ver</span>: abre la plantilla guardada en el editor.</li>
+    <li><span class="ui">Descargar la actual</span> y <span class="ui">Descargar ejemplo</span>: bajan el archivo para editarlo en tu computador.</li>
+    <li><span class="ui">Marcadores</span>: despliega la guía de lo que se puede usar (tabla de abajo).</li>
+    <li><span class="ui">Usar la vista por defecto</span>: quita la plantilla; los clientes vuelven a ver el diseño del sistema.</li>
+  </ul>
+  <figure class="shot"><img src="Manual-de-Usuario-imagenes/combo-marcadores.jpg" alt="Marcadores" /><figcaption>La tarjeta de la plantilla con la guía de marcadores abierta.</figcaption></figure>
+
+  <h4>3. El editor de la plantilla (pantalla completa)</h4>
+  <p>Se abre con <span class="ui">Editar y ver</span>, <span class="ui">Empezar desde el ejemplo</span>, al subir un archivo, o desde la vista previa (<em>Editar plantilla en pantalla completa</em>). Tiene:</p>
+  <ul class="actions">
+    <li><strong>A la izquierda, el HTML de la plantilla</strong>, para editarlo ahí mismo (la tecla Tab indenta). Arriba dice cuánto pesa; <span class="ui">Volver a la guardada</span> deshace lo que cambiaste. El botón <span class="ui">Código</span> muestra u oculta esta parte.</li>
+    <li><strong>A la derecha, la vista previa</strong> con los productos reales, tal como la verá el cliente. Se actualiza un momento después de que dejas de escribir. Puedes agregar productos y elegir opciones para probarla (no se pide nada de verdad).</li>
+    <li><strong>Dispositivo:</strong> <span class="ui">Celular</span>, <span class="ui">Tablet</span> o <span class="ui">Escritorio</span>.</li>
+    <li><strong>Modo:</strong> <span class="ui">Pide</span> (como en una mesa con autoservicio) o <span class="ui">Solo consulta</span> (como desde el enlace público).</li>
+    <li><strong>Revisión:</strong> debajo del código, la lista de errores (rojo), advertencias (amarillo) o <em>"Lista: muestra N secciones y M productos"</em> (verde).</li>
+    <li><span class="ui">Descargar</span> y <span class="ui">Guardar</span>. <strong>Con errores no se puede guardar.</strong> Al guardar: <em>"Plantilla guardada: así lo verán tus clientes"</em>. Si cierras con cambios sin guardar, pregunta <em>"¿Salir sin guardar?"</em>; lo que ven tus clientes no cambia.</li>
+  </ul>
+  <figure class="shot"><img src="Manual-de-Usuario-imagenes/combo-editor.jpg" alt="Editor de plantilla" /><figcaption>El editor: el código y su revisión a la izquierda, la vista previa en un celular a la derecha.</figcaption></figure>
+
+  <h4>Marcadores de la plantilla</h4>
+  <p>La plantilla es una página HTML normal con CSS; en los lugares donde van los datos se ponen estos marcadores:</p>
+  <table class="ref">
+    <tr><th>Marcador</th><th>Qué hace</th></tr>
+    <tr><td><code>{{combo.nombre}}</code> · <code>{{combo.frase}}</code> · <code>{{combo.minimo}}</code></td><td>El nombre, la frase y el mínimo de productos del combo.</td></tr>
+    <tr><td><code>data-gb-repetir="secciones"</code></td><td>El elemento se repite una vez por sección. Adentro: <code>{{seccion.nombre}}</code>.</td></tr>
+    <tr><td><code>data-gb-repetir="productos"</code></td><td>Se repite una vez por producto (de la sección, o de todas si va por fuera). Adentro: <code>{{producto.nombre}}</code>, <code>{{producto.descripcion}}</code>, <code>{{producto.precio}}</code>, <code>{{producto.imagen}}</code>.</td></tr>
+    <tr><td><code>data-gb-agregar</code> · <code>data-gb-quitar</code></td><td>Botones dentro de un producto: agregan (con sus opciones) o quitan una unidad del combo.</td></tr>
+    <tr><td><code>data-gb-cantidad</code></td><td>Dentro de un producto: cuántas unidades lleva. El producto elegido recibe la clase <code>gb-elegido</code> (para resaltarlo).</td></tr>
+    <tr><td><code>data-gb-total</code> · <code>data-gb-cantidad-total</code></td><td>El total del combo y cuántos productos lleva.</td></tr>
+    <tr><td><code>.gb-opciones</code> · <code>.gb-grupo-titulo</code> · <code>.gb-opcion</code> · <code>.gb-activa</code> · <code>.gb-opciones-agregar</code> · <code>.gb-opciones-cancelar</code></td><td>Las opciones de un producto (salsas, tamaño…) se despliegan dentro de su tarjeta al agregarlo; estas clases les dan estilo. Un producto sin opciones se agrega directo.</td></tr>
+    <tr><td><code>.gb-solo-consulta</code></td><td>Clase que tiene la página cuando no se puede pedir (enlace público): úsala para ocultar botones.</td></tr>
+  </table>
+  <h4>Lo que la revisión avisa</h4>
+  <ul class="actions">
+    <li><strong>Errores</strong> (impiden guardar): plantilla vacía; más de 200 KB (las imágenes deben ir por URL, no incrustadas); ningún bloque de productos; un <code>data-gb-repetir</code> que no sea "secciones" o "productos"; un marcador que no existe (sugiere el correcto, ej. <em>¿quisiste decir {{producto.nombre}}?</em>).</li>
+    <li><strong>Advertencias:</strong> secciones dentro de productos (debe ser al revés); ningún botón para agregar; botones o cantidades fuera de un producto; marcadores fuera de su bloque (se verían vacíos); formularios, scripts externos o conexiones a internet (están bloqueados); enlaces a otras páginas (no llevan a ningún lado).</li>
+  </ul>
+  <div class="note"><strong>Seguridad:</strong> la plantilla se muestra aislada. Puede usar CSS, fuentes e imágenes por URL y su propio JavaScript, pero no puede conectarse a otros servidores ni acceder a la sesión del cliente. El carrito, las opciones de cada producto y el botón para agregar el combo los pone el sistema.</div>
+  <div class="note"><strong>Para empezar rápido:</strong> <span class="ui">Descargar ejemplo</span>, cambia colores, textos e imágenes (deja los marcadores), y súbelo con <span class="ui">Subir plantilla</span>. Revisa la vista previa en Celular y en Solo consulta antes de guardar.</div>
+
+  <h3 class="module-title">Compartir menú</h3>
+  <p>Desde <span class="ui">Compartir menú</span> (Productos) o <span class="ui">Enviar menú</span> (Pedidos):</p>
+  <ul class="actions">
+    <li>Elige <strong>Menú completo</strong> o directo a <strong>Arma tu combo</strong>.</li>
+    <li>El <span class="ui">Enlace</span> es público: lo abre cualquiera, sin iniciar sesión. Muestra los productos activos y visibles con precio y descripción, y se actualiza solo cuando cambias el catálogo. Es <strong>solo de consulta</strong>: no identifica una mesa ni permite pedir (para eso están los gallos NFC).</li>
+    <li><span class="ui">Enviar por WhatsApp</span>: escribe el número del cliente (un celular colombiano de 10 dígitos recibe el +57 solo) o déjalo vacío para elegir el contacto; el mensaje va listo.</li>
+    <li><span class="ui">Abrir</span>, <span class="ui">Compartir</span> (en celulares) y <span class="ui">Copiar enlace</span>.</li>
+  </ul>
+  <figure class="shot"><img src="Manual-de-Usuario-imagenes/compartir-menu.jpg" alt="Compartir menú" /><figcaption>Compartir menú.</figcaption></figure>
+  <div class="multi">El enlace lleva el menú de la sede en la que estás (sus productos y precios).</div>
+</section>
+
+<!-- ======================= 14 ======================= -->
+<section class="chapter" id="c-inventario">
+  <div class="chapter-eyebrow">Capítulo 14 · Catálogo e inventario</div>
+  <h2 class="chapter-title">Inventario</h2>
+  <p class="chapter-lede">Catálogo de insumos y control de existencias.</p>
+
+  <h3 class="module-title">Insumos <span class="path">/inventario</span></h3>
+  <p>Arriba: <strong>Valor total en inventario</strong>, <strong>Insumos activos</strong> y <strong>Stock bajo el mínimo</strong>. La lista muestra cada insumo con su stock (con una barra contra su mínimo), categoría, costo y estado. Buscador y filtros por categoría y estado. Botones: <span class="ui">Categorías</span>, <span class="ui">Nuevo insumo</span>, <span class="ui">Ajustar stock</span>.</p>
+  <figure class="shot"><img src="Manual-de-Usuario-imagenes/inventario.jpg" alt="Inventario" /><figcaption>Inventario.</figcaption></figure>
+
+  <h4>Nuevo insumo</h4>
+  <p><span class="ui">Nombre del insumo</span>, <span class="ui">Categoría</span>, <span class="ui">Referencia</span>, <span class="ui">Unidad</span> (kg, l, unid.), <span class="ui">Stock mínimo</span> (desde cuánto avisa que se acaba) y <span class="ui">Costo actual</span>. Para mobiliario o equipos también <span class="ui">Marca</span>, <span class="ui">Modelo</span> y <span class="ui">Número de serial</span>.</p>
+  <figure class="shot"><img src="Manual-de-Usuario-imagenes/inventario-nuevo.jpg" alt="Nuevo insumo" /><figcaption>Nuevo insumo.</figcaption></figure>
+
+  <h4>Detalle de un insumo</h4>
+  <p>Stock actual y mínimo, si está <em>Stock bajo el mínimo</em>, costo actual, valor en inventario y el <strong>Historial de movimientos</strong>: compra, consumo por venta, merma, ajuste (entrada o salida), traslado, devolución y stock inicial, cada uno con su cantidad, motivo y fecha. Abajo: <span class="ui">Desactivar</span>/<span class="ui">Activar</span>, <span class="ui">Editar</span> y <span class="ui">Ajustar stock</span>.</p>
+  <figure class="shot"><img src="Manual-de-Usuario-imagenes/inventario-detalle.jpg" alt="Detalle de insumo" /><figcaption>El detalle de un insumo con su historial.</figcaption></figure>
+
+  <h4>Ajustar stock</h4>
+  <ol class="steps">
+    <li><span class="ui">Ajustar stock</span>: elige el <span class="ui">Insumo</span>, la <span class="ui">Dirección del ajuste</span> (<em>Entrada (suma stock)</em> o <em>Salida (resta stock)</em>), la <span class="ui">Cantidad</span> en su unidad y el <span class="ui">Motivo / observación</span>.</li>
+    <li><span class="ui">Registrar ajuste</span>. Queda en el historial.</li>
+  </ol>
+  <p>Las ventas, las compras y las mermas mueven el stock solas; el ajuste es para conteos y correcciones.</p>
+  <figure class="shot"><img src="Manual-de-Usuario-imagenes/inventario-ajuste.jpg" alt="Ajustar stock" /><figcaption>Ajustar stock.</figcaption></figure>
+
+  <h4>Categorías de inventario</h4>
+  <p><span class="ui">Categorías</span>: agrupa insumos de cocina, mobiliario, vajilla u otros. <span class="ui">Nueva categoría</span> (nombre y descripción), y activar/desactivar las existentes.</p>
+  <figure class="shot"><img src="Manual-de-Usuario-imagenes/inventario-categorias.jpg" alt="Categorías de inventario" /><figcaption>Categorías de inventario.</figcaption></figure>
+
+  <h3 class="module-title">Consultas especializadas</h3>
+  <p>Una pestaña (si el negocio la tiene) para preguntas a la medida:</p>
+  <ol class="steps">
+    <li><strong>¿Qué quieres obtener?</strong> <em>Detalle</em> (lista de resultados), <em>Conteo</em> (cuántos coinciden), <em>Suma de stock</em>, <em>Valor total del inventario</em> (stock × costo) o <em>Costo promedio</em>.</li>
+    <li><strong>Constructor de condiciones:</strong> elige el <span class="ui">Campo</span> (nombre, referencia, categoría, unidad, marca, modelo, número de serie, stock mínimo, costo actual, stock actual, estado, fecha de creación), el <span class="ui">Operador</span> (es, no es, contiene, empieza con, está vacío, mayor/menor que, entre, es cualquiera de…) y el <span class="ui">Valor</span>. <span class="ui">Agregar condición</span> para sumar más.</li>
+    <li><span class="ui">Buscar</span>. Para repetirla: <span class="ui">Guardar como plantilla</span>; las plantillas guardadas quedan arriba.</li>
+  </ol>
+  <figure class="shot"><img src="Manual-de-Usuario-imagenes/inventario-consultas.jpg" alt="Consultas especializadas" /><figcaption>Consultas especializadas.</figcaption></figure>
+  <div class="multi">
+    <ul>
+      <li>Cada sede tiene sus propios insumos y existencias; el stock nunca se suma entre sedes.</li>
+      <li>Los insumos se crean y se ajustan en la sede en la que estás.</li>
+      <li>En <strong>Todas las sedes</strong> ves los de todas, cada uno con su sede; "Stock bajo el mínimo" dice en qué sede falta.</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ======================= 15 ======================= -->
+<section class="chapter" id="c-compras">
+  <div class="chapter-eyebrow">Capítulo 15 · Catálogo e inventario</div>
+  <h2 class="chapter-title">Compras, gastos y proveedores</h2>
+  <p class="chapter-lede">Lo que se compra, lo que se gasta, lo que se les debe a los proveedores y qué conviene comprar.</p>
+
+  <h3 class="module-title">Compras y gastos <span class="path">/compras</span></h3>
+  <p>Tres pestañas:</p>
+  <ul class="actions">
+    <li><strong>Sugerencia de compra:</strong> los insumos por debajo de su mínimo (insumo, sede, stock actual, mínimo, unidad).</li>
+    <li><strong>Compras y gastos:</strong> lo registrado: fecha, nombre, motivo, responsable, tipo, proveedor, pagado con, cantidad y comprobantes. Las compras a crédito dicen cuánto queda por pagar o <em>Crédito · pagada</em>. Se pueden eliminar.</li>
+    <li><strong>Cuentas por pagar:</strong> lo que se le debe a cada proveedor (ver Finanzas).</li>
+  </ul>
+  <figure class="shot"><img src="Manual-de-Usuario-imagenes/compras.jpg" alt="Sugerencia de compra" /><figcaption>Sugerencia de compra.</figcaption></figure>
+  <figure class="shot"><img src="Manual-de-Usuario-imagenes/compras-gastos.jpg" alt="Compras y gastos" /><figcaption>La lista de compras y gastos.</figcaption></figure>
+
+  <h4>Registrar una compra</h4>
+  <ol class="steps">
+    <li><span class="ui">Registrar compra</span>.</li>
+    <li><span class="ui">Compra</span> (qué se compró, ej. "pollo para la semana"), <span class="ui">Proveedor</span> (elige uno o escribe uno nuevo), <span class="ui">Valor de la compra</span>, <span class="ui">Fecha de compra</span>, <span class="ui">Responsable</span> y <span class="ui">Tipo de gasto</span>.</li>
+    <li><strong>Forma de pago:</strong>
+      <ul>
+        <li><em>De contado:</em> <span class="ui">¿De dónde salió el dinero?</span> — la caja del turno, la reserva de efectivo, la cuenta bancaria, o el dinero personal de alguien (queda registrado para devolvérselo).</li>
+        <li><em>A crédito:</em> queda debiéndosele al proveedor (obligatorio elegirlo). <span class="ui">Vence el</span> se propone con sus días de crédito.</li>
+        <li><em>Pago parcial:</em> <span class="ui">Pagado ahora</span> y de dónde salió; el resto queda por pagar.</li>
+      </ul>
+    </li>
+    <li><span class="ui">Adjuntar factura o comprobante</span> (PDF o imágenes JPG, PNG, WEBP, hasta 10 MB cada uno) y <span class="ui">Notas</span>.</li>
+  </ol>
+  <figure class="shot"><img src="Manual-de-Usuario-imagenes/compra-nueva.jpg" alt="Registrar compra" /><figcaption>Registrar una compra.</figcaption></figure>
+  <p>Los comprobantes de una compra se ven, se agregan o se quitan desde el ícono de la columna <em>Comprobantes</em>.</p>
+
+  <h4>Registrar un gasto</h4>
+  <p><span class="ui">Registrar gasto</span> es para lo que no es una compra a proveedor (arriendo, servicios, nómina…): <span class="ui">Nombre</span>, <span class="ui">Cantidad</span>, proveedor (opcional), forma de pago y de dónde salió (<span class="ui">Pagado con</span>; si fue con dinero personal, <span class="ui">Quién pagó</span>), <span class="ui">Motivo</span>, <span class="ui">Fecha</span>, <span class="ui">Responsable</span> y <span class="ui">Tipo de gasto</span>.</p>
+  <figure class="shot"><img src="Manual-de-Usuario-imagenes/gasto-nuevo.jpg" alt="Nuevo gasto" /><figcaption>Registrar un gasto.</figcaption></figure>
+
+  <h3 class="module-title">Proveedores <span class="path">/proveedores</span></h3>
+  <ul class="actions">
+    <li><span class="ui">Nuevo proveedor</span>: nombre, NIT, persona de contacto, teléfono, correo, dirección, <strong>días de crédito</strong> (el plazo que da para pagar; propone el vencimiento de las compras a crédito; vacío si no da crédito fijo) y notas.</li>
+    <li>El detalle muestra lo que se le debe (o <em>"No se le debe nada"</em>), <span class="ui">Editar proveedor</span> y activar/desactivar.</li>
+  </ul>
+  <figure class="shot"><img src="Manual-de-Usuario-imagenes/proveedores.jpg" alt="Proveedores" /><figcaption>Proveedores.</figcaption></figure>
+  <figure class="shot"><img src="Manual-de-Usuario-imagenes/proveedor-nuevo.jpg" alt="Nuevo proveedor" /><figcaption>Nuevo proveedor.</figcaption></figure>
+  <div class="multi">Cada compra queda en la sede en la que estás. La sugerencia de compra dice la sede de cada insumo. Los proveedores son de todo el negocio.</div>
+</section>
+
+<!-- ======================= 16 ======================= -->
+<section class="chapter" id="c-finanzas">
+  <div class="chapter-eyebrow">Capítulo 16 · Gestión del negocio</div>
+  <h2 class="chapter-title">Finanzas</h2>
+  <p class="chapter-lede">Ventas, gastos, otros ingresos y utilidad del negocio en el período que elijas.</p>
+
+  <h3 class="module-title">Resumen <span class="path">/finanzas</span></h3>
+  <p><strong>El período:</strong> <em>Día</em>, <em>Semana</em> (lunes a domingo), <em>Mes</em> o <em>Rango</em> (desde/hasta). Las flechas van al período anterior o siguiente; "Hoy", "Esta semana" o "Este mes" vuelven al actual. Abre en el mes en curso.</p>
+  <table class="ref">
+    <tr><th>Widget</th><th>Qué muestra</th></tr>
+    <tr><td>Ventas</td><td>Total de los pedidos pagados en el período.</td></tr>
+    <tr><td>Gastos</td><td>Todo lo gastado en el período.</td></tr>
+    <tr><td>Utilidad estimada</td><td>Ventas menos todos los gastos.</td></tr>
+    <tr><td>Margen bruto</td><td>Ventas menos el costo de ventas.</td></tr>
+    <tr><td>Costo de ventas</td><td>Gastos de los tipos marcados como costo de ventas.</td></tr>
+    <tr><td>Ticket promedio</td><td>Lo que deja cada venta en promedio.</td></tr>
+    <tr><td>Otros ingresos</td><td>Dinero que entró fuera de las ventas (no cuenta en la utilidad: aportes y reembolsos no son ganancia).</td></tr>
+    <tr><td>Por pagar a proveedores</td><td>Lo que se debe hoy por compras a crédito, y cuánto está vencido.</td></tr>
+    <tr><td>Ventas y gastos en el tiempo</td><td>Gráfica día a día (o mes a mes en períodos largos).</td></tr>
+    <tr><td>Gastos por tipo</td><td>En qué se fue el dinero, de mayor a menor.</td></tr>
+    <tr><td>Gastos registrados</td><td>La lista para revisar, <strong>editar</strong> o <strong>eliminar</strong> gastos.</td></tr>
+    <tr><td>Otros ingresos registrados</td><td>Devoluciones, reintegros y demás, con dónde quedó el dinero; se pueden anular.</td></tr>
+    <tr><td>Productos que más ingresos dejaron</td><td>Los productos con más ventas en dinero.</td></tr>
+  </table>
+  <figure class="shot"><img src="Manual-de-Usuario-imagenes/finanzas.jpg" alt="Finanzas" /><figcaption>Finanzas.</figcaption></figure>
+  <h4>Personalizar el panel</h4>
+  <p><span class="ui">Personalizar</span>: arrastra un widget por su título para moverlo (los demás se reacomodan solos), estíralo desde la esquina inferior derecha, quítalo con la X, o <span class="ui">Agregar widget</span>. <span class="ui">Restablecer</span> vuelve al panel inicial; <span class="ui">Listo</span> termina. Cada persona tiene su propio panel. En un celular los widgets van uno bajo otro.</p>
+  <figure class="shot"><img src="Manual-de-Usuario-imagenes/finanzas-personalizar.jpg" alt="Personalizar" /><figcaption>Personalizando el panel de Finanzas.</figcaption></figure>
+
+  <h3 class="module-title">Otros ingresos</h3>
+  <p><span class="ui">Registrar ingreso</span>: dinero que entra por fuera de las ventas y se suma de inmediato a su destino.</p>
+  <ul class="actions">
+    <li><span class="ui">Tipo de ingreso</span>: Devolución de proveedor, Reintegro o reembolso, Aporte de socio u Otro.</li>
+    <li><span class="ui">Concepto</span>, <span class="ui">Recibido de</span> (opcional), <span class="ui">Cantidad</span>, <span class="ui">Fecha</span> y <span class="ui">Notas</span>.</li>
+    <li><span class="ui">Entró a</span>: la caja del turno (y <em>¿Cómo llegó?</em>: efectivo o transferencia, que cuentan por separado al cerrar la caja), la reserva de efectivo o la cuenta bancaria. Si no hay caja abierta, lo advierte.</li>
+  </ul>
+  <p>Un ingreso se puede <span class="ui">Anular</span> con motivo: saca el dinero de donde entró y queda en la lista marcado como anulado.</p>
+  <figure class="shot"><img src="Manual-de-Usuario-imagenes/finanzas-ingreso.jpg" alt="Registrar ingreso" /><figcaption>Registrar un ingreso.</figcaption></figure>
+
+  <h3 class="module-title">Fondos</h3>
+  <p>Un servicio adicional (pestaña <strong>Fondos</strong>, si el negocio lo tiene): el dinero del negocio fuera de la caja del turno.</p>
+  <ul class="actions">
+    <li><strong>Reserva de efectivo:</strong> efectivo guardado fuera de la caja (ej. la caja fuerte). Es por sede.</li>
+    <li><strong>Cuenta bancaria:</strong> el saldo de la cuenta del negocio. Es una sola.</li>
+  </ul>
+  <p>Cada fondo se configura <strong>una sola vez</strong> con <span class="ui">Configurar saldo inicial</span> (saldo y origen, ej. "conteo de la caja fuerte"); no se puede corregir después. Hasta entonces no sirve para pagar gastos. Luego, los gastos pagados desde un fondo le restan y los ingresos le suman.</p>
+  <div class="warn">Para configurar la reserva de efectivo la caja del turno debe estar cerrada, para no contar dos veces el mismo efectivo.</div>
+  <figure class="shot"><img src="Manual-de-Usuario-imagenes/finanzas-fondos.jpg" alt="Fondos" /><figcaption>Fondos.</figcaption></figure>
+
+  <h3 class="module-title">Cuentas por pagar</h3>
+  <p>(Compras y gastos → Cuentas por pagar.) Arriba: total por pagar y cuánto vencido. Filtro <em>Pendientes</em> o <em>Todas</em>. Cada compra a crédito muestra proveedor, qué se compró, total, pagado, lo que se debe y su vencimiento (<em>Vence hoy</em>, <em>Vencida hace 3 días</em>…).</p>
+  <p><span class="ui">Registrar pago</span>: <span class="ui">Cantidad a pagar</span> (todo o una parte), <span class="ui">Pagado desde</span> (caja, reserva o banco), <span class="ui">Fecha del pago</span> (ese día cuenta como gasto) y notas.</p>
+  <figure class="shot"><img src="Manual-de-Usuario-imagenes/cuentas-por-pagar.jpg" alt="Cuentas por pagar" /><figcaption>Cuentas por pagar.</figcaption></figure>
+  <div class="multi">Las cifras son de la sede en la que estás o, en Todas las sedes, del negocio completo.</div>
+</section>
+
+<!-- ======================= 17 ======================= -->
+<section class="chapter" id="c-comparativo">
+  <div class="chapter-eyebrow">Capítulo 17 · Gestión del negocio · Solo varias sedes</div>
+  <h2 class="chapter-title">Comparativo de sedes</h2>
+  <p class="chapter-lede">Cada sede lado a lado. Solo para quien administra todas las sedes y solo si el negocio tiene más de una.</p>
+  <h3 class="module-title">Cómo leerlo <span class="path">/comparativo-sedes</span></h3>
+  <ul class="actions">
+    <li>Período: <em>Hoy, 7 días, Este mes</em> o <em>Personalizado</em> (desde/hasta).</li>
+    <li>Una fila por sede (las inactivas se marcan) con <strong>Ventas, Pedidos, Ticket promedio, Descuentos, Gastos y Mermas</strong>, y en <strong>Ahora</strong>: caja abierta o cerrada y pedidos en curso. Al final, el <strong>Total</strong>.</li>
+    <li><strong>En verde</strong> la mejor sede de cada indicador y <strong>en rojo</strong> la más baja. Las ventas son pedidos pagados; los gastos sin sede no se reparten.</li>
+    <li><strong>Ventas por día:</strong> cada sede en su color.</li>
+  </ul>
+  <figure class="shot"><img src="Manual-de-Usuario-imagenes/comparativo-sedes.jpg" alt="Comparativo" /><figcaption>Comparativo de sedes.</figcaption></figure>
+</section>
+
+<!-- ======================= 18 ======================= -->
+<section class="chapter" id="c-rh">
+  <div class="chapter-eyebrow">Capítulo 18 · Gestión del negocio</div>
+  <h2 class="chapter-title">Recursos Humanos y Mi Perfil</h2>
+  <p class="chapter-lede">Personal, turnos, tareas, solicitudes de permiso, roles y normas. Cada pestaña aparece si tu rol la tiene.</p>
+
+  <h3 class="module-title">Personal <span class="path">/recursos-humanos/personal</span></h3>
+  <p>La lista con nombre, documento, cargo, estado e ingreso; buscador y filtro por estado (<em>Activo, Inactivo, Vacaciones, Incapacidad</em>).</p>
+  <figure class="shot"><img src="Manual-de-Usuario-imagenes/rh-personal.jpg" alt="Personal" /><figcaption>Personal.</figcaption></figure>
+  <h4>Nuevo empleado</h4>
+  <ol class="steps">
+    <li><strong>Datos personales:</strong> nombre, apellido, tipo de documento (cédula de ciudadanía o de extranjería, tarjeta de identidad, PPT, pasaporte, NIT u otro), número, teléfono y correo.</li>
+    <li><strong>Trabajo:</strong> <span class="ui">Cargo</span> (también es el rol de su cuenta), <span class="ui">Sede principal</span> (donde trabaja normalmente; o "Sin sede fija"), fecha de ingreso, estado, <span class="ui">Valor</span> y <span class="ui">Frecuencia de pago</span> (por turno, semanal, quincenal o mensual) y observaciones.</li>
+    <li><span class="ui">Crear acceso al sistema</span>: se le crea un usuario para entrar al POS y al guardar ves su <strong>usuario</strong> y la <strong>contraseña inicial</strong> (con botones para copiarlos). Al entrar por primera vez se le pide cambiarla. Sin esta casilla queda solo como empleado; el acceso se puede generar después.</li>
+  </ol>
+  <figure class="shot"><img src="Manual-de-Usuario-imagenes/empleado-nuevo.jpg" alt="Nuevo empleado" /><figcaption>Nuevo empleado.</figcaption></figure>
+  <h4>La ficha del empleado</h4>
+  <ul class="actions">
+    <li>Pago (valor y frecuencia) y <span class="ui">Generar comprobante de pago</span>.</li>
+    <li><strong>Acceso al sistema:</strong> su usuario y estado; <span class="ui">Generar acceso</span> (eligiendo el rol), <span class="ui">Restablecer contraseña</span> (genera una temporal que <strong>se muestra una sola vez</strong>; la anterior deja de funcionar), <span class="ui">Desactivar acceso</span>/<span class="ui">Activar acceso</span>.</li>
+    <li><strong>Horario semanal:</strong> por día, el turno (hora de entrada y salida) o <em>Descanso</em>. Con varias sedes, <em>Misma sede todos los días</em> o una sede por día. <span class="ui">Guardar horario</span>.</li>
+    <li>Observaciones, <span class="ui">Editar</span> y <span class="ui">Eliminar</span>.</li>
+  </ul>
+  <figure class="shot"><img src="Manual-de-Usuario-imagenes/empleado-ficha.jpg" alt="Ficha" /><figcaption>La ficha: pago, acceso y horario.</figcaption></figure>
+  <figure class="shot"><img src="Manual-de-Usuario-imagenes/empleado-horario.jpg" alt="Horario" /><figcaption>El horario semanal.</figcaption></figure>
+
+  <h3 class="module-title">Turnos <span class="path">/recursos-humanos/turnos</span></h3>
+  <p>El turno efectivo: quién debería estar trabajando hoy, esta semana o este mes, según el horario de cada uno y los permisos aprobados. Por día: cuántos programados, cuántos <em>en turno ahora</em>, cuántos ausentes (y por qué). Cada persona: <em>En turno</em>, <em>Terminó</em> o <em>Ausente</em>. Filtro por sede.</p>
+  <figure class="shot"><img src="Manual-de-Usuario-imagenes/rh-turnos.jpg" alt="Turnos" /><figcaption>Turnos.</figcaption></figure>
+
+  <h3 class="module-title">Tareas <span class="path">/recursos-humanos/tareas</span></h3>
+  <p>Un tablero con columnas <em>Por hacer</em>, <em>En progreso</em> y <em>Hecha</em>: arrastra las tarjetas o márcalas con la casilla. Cada tarea dice su prioridad y su vencimiento (<em>Vence hoy</em>, <em>Venció hace 2 días</em>…). Buscador y filtro por responsable.</p>
+  <p><span class="ui">Nueva tarea</span>: título, descripción, responsable (o sin asignar), fecha de entrega, <strong>prioridad</strong> (baja, media, alta), estado y sede (o todas). Cada empleado ve las suyas en su perfil.</p>
+  <figure class="shot"><img src="Manual-de-Usuario-imagenes/rh-tareas.jpg" alt="Tareas" /><figcaption>El tablero de tareas.</figcaption></figure>
+  <figure class="shot"><img src="Manual-de-Usuario-imagenes/rh-tarea-nueva.jpg" alt="Nueva tarea" /><figcaption>Nueva tarea.</figcaption></figure>
+
+  <h3 class="module-title">Solicitudes <span class="path">/recursos-humanos/solicitudes</span></h3>
+  <p>Los permisos que pide el personal desde su perfil (<em>Pendientes</em> o <em>Todas</em>). <span class="ui">Aprobar</span> o <span class="ui">Rechazar</span> (con motivo opcional). Los aprobados se descuentan del turno efectivo. <span class="ui">Registrar permiso</span> crea uno ya aprobado para un empleado: tipo (<em>Permiso, Vacaciones, Incapacidad, Día libre, Otro</em>), desde, hasta (incluido) y motivo.</p>
+  <figure class="shot"><img src="Manual-de-Usuario-imagenes/rh-solicitudes.jpg" alt="Solicitudes" /><figcaption>Solicitudes.</figcaption></figure>
+  <figure class="shot"><img src="Manual-de-Usuario-imagenes/rh-permiso-nuevo.jpg" alt="Registrar permiso" /><figcaption>Registrar un permiso.</figcaption></figure>
+
+  <h3 class="module-title">Roles y permisos <span class="path">/recursos-humanos/roles-permisos</span></h3>
+  <ol class="steps">
+    <li><span class="ui">Nuevo rol</span>: nombre, descripción (cada empleado con ese rol la ve en su perfil) y los permisos, agrupados por módulo (una casilla por módulo marca todos los de ese grupo).</li>
+    <li>Para un rol existente, tócalo: marca o desmarca permisos y <span class="ui">Guardar permisos</span>; <span class="ui">Editar nombre</span> cambia nombre y descripción.</li>
+  </ol>
+  <figure class="shot"><img src="Manual-de-Usuario-imagenes/rh-roles.jpg" alt="Roles" /><figcaption>Roles y permisos.</figcaption></figure>
+  <figure class="shot"><img src="Manual-de-Usuario-imagenes/rol-nuevo.jpg" alt="Nuevo rol" /><figcaption>Nuevo rol: nombre, descripción y permisos por módulo.</figcaption></figure>
+  <figure class="shot"><img src="Manual-de-Usuario-imagenes/rol-permisos.jpg" alt="Permisos de un rol" /><figcaption>Los permisos de un rol.</figcaption></figure>
+
+  <h3 class="module-title">Normas <span class="path">/recursos-humanos/normas</span></h3>
+  <p>Las reglas del local: <span class="ui">Agregar norma</span> (título y descripción) y <span class="ui">Guardar normas</span>. Cada empleado las ve en "Mi Perfil".</p>
+  <figure class="shot"><img src="Manual-de-Usuario-imagenes/rh-normas.jpg" alt="Normas" /><figcaption>Normas.</figcaption></figure>
+
+  <h3 class="module-title">Mi Perfil <span class="path">/mi-perfil</span></h3>
+  <ul class="actions">
+    <li><strong>Mi rol</strong> y su descripción.</li>
+    <li><strong>Normas de mi sede.</strong></li>
+    <li><strong>Mi horario</strong> (y, si tiene permiso, editarlo) y la <strong>Periodicidad de pago</strong> que prefiere.</li>
+    <li><strong>Mis tareas:</strong> marcarlas como hechas o pendientes; <em>Ocultar hechas</em>.</li>
+    <li><strong>Mis permisos:</strong> <span class="ui">Solicitar permiso</span> (tipo, fechas, motivo), ver la respuesta y <span class="ui">Retirar</span> una solicitud pendiente.</li>
+  </ul>
+  <figure class="shot"><img src="Manual-de-Usuario-imagenes/mi-perfil.jpg" alt="Mi perfil" /><figcaption>Mi Perfil.</figcaption></figure>
+  <div class="multi">Cada empleado tiene una <strong>sede principal</strong> y en su horario cada día puede ser en otra. Las normas se escriben <strong>por sede</strong>. Turnos y tareas se filtran por sede.</div>
+</section>
+
+<!-- ======================= 19 ======================= -->
+<section class="chapter" id="c-control">
+  <div class="chapter-eyebrow">Capítulo 19 · Control operativo</div>
+  <h2 class="chapter-title">Checklists, mermas y equipos</h2>
+
+  <h3 class="module-title">Checklists <span class="path">/checklists</span></h3>
+  <ol class="steps">
+    <li><span class="ui">Nueva plantilla</span>: <span class="ui">Tipo</span> (Apertura o Cierre), <span class="ui">Nombre</span> e <strong>Ítems a verificar</strong> (<span class="ui">Agregar ítem</span>; al menos uno).</li>
+    <li><span class="ui">Iniciar checklist</span>: elige una plantilla activa; se abre <em>Checklist en progreso</em> con cada ítem para marcar.</li>
+    <li>Escribe las <span class="ui">Observaciones</span> (ítems incumplidos, evidencias, notas) y <span class="ui">Finalizar checklist</span>.</li>
+  </ol>
+  <p>Las plantillas se editan, activan/desactivan o eliminan. El <strong>Historial de ejecuciones</strong> guarda cada una con fecha, hora, quién y su estado (<em>En progreso</em> o <em>Completado</em>).</p>
+  <figure class="shot"><img src="Manual-de-Usuario-imagenes/checklists.jpg" alt="Checklists" /><figcaption>Checklists.</figcaption></figure>
+  <figure class="shot"><img src="Manual-de-Usuario-imagenes/checklist-plantilla.jpg" alt="Nueva plantilla" /><figcaption>Nueva plantilla de checklist.</figcaption></figure>
+
+  <h3 class="module-title">Mermas <span class="path">/mermas</span></h3>
+  <p><span class="ui">Registrar merma</span>: insumo, cantidad, <strong>motivo</strong> (vencimiento, mala preparación, derrame, producto quemado, daño de empaque, error de pedido, diferencia de inventario u otro) y observaciones. Se descuenta del inventario. Arriba: valor perdido hoy, esta semana y este mes; la lista muestra fecha, insumo, cantidad, motivo y valor estimado.</p>
+  <figure class="shot"><img src="Manual-de-Usuario-imagenes/mermas.jpg" alt="Mermas" /><figcaption>Mermas.</figcaption></figure>
+  <figure class="shot"><img src="Manual-de-Usuario-imagenes/merma-nueva.jpg" alt="Registrar merma" /><figcaption>Registrar una merma.</figcaption></figure>
+
+  <h3 class="module-title">Equipos <span class="path">/mantenimiento</span></h3>
+  <ul class="actions">
+    <li><span class="ui">Nuevo equipo</span>: nombre, número de serie, fecha de compra, garantía hasta, proveedor técnico, próximo mantenimiento y observaciones.</li>
+    <li>Estado: <em>Operativo</em>, <em>En mantenimiento</em> o <em>Fuera de servicio</em>. Buscador y filtro por estado.</li>
+    <li>En la ficha: <span class="ui">Registrar intervención</span> (fecha, costo y descripción) y el <strong>Historial de intervenciones</strong>; editar o eliminar.</li>
+  </ul>
+  <figure class="shot"><img src="Manual-de-Usuario-imagenes/equipos.jpg" alt="Equipos" /><figcaption>Equipos.</figcaption></figure>
+  <figure class="shot"><img src="Manual-de-Usuario-imagenes/equipo-nuevo.jpg" alt="Nuevo equipo" /><figcaption>Nuevo equipo.</figcaption></figure>
+  <div class="multi">Checklists y mermas se registran en la sede en la que estás; en Todas las sedes esas dos secciones no aparecen. Las mermas de cada sede salen en el Comparativo.</div>
+</section>
+
+<!-- ======================= 20 ======================= -->
+<section class="chapter" id="c-config">
+  <div class="chapter-eyebrow">Capítulo 20</div>
+  <h2 class="chapter-title">Configuración</h2>
+  <p class="chapter-lede">Parámetros generales del negocio y del sistema, en secciones que se abren y cierran.</p>
+
+  <h3 class="module-title">Información del negocio <span class="path">/configuracion</span></h3>
+  <ul class="actions">
+    <li><span class="ui">Nombre comercial</span>, <span class="ui">Razón social</span>, <span class="ui">NIT</span>, <span class="ui">Teléfono</span> y <span class="ui">Correo</span>. <span class="ui">Guardar cambios</span>.</li>
+    <li><strong>Logo del negocio:</strong> sale en las comandas, facturas y comprobantes impresos y en el menú lateral. <span class="ui">Subir logo</span>, <span class="ui">Cambiar logo</span>, <span class="ui">Quitar logo</span>.</li>
+  </ul>
+  <figure class="shot"><img src="Manual-de-Usuario-imagenes/configuracion.jpg" alt="Configuración" /><figcaption>Información del negocio y logo.</figcaption></figure>
+
+  <h3 class="module-title">Mesas y NFC</h3>
+  <p>Por cada sede: el <strong>Número de mesas</strong> (define las mesas del mesero y del POS) con <span class="ui">Guardar</span>, y <span class="ui">Administrar mesas y NFC</span>, que abre la pantalla de la sede:</p>
+  <ul class="actions">
+    <li>Cada mesa con su <strong>Nombre identificable</strong> (ej. "Terraza 2"; vacío vuelve a "Mesa N"), su <strong>gallo NFC</strong> (el sticker que el cliente toca con el celular; <em>Sin configurar</em>, <em>Activo</em> o <em>Inactivo</em>) y el <strong>Autoservicio</strong>.</li>
+    <li><span class="ui">Generar</span> crea el enlace del gallo de una mesa (para grabarlo en el tag NFC). Luego: <span class="ui">Copiar enlace</span>, <span class="ui">Probar</span>, <span class="ui">Desactivar</span>/<span class="ui">Activar</span> y <span class="ui">Regenerar enlace</span> (el anterior deja de funcionar de inmediato: hay que volver a grabar el tag).</li>
+    <li><strong>Autoservicio:</strong> encendido, los clientes de la mesa envían su pedido desde el menú del gallo; apagado, solo ven el menú y el mesero toma el pedido. En ambos casos pueden llamar al personal.</li>
+  </ul>
+  <figure class="shot"><img src="Manual-de-Usuario-imagenes/config-sedes.jpg" alt="Mesas" /><figcaption>Mesas y NFC en Configuración.</figcaption></figure>
+  <figure class="shot"><img src="Manual-de-Usuario-imagenes/mesas-nfc.jpg" alt="Mesas y NFC de una sede" /><figcaption>La pantalla de mesas y gallos NFC de una sede.</figcaption></figure>
+
+  <h3 class="module-title">Impuestos, pagos y canales de venta</h3>
+  <ul class="actions">
+    <li><span class="ui">Tasa de impuesto (%)</span> que se suma a los pedidos. <span class="ui">Guardar</span>.</li>
+    <li><span class="ui">Mostrar la sección de descuentos al cobrar</span>: activa o esconde promociones, cupones y porcentaje manual en el detalle del pedido, para todas las cajas.</li>
+    <li><strong>Métodos de pago habilitados</strong> (Efectivo, Tarjeta, Nequi, Daviplata, Transferencia, Pago por plataforma) y <strong>Canales de venta habilitados</strong> (Mostrador, Para recoger, WhatsApp, Domicilio propio, Rappi): son preferencias de este equipo.</li>
+  </ul>
+  <figure class="shot"><img src="Manual-de-Usuario-imagenes/config-impuestos.jpg" alt="Impuestos" /><figcaption>Impuestos, pagos y canales de venta.</figcaption></figure>
+
+  <h3 class="module-title">Catálogo y estados</h3>
+  <p>Los estados de pedido del sistema y las categorías de productos, con un campo para crear una categoría rápida.</p>
+  <figure class="shot"><img src="Manual-de-Usuario-imagenes/config-preferencias.jpg" alt="Catálogo y estados" /><figcaption>Catálogo y estados.</figcaption></figure>
+
+  <h3 class="module-title">Tipos de gasto</h3>
+  <p>Las opciones al registrar un gasto (Gastos operativos, Nómina, Arriendo…) y los grupos con que Finanzas resume en qué se va el dinero.</p>
+  <ul class="actions">
+    <li><span class="ui">Nuevo tipo de gasto</span> y <span class="ui">Agregar</span>; el lápiz lo renombra.</li>
+    <li><strong>Costo de ventas:</strong> márcalo en los tipos que son el costo de lo que vendes (insumos, mercancía); Finanzas los resta de las ventas para el margen bruto.</li>
+    <li>El interruptor lo deja disponible o no para gastos nuevos. Solo se elimina un tipo sin gastos; debe quedar al menos uno activo.</li>
+  </ul>
+  <figure class="shot"><img src="Manual-de-Usuario-imagenes/config-tipos-gasto.jpg" alt="Tipos de gasto" /><figcaption>Tipos de gasto.</figcaption></figure>
+
+  <h3 class="module-title">TURA (asistente)</h3>
+  <p>Si el negocio tiene TURA: <span class="ui">Generar código</span> muestra un <strong>QR</strong> y un código de 6 números (sirve una vez y vence en 10 minutos) para conectar TURA en tu celular, con <span class="ui">Enviar por WhatsApp</span>, <span class="ui">Copiar enlace</span> y <span class="ui">Abrir aquí</span>. Abajo, <strong>Usuarios vinculados</strong> (cuándo la usaron por última vez) con <span class="ui">Desvincular</span>. Ver capítulo 22.</p>
+  <figure class="shot"><img src="Manual-de-Usuario-imagenes/config-tura.jpg" alt="TURA" /><figcaption>Configuración → TURA, con el código generado.</figcaption></figure>
+
+  <h3 class="module-title">Preferencias visuales</h3>
+  <p><span class="ui">Tema oscuro</span> y <span class="ui">Menú lateral colapsado por defecto</span>.</p>
+  <div class="multi">Mesas, gallos NFC y ubicación son de cada sede; el resto es de todo el negocio. Las sedes en sí las administra el equipo de Golden Bites.</div>
+</section>
+
+<!-- ======================= 21 ======================= -->
+<section class="chapter" id="c-cliente">
+  <div class="chapter-eyebrow">Capítulo 21</div>
+  <h2 class="chapter-title">Lo que ve el cliente</h2>
+  <p class="chapter-lede">El menú se abre en el celular del cliente, sin iniciar sesión.</p>
+
+  <h3 class="module-title">El menú por enlace o QR</h3>
+  <p>El cliente ve el nombre del negocio, el botón de <strong>Arma tu combo</strong> (con su nombre y frase), y las secciones en el orden que organizaste, con fotos, descripciones y precios. Los productos agotados u ocultos no aparecen. Desde el enlace público es solo de consulta: se puede ver cada producto, pero no pedir.</p>
+  <div class="phones">
+    <figure class="shot phone"><img src="Manual-de-Usuario-imagenes/menu-publico.jpg" alt="Menú público" /><figcaption>El menú público.</figcaption></figure>
+    <figure class="shot phone"><img src="Manual-de-Usuario-imagenes/menu-mesa.jpg" alt="Menú de una mesa" /><figcaption>El menú de una mesa (gallo NFC).</figcaption></figure>
   </div>
 
-  <!-- ============ 1. PRIMEROS PASOS ============ -->
-  <section class="chapter" id="intro">
-    <div class="chapter-eyebrow">Capítulo 1</div>
-    <h2 class="chapter-title">Primeros pasos</h2>
-    <p class="chapter-lede">
-      Golden Bites Admin es el panel web desde donde se administra toda la operación del
-      restaurante: pedidos, cocina, caja, inventario, personal y reportes. Se usa desde un
-      navegador (computador o tablet), no requiere instalación.
-    </p>
+  <h3 class="module-title">En la mesa con el gallo NFC</h3>
+  <ul class="actions">
+    <li>El cliente acerca el celular al gallo y se abre el menú de esa mesa, con la mesa fija (no la puede cambiar).</li>
+    <li>Arriba elige <strong>Comer aquí</strong> o <strong>Para llevar</strong> (<em>Entrega en mostrador</em>).</li>
+    <li><span class="ui">Llamar al personal</span>: suena en Pedidos hasta que alguien lo atiende (<em>"Ya avisamos al personal"</em>).</li>
+    <li><strong>Con autoservicio:</strong> toca un producto; si tiene opciones, <em>Personaliza tu unidad</em> (en cada grupo elige opciones o "Sin …"; los obligatorios exigen elegir) y <span class="ui">Agregar al carrito</span>. Cada unidad con opciones distintas va por separado. En <strong>Tu pedido</strong> cambia cantidades o quita productos y toca <span class="ui">Confirmar pedido</span>. Llega a Pedidos como <em>Pendiente</em> y el cliente ve su estado.</li>
+    <li><strong>Sin autoservicio:</strong> <em>"Revisa el menú y un mesero tomará tu pedido en la mesa"</em>.</li>
+    <li>Si el enlace se regeneró o el gallo está desactivado: <em>"Este enlace ya no está activo. Pide ayuda al personal"</em>.</li>
+  </ul>
+  <div class="phones"><figure class="shot phone"><img src="Manual-de-Usuario-imagenes/menu-producto-opciones.jpg" alt="Opciones" /><figcaption>Elegir las opciones de un producto.</figcaption></figure></div>
 
-    <h3 class="module-title">Cómo iniciar sesión</h3>
-    <ol class="steps">
-      <li><strong class="lead">Abre la URL del panel</strong> en el navegador. Verás la pantalla de inicio de sesión con el logo de Golden Bites.</li>
-      <li><strong class="lead">Ingresa tu correo y contraseña.</strong> Estas credenciales las genera un administrador desde el módulo <em>Personal</em> (ver capítulo 2).</li>
-      <li><strong class="lead">Listo.</strong> El sistema te lleva directo al <em>Centro de operaciones</em>, o a la primera sección a la que tengas acceso según tu rol.</li>
-    </ol>
+  <h3 class="module-title">Arma tu combo (cliente)</h3>
+  <p>Desde el botón del menú se abre la página del combo: el cliente toca los productos para agregarlos (los que tienen opciones las piden), ve <em>Tu combo</em> con lo elegido y el total, y lo agrega al pedido cuando lleva al menos 2 productos (<em>"Elige al menos 2 productos"</em>). <span class="ui">Volver al menú</span> regresa con el carrito intacto. Con plantilla propia se ve tu diseño.</p>
+  <div class="phones">
+    <figure class="shot phone"><img src="Manual-de-Usuario-imagenes/combo-por-defecto.jpg" alt="Arma tu combo en la mesa" /><figcaption>"Arma tu combo" desde una mesa.</figcaption></figure>
+    <figure class="shot phone"><img src="Manual-de-Usuario-imagenes/combo-publico.jpg" alt="Arma tu combo público" /><figcaption>Con una plantilla propia ("Arma tu granizado").</figcaption></figure>
+  </div>
+  <p>El seguimiento de domicilios que ve el cliente está en el capítulo 9.</p>
+  <div class="multi">El menú de cada mesa es el de su sede, con sus productos y precios.</div>
+</section>
 
-    <div class="note">
-      <strong>Importante:</strong> lo que ves en el menú lateral depende de tu rol. Si a un
-      usuario le falta una sección, no es un error — su rol simplemente no tiene ese permiso
-      asignado. Un administrador puede ajustarlo desde <em>Roles y permisos</em>.
-    </div>
+<!-- ======================= 22 ======================= -->
+<section class="chapter" id="c-tura">
+  <div class="chapter-eyebrow">Capítulo 22</div>
+  <h2 class="chapter-title">TURA, el asistente</h2>
+  <p class="chapter-lede">TURA es un asistente al que le hablas o le escribes desde el celular: te cuenta cómo va el negocio y hace cambios de inventario y productos por ti, con los datos reales del POS y los permisos de tu usuario.</p>
 
-    <h3 class="module-title">Estructura general del panel</h3>
-    <ul class="actions">
-      <li><strong>Menú lateral izquierdo:</strong> acceso a todos los módulos, agrupados por tipo de tarea (operación diaria, catálogo, clientes, gestión del negocio, control operativo).</li>
-      <li><strong>Barra superior:</strong> buscador global (pedidos, productos, clientes), campanita de notificaciones, y el menú de usuario (arriba a la derecha) con tu nombre, rol y la opción de cerrar sesión.</li>
-      <li><strong>Indicador verde/rojo</strong> junto a la campanita: muestra si el panel tiene conexión con el servidor en este momento.</li>
+  <h3 class="module-title">Conectarla (una vez por celular)</h3>
+  <ol class="steps">
+    <li>En el POS, Configuración → TURA → <span class="ui">Generar código</span>.</li>
+    <li>Escanea el <strong>QR</strong> con la cámara del celular (o ábrelo con el enlace, o mándatelo por WhatsApp): TURA se abre y queda conectada. También puedes decirle o escribirle el código de 6 números en el chat.</li>
+    <li>Recomendado: <span class="ui">Instalar</span> (o en iPhone, Compartir → "Agregar a inicio"): se abre como una app y no tienes que conectarla otra vez.</li>
+  </ol>
+  <ul class="actions">
+    <li>Un celular puede tener varios negocios conectados y cambiar entre ellos.</li>
+    <li><span class="ui">Cerrar sesión</span> en TURA la desconecta. Si un administrador la desvincula o desactiva tu usuario, deja de funcionar de inmediato y lo avisa.</li>
+  </ul>
+  <div class="phones">
+    <figure class="shot phone"><img src="Manual-de-Usuario-imagenes/tura-inicio.jpg" alt="TURA inicio" /><figcaption>El inicio de TURA: Chat o Hablar.</figcaption></figure>
+    <figure class="shot phone"><img src="Manual-de-Usuario-imagenes/tura-chat.jpg" alt="TURA chat" /><figcaption>El chat, con preguntas de ejemplo.</figcaption></figure>
+  </div>
+
+  <h3 class="module-title">Chat y voz</h3>
+  <ul class="actions">
+    <li><strong>Chat:</strong> escribe tu pregunta (o toca una de ejemplo) y TURA responde.</li>
+    <li><strong>Hablar:</strong> TURA te escucha y te responde en voz alta. Toca el micrófono para silenciarla o interrumpirla. Funciona en Chrome y Edge.</li>
+  </ul>
+
+  <h3 class="module-title">Qué le puedes pedir</h3>
+  <table class="ref">
+    <tr><th>Herramienta</th><th>Ejemplos</th><th>Necesita</th></tr>
+    <tr><td><strong>Consultar ventas</strong></td><td>"¿Cuánto vendimos hoy?", "¿Cómo vamos esta semana frente a la pasada?", "¿Qué fue lo más vendido en septiembre?"</td><td>Ver analítica</td></tr>
+    <tr><td><strong>Consultar productos</strong></td><td>"¿Cuánto cuesta la hamburguesa doble?", "¿Cuántas Coca-Cola quedan?", "¿Qué se está acabando?"</td><td>Ver productos</td></tr>
+    <tr><td><strong>Consultar inventario</strong></td><td>"¿Cuánta papa hay?", "¿Qué insumos están bajo el mínimo?"</td><td>Ver inventario</td></tr>
+    <tr><td><strong>Ajustar existencias</strong></td><td>"Agrega 5 kilos a la pechuga", "Resta 2 botellas que se dañaron", "El conteo de arroz dio 12 kilos"</td><td>Ajustar inventario</td></tr>
+    <tr><td><strong>Modificar insumo</strong></td><td>"Desactiva el pan brioche", "Sube el mínimo de la carne a 10 kilos"</td><td>Administrar inventario</td></tr>
+    <tr><td><strong>Modificar producto</strong></td><td>"Desactiva la limonada de coco", "Oculta las papas del menú", "Sube la hamburguesa a 25.000"</td><td>Actualizar productos</td></tr>
+    <tr><td><strong>Comparar sedes</strong></td><td>"¿Qué sede vendió más este mes?", "¿Cuál tiene la caja abierta?"</td><td>Administrar todas las sedes</td></tr>
+  </table>
+  <ul class="actions">
+    <li><strong>Los cambios se hacen en el momento</strong> y TURA te dice cómo quedaron ("Listo, sumé 5 kilos a Pechuga: ahora hay 12 kilos"). Si algo no se puede (ya estaba así, restar más de lo que hay), dice por qué y no cambia nada.</li>
+    <li>Si hay varias coincidencias, pregunta cuál.</li>
+    <li>TURA <strong>no</strong> crea ni cobra pedidos, ni toca la caja, los pagos o los usuarios.</li>
+    <li>Cada cambio queda registrado con tu usuario.</li>
+  </ul>
+  <div class="multi">
+    <ul>
+      <li>Si puedes ver todas las sedes, TURA responde por todas (cada resultado dice su sede) o por la que nombres. Nunca suma existencias de sedes distintas.</li>
+      <li>Si trabajas en una sola sede, solo consulta y cambia la tuya.</li>
+      <li>Si el mismo producto existe en varias sedes, pregunta en cuál hacer el cambio.</li>
     </ul>
-  </section>
+  </div>
+</section>
 
-  <!-- ============ 2. ROLES ============ -->
-  <section class="chapter" id="roles">
-    <div class="chapter-eyebrow">Capítulo 2</div>
-    <h2 class="chapter-title">Roles, permisos y personal</h2>
-    <p class="chapter-lede">
-      El acceso a cada módulo y cada acción del sistema se controla con <strong>roles</strong>.
-      Un rol es un conjunto de permisos con nombre (por ejemplo "Cajero" o "Mesero"). Cada
-      empleado con acceso al sistema tiene asignado un rol.
-    </p>
+<!-- ======================= 23 ======================= -->
+<section class="chapter" id="c-listas">
+  <div class="chapter-eyebrow">Capítulo 23</div>
+  <h2 class="chapter-title">Listas de referencia: estados y tipos</h2>
+  <table class="ref">
+    <tr><th>Lista</th><th>Valores</th></tr>
+    <tr><td>Estado del pedido</td><td>Pendiente · Confirmado · En preparación · Listo · Entregado · Cancelado</td></tr>
+    <tr><td>Pago del pedido</td><td>Sin pagar · Pago parcial · Pagado · Reembolsado</td></tr>
+    <tr><td>Tipo de pedido</td><td>En mesa · Para recoger · Domicilio · Servicio en carro</td></tr>
+    <tr><td>Método de pago</td><td>Efectivo · Tarjeta · Transferencia · Nequi · Daviplata · Otro</td></tr>
+    <tr><td>Estado del domicilio</td><td>Sin asignar · Asignado · En camino · Entregado · Cancelado</td></tr>
+    <tr><td>Movimiento de caja</td><td>Apertura · Venta · Ingreso · Gasto · Retiro · Cierre · Reembolso · Reversión de gasto · Anulación de ingreso</td></tr>
+    <tr><td>Movimiento de inventario</td><td>Compra · Consumo por venta · Merma · Ajuste (entrada/salida) · Traslado (entrada/salida) · Devolución · Stock inicial</td></tr>
+    <tr><td>Disponibilidad del producto</td><td>Solo menú · Menú y arma tu combo · Solo arma tu combo</td></tr>
+    <tr><td>Descuento</td><td>Vigente · Programado · Vencido · Desactivado</td></tr>
+    <tr><td>Forma de pago de una compra</td><td>De contado · A crédito · Pago parcial</td></tr>
+    <tr><td>De dónde sale el dinero</td><td>Caja del turno · Reserva de efectivo · Cuenta bancaria · Dinero personal · Crédito de proveedor</td></tr>
+    <tr><td>Tipo de otro ingreso</td><td>Devolución de proveedor · Reintegro o reembolso · Aporte de socio · Otro</td></tr>
+    <tr><td>Estado del empleado</td><td>Activo · Inactivo · Vacaciones · Incapacidad</td></tr>
+    <tr><td>Frecuencia de pago</td><td>Por turno · Semanal · Quincenal · Mensual</td></tr>
+    <tr><td>Tipo de permiso</td><td>Permiso · Vacaciones · Incapacidad · Día libre · Otro</td></tr>
+    <tr><td>Estado de la solicitud</td><td>Pendiente · Aprobada · Rechazada · Cancelada</td></tr>
+    <tr><td>Tarea</td><td>Por hacer · En progreso · Hecha — prioridad Baja · Media · Alta</td></tr>
+    <tr><td>Checklist</td><td>Apertura · Cierre — En progreso · Completado</td></tr>
+    <tr><td>Motivo de merma</td><td>Vencimiento · Mala preparación · Derrame · Producto quemado · Daño de empaque · Error de pedido · Diferencia de inventario · Otro</td></tr>
+    <tr><td>Estado del equipo</td><td>Operativo · En mantenimiento · Fuera de servicio</td></tr>
+  </table>
+</section>
 
-    <h3 class="module-title">Crear un rol nuevo <span class="path">Roles y permisos</span></h3>
-    <ol class="steps">
-      <li><strong class="lead">Entra a "Roles y permisos"</strong> en el menú (grupo "Gestión del negocio").</li>
-      <li><strong class="lead">Pulsa "Nuevo rol"</strong> y dale un nombre y una descripción (ej. "Mesero turno tarde").</li>
-      <li><strong class="lead">Ábrelo y marca los permisos</strong> que ese rol debe tener, agrupados por módulo (pedidos, cocina, inventario, etc.).</li>
-      <li><strong class="lead">Guarda los permisos.</strong> Cualquier empleado con ese rol queda sujeto exactamente a esos permisos — tanto en lo que ve en el menú, como en lo que el servidor le permite hacer.</li>
-    </ol>
+<!-- ======================= 24 ======================= -->
+<section class="chapter" id="c-faq">
+  <div class="chapter-eyebrow">Capítulo 24</div>
+  <h2 class="chapter-title">Preguntas frecuentes</h2>
 
-    <div class="note">
-      <strong>Roles del sistema:</strong> el negocio ya trae 7 roles listos para usar —
-      <code>SUPER_ADMIN</code>, <code>OWNER</code>, <code>MANAGER</code>, <code>CASHIER</code>,
-      <code>KITCHEN</code>, <code>INVENTORY</code> y <code>EMPLOYEE</code>. Puedes usarlos tal
-      cual, editar sus permisos, o crear roles propios (por ejemplo "Mesero") desde cero.
-    </div>
+  <h4>No veo una sección del menú.</h4>
+  <p>Tu rol no tiene ese permiso, el módulo no está activo para tu negocio, o estás en "Todas las sedes" (que esconde la operación diaria).</p>
+  <h4>Un producto aparece "Agotado" y no lo puedo vender.</h4>
+  <p>A algún insumo de su receta le falta stock en tu sede. Registra la compra o ajusta el stock del insumo y vuelve a aparecer solo.</p>
+  <h4>No me deja abrir un pedido en una mesa.</h4>
+  <p>Esa mesa ya tiene un pedido activo: ábrelo y usa "Agregar productos".</p>
+  <h4>Un cliente pidió desde la mesa y no llega a cocina.</h4>
+  <p>Los pedidos de la mesa llegan como "Pendiente": confírmalos en Pedidos (o desde "Mis pedidos" del mesero).</p>
+  <h4>No puedo aplicar un descuento.</h4>
+  <p>Actívalo en Configuración → Impuestos, pagos y canales de venta; verifica que tu rol pueda aplicar descuentos y que el pedido no tenga pagos registrados.</p>
+  <h4>La caja no cuadró.</h4>
+  <p>Revisa los movimientos del turno (gastos o retiros sin registrar, pagos con el método equivocado: se corrigen en el pedido). Si ya se cerró, rectifícala con la clave maestra.</p>
+  <h4>Me dice "Tu usuario no tiene una sucursal asignada".</h4>
+  <p>En un negocio con varias sedes, quien opera debe tener sede: un administrador se la asigna en Recursos Humanos → Personal.</p>
+  <h4>Creé un producto y no aparece en otra sede.</h4>
+  <p>Cada sede tiene su catálogo: usa "Llevar a otra sede".</p>
+  <h4>Subí una plantilla de "Arma tu combo" y no me deja guardar.</h4>
+  <p>La revisión del editor tiene errores en rojo (un marcador mal escrito, ningún bloque de productos, más de 200 KB…). Corrígelos; la revisión dice cuál es el problema.</p>
+  <h4>Un empleado olvidó su contraseña.</h4>
+  <p>En su ficha, "Restablecer contraseña" genera una temporal (se muestra una vez); al entrar se le pide cambiarla.</p>
+  <h4>A la app del domiciliario no le llegan los avisos.</h4>
+  <p>Activa las notificaciones del navegador; en iPhone, agrega la app a la pantalla de inicio y ábrela desde ahí.</p>
+  <h4>TURA dejó de responder.</h4>
+  <p>Se cerró la sesión o se quitó tu vínculo: genera un código nuevo en Configuración → TURA y escanéalo.</p>
 
-    <h3 class="module-title">Generar acceso a un empleado <span class="path">Personal</span></h3>
-    <p class="module-desc">Un empleado (registro de nómina/horario) y un usuario con acceso al sistema son cosas separadas: un empleado puede existir sin tener credenciales, hasta que se las generas.</p>
-    <ol class="steps">
-      <li><strong class="lead">Entra a "Personal"</strong> y abre la ficha del empleado (o créalo primero si no existe).</li>
-      <li><strong class="lead">En "Acceso al sistema", pulsa "Generar acceso".</strong> Escribe su correo y elige su rol.</li>
-      <li><strong class="lead">Copia la contraseña temporal</strong> que aparece — <em>solo se muestra una vez</em>. Compártela con el empleado por un canal seguro.</li>
-      <li>El empleado ya puede iniciar sesión con ese correo y contraseña.</li>
-    </ol>
-
-    <div class="two-col">
-      <div>
-        <h3 class="module-title" style="margin-top:0">Restablecer contraseña</h3>
-        <p class="module-desc">Desde la misma ficha del empleado, botón "Restablecer contraseña" — genera una nueva contraseña temporal y anula la anterior de inmediato.</p>
-      </div>
-      <div>
-        <h3 class="module-title" style="margin-top:0">Desactivar acceso</h3>
-        <p class="module-desc">Botón "Desactivar acceso" — el empleado no podrá iniciar sesión mientras esté desactivado, sin borrar su historial ni su ficha.</p>
-      </div>
-    </div>
-  </section>
-
-  <!-- ============ 3. ESTADOS DE UN PEDIDO ============ -->
-  <section class="chapter" id="estados">
-    <div class="chapter-eyebrow">Capítulo 3</div>
-    <h2 class="chapter-title">Estados de un pedido</h2>
-    <p class="chapter-lede">
-      Todo pedido — se haya creado desde Pedidos o desde la pantalla de mesero — sigue el
-      mismo recorrido de estados. Entenderlo ayuda a interpretar cualquier pantalla del sistema.
-    </p>
-    <table class="ref">
-      <tr><th>Estado</th><th>Significado</th><th>Quién lo mueve normalmente</th></tr>
-      <tr><td><span class="badge pending">Pendiente</span></td><td>El pedido se creó pero aún no se confirmó a cocina.</td><td>Cajero / Mesero</td></tr>
-      <tr><td><span class="badge confirmed">Confirmado</span></td><td>Confirmado — entra a la cola de cocina.</td><td>Cajero / Mesero (automático en la pantalla táctil)</td></tr>
-      <tr><td><span class="badge preparing">En preparación</span></td><td>Cocina ya empezó a prepararlo.</td><td>Cocina</td></tr>
-      <tr><td><span class="badge ready">Listo</span></td><td>Cocina terminó — listo para servir/entregar.</td><td>Cocina</td></tr>
-      <tr><td><span class="badge delivered">Entregado</span></td><td>El cliente ya lo recibió. Estado final.</td><td>Mesero / Cajero</td></tr>
-      <tr><td><span class="badge cancelled">Cancelado</span></td><td>El pedido se anuló. Estado final, puede ocurrir en casi cualquier punto.</td><td>Cualquiera con permiso de anular</td></tr>
-    </table>
-    <div class="note">Un pedido nunca puede "retroceder" de estado — solo avanza hacia adelante o se cancela.</div>
-  </section>
-
-  <!-- ============ 4. OPERACIÓN DIARIA ============ -->
-  <section class="chapter" id="operacion">
-    <div class="chapter-eyebrow">Capítulo 4</div>
-    <h2 class="chapter-title">Operación diaria</h2>
-    <p class="chapter-lede">Los tres módulos que se usan a cada minuto durante un turno normal.</p>
-
-    <h3 class="module-title" id="m-pedidos">Pedidos <span class="path">/pedidos</span></h3>
-    <p class="module-desc">Gestiona la operación de pedidos en tiempo real, desde la creación hasta la entrega.</p>
-    <ul class="actions">
-      <li><strong>Vista kanban o tabla:</strong> alterna entre ver los pedidos como tarjetas por columna de estado, o como lista/tabla clásica.</li>
-      <li><strong>Nuevo pedido:</strong> elige productos, cliente (opcional), tipo (en mesa / para recoger / domicilio) y mesa.</li>
-      <li><strong>Avanzar o cancelar</strong> un pedido desde su ficha de detalle.</li>
-      <li><strong>Registrar pagos</strong> contra el total del pedido (efectivo, tarjeta, transferencia, Nequi, Daviplata).</li>
-      <li>Botón <strong>"Abrir en modo tablet"</strong>: enlace directo a la pantalla táctil de mesero (capítulo 6).</li>
-    </ul>
-
-    <h3 class="module-title" id="m-cocina">Cocina <span class="path">/cocina</span></h3>
-    <p class="module-desc">Cola de pedidos confirmados y en preparación, con temporizador por pedido.</p>
-    <ul class="actions">
-      <li>Muestra solo pedidos <span class="badge confirmed">Confirmado</span> y <span class="badge preparing">En preparación</span>, ordenados por antigüedad.</li>
-      <li>Un pedido que lleva más de 15 minutos sin avanzar se marca visualmente como <strong>retrasado</strong>.</li>
-      <li>Botones "Iniciar preparación" y "Marcar como listo" avanzan el estado.</li>
-      <li>Botón <strong>"Pantalla completa"</strong> para dejarla fija en un monitor de cocina, y <strong>"Abrir en modo tablet"</strong> para la versión táctil con gestos (capítulo 6).</li>
-    </ul>
-
-    <h3 class="module-title" id="m-caja">Caja <span class="path">/caja</span></h3>
-    <p class="module-desc">Apertura y cierre de caja, con seguimiento de todos los movimientos de efectivo del turno.</p>
-    <ul class="actions">
-      <li><strong>Abrir caja</strong> al iniciar el turno, indicando el monto inicial en efectivo.</li>
-      <li>Las <strong>ventas</strong> se registran solas en la caja a medida que se cobran pedidos.</li>
-      <li><strong>Registrar movimiento:</strong> ingresos o egresos manuales (ej. compra de insumos menores, retiro de efectivo).</li>
-      <li><strong>Cerrar caja</strong> al final del turno — el sistema compara el efectivo esperado contra el contado.</li>
-    </ul>
-  </section>
-
-  <!-- ============ 5. CATÁLOGO ============ -->
-  <section class="chapter" id="catalogo">
-    <div class="chapter-eyebrow">Capítulo 5</div>
-    <h2 class="chapter-title">Catálogo e inventario</h2>
-    <p class="chapter-lede">Qué se vende, qué insumos hay disponibles, y de dónde se compran.</p>
-
-    <h3 class="module-title" id="m-productos">Productos <span class="path">/productos</span></h3>
-    <p class="module-desc">Gestiona el catálogo de productos del menú: nombre, categoría, precio de venta, imagen y si está activo o no.</p>
-    <ul class="actions">
-      <li>Organiza los productos en <strong>categorías</strong> (las mismas que se ven como pestañas en la pantalla de mesero).</li>
-      <li>Un producto <strong>inactivo</strong> deja de aparecer para la venta sin necesidad de borrarlo.</li>
-    </ul>
-
-    <h3 class="module-title" id="m-inventario">Inventario <span class="path">/inventario</span></h3>
-    <p class="module-desc">Catálogo de insumos y control de stock.</p>
-    <ul class="actions">
-      <li>Consulta existencias actuales por insumo y por sucursal.</li>
-      <li>Ajusta, cuenta y transfiere inventario entre sucursales.</li>
-    </ul>
-
-    <h3 class="module-title" id="m-compras">Compras <span class="path">/compras</span></h3>
-    <p class="module-desc">Sugerencias de compra basadas en inventario y seguimiento de órdenes de compra a proveedores.</p>
-
-    <h3 class="module-title" id="m-proveedores">Proveedores <span class="path">/proveedores</span></h3>
-    <p class="module-desc">Directorio de proveedores del negocio: datos de contacto y qué le compras a cada uno.</p>
-  </section>
-
-  <!-- ============ 6. CLIENTES ============ -->
-  <section class="chapter" id="clientes">
-    <div class="chapter-eyebrow">Capítulo 6</div>
-    <h2 class="chapter-title">Clientes</h2>
-
-    <h3 class="module-title" id="m-clientes">Clientes <span class="path">/clientes</span></h3>
-    <p class="module-desc">Base de clientes registrados en el negocio: datos de contacto e historial de pedidos.</p>
-
-    <h3 class="module-title" id="m-fidelizacion">Fidelización <span class="path">/fidelizacion</span></h3>
-    <p class="module-desc">Programa de puntos, niveles y recompensas para clientes frecuentes.</p>
-  </section>
-
-  <!-- ============ 7. GESTIÓN DEL NEGOCIO ============ -->
-  <section class="chapter" id="negocio">
-    <div class="chapter-eyebrow">Capítulo 7</div>
-    <h2 class="chapter-title">Gestión del negocio</h2>
-
-    <h3 class="module-title" id="m-finanzas">Finanzas <span class="path">/finanzas</span></h3>
-    <p class="module-desc">Ventas, gastos y utilidad estimada del negocio.</p>
-
-    <h3 class="module-title" id="m-personal">Personal <span class="path">/personal</span></h3>
-    <p class="module-desc">Equipo de trabajo y turnos semanales — además de la gestión de credenciales de acceso explicada en el capítulo 2.</p>
-    <ul class="actions">
-      <li>Ficha de cada empleado: datos de contacto, cargo, fecha de ingreso.</li>
-      <li><strong>Horario semanal:</strong> define los turnos por día para cada empleado.</li>
-    </ul>
-
-    <h3 class="module-title">Roles y permisos <span class="path">/roles-permisos</span></h3>
-    <p class="module-desc">Ver capítulo 2 — crear roles y asignar permisos.</p>
-
-    <h3 class="module-title" id="m-analitica">Analítica <span class="path">/analitica</span></h3>
-    <p class="module-desc">Reportes operativos y comerciales de Golden Bites: ventas por período, productos más vendidos, y otros indicadores del negocio.</p>
-
-    <h3 class="module-title" id="m-marketing">Marketing <span class="path">/marketing</span></h3>
-    <p class="module-desc">Campañas, contenido, cupones e influencers.</p>
-  </section>
-
-  <!-- ============ 8. CONTROL OPERATIVO ============ -->
-  <section class="chapter" id="control">
-    <div class="chapter-eyebrow">Capítulo 8</div>
-    <h2 class="chapter-title">Control operativo</h2>
-
-    <h3 class="module-title" id="m-checklists">Checklists <span class="path">/checklists</span></h3>
-    <p class="module-desc">Rutinas de apertura y cierre con evidencia de cumplimiento.</p>
-
-    <h3 class="module-title" id="m-mermas">Mermas <span class="path">/mermas</span></h3>
-    <p class="module-desc">Registro y control de pérdidas de insumos (vencimiento, daño, error de preparación, etc.).</p>
-
-    <h3 class="module-title" id="m-mantenimiento">Mantenimiento <span class="path">/mantenimiento</span></h3>
-    <p class="module-desc">Control de equipos, garantías e intervenciones técnicas.</p>
-
-    <h3 class="module-title" id="m-documentos">Documentos <span class="path">/documentos</span></h3>
-    <p class="module-desc">Documentos legales, sanitarios y de cumplimiento del negocio.</p>
-  </section>
-
-  <!-- ============ 9. CONFIGURACIÓN ============ -->
-  <section class="chapter" id="config">
-    <div class="chapter-eyebrow">Capítulo 9</div>
-    <h2 class="chapter-title">Configuración</h2>
-    <p class="chapter-lede">Parámetros generales del negocio y del sistema: métodos de pago habilitados, canales de venta, categorías de producto y estados de pedido disponibles.</p>
-  </section>
-
-  <!-- ============ 10. MODO TABLET ============ -->
-  <section class="chapter" id="tablet">
-    <div class="chapter-eyebrow">Capítulo 10</div>
-    <h2 class="chapter-title">Modo Tablet: Mesero y Cocina</h2>
-    <p class="chapter-lede">
-      Dos pantallas independientes, pensadas para dejarse abiertas en una tablet dedicada
-      durante todo el turno. No muestran el menú lateral ni el resto del panel — son de uso
-      exclusivo para tomar pedidos o gestionar comandas de forma rápida y táctil.
-    </p>
-
-    <div class="note">
-      <strong>Cómo abrirlas:</strong> desde "Pedidos" o "Cocina" en el panel de escritorio hay
-      un botón <strong>"Abrir en modo tablet ↗"</strong>. También se puede ir directo a las
-      URLs <code>/tablet/mesero</code> y <code>/tablet/cocina</code>. Ambas piden inicio de
-      sesión — cada mesero o cocinero debe tener su propio usuario (capítulo 2).
-    </div>
-
-    <h3 class="module-title" id="t-mesero">Pantalla de mesero <span class="path">/tablet/mesero</span></h3>
-    <p class="module-desc">Pensada para tomar pedidos rápido, con botones grandes para uso táctil.</p>
-    <ol class="steps">
-      <li><strong class="lead">Elige la categoría</strong> en las pestañas de arriba y toca los productos para agregarlos al carrito de la derecha.</li>
-      <li><strong class="lead">Ajusta cantidades</strong> con los botones + / − de cada línea del carrito.</li>
-      <li><strong class="lead">Elige la mesa</strong> tocando su número, o escríbela si no está en la lista (ej. "Terraza 2").</li>
-      <li><strong class="lead">Pulsa "Enviar a cocina".</strong> El pedido queda confirmado automáticamente — no hace falta un paso extra.</li>
-      <li>El pedido aparece en <strong>"Mis pedidos"</strong>, arriba del carrito, con su estado actual.</li>
-      <li><strong class="lead">Toca un pedido</strong> en esa lista para ver su detalle completo (productos, notas, total).</li>
-      <li>Cuando cocina lo marca <span class="badge ready">Listo</span>, aparece un <strong>aviso en pantalla</strong> avisando cuál mesa ya puede recibir su pedido.</li>
-      <li>Abre ese pedido y pulsa <strong>"Marcar como entregado"</strong> una vez el cliente lo recibió — así se cierra el ciclo del pedido.</li>
-    </ol>
-
-    <h3 class="module-title" id="t-cocina">Pantalla de comandas de cocina <span class="path">/tablet/cocina</span></h3>
-    <p class="module-desc">Muestra los tickets de cocina en tarjetas grandes, con gestos de deslizar en vez de botones.</p>
-    <ul class="actions">
-      <li>Se abre <strong>a pantalla completa</strong> automáticamente al entrar.</li>
-      <li><strong>Desliza una tarjeta hacia la izquierda</strong> para avanzarla al siguiente estado — de "Confirmado" a "En preparación", y de ahí a "Listo".</li>
-      <li>Hay que deslizar un tramo completo (no un roce accidental) — la tarjeta muestra un color verde de fondo mientras se arrastra, confirmando el gesto antes de soltarla.</li>
-      <li>Al marcarse como <span class="badge ready">Listo</span>, el pedido desaparece de esta pantalla y el mesero recibe el aviso en la suya.</li>
-    </ul>
-  </section>
-
-  <!-- ============ 11. FAQ ============ -->
-  <section class="chapter" id="faq">
-    <div class="chapter-eyebrow">Capítulo 11</div>
-    <h2 class="chapter-title">Preguntas frecuentes</h2>
-
-    <h3 class="module-title" style="margin-top:0">Un empleado no ve un módulo que debería ver</h3>
-    <p class="module-desc">Revisa su rol en "Roles y permisos" y confirma que tenga el permiso correspondiente marcado. El menú lateral solo muestra lo que el rol realmente permite usar.</p>
-
-    <h3 class="module-title">Un empleado no puede iniciar sesión</h3>
-    <p class="module-desc">Verifica en su ficha de "Personal" que el acceso esté "Activo" (no desactivado), y que esté usando la contraseña temporal más reciente — cada vez que se restablece, la anterior deja de funcionar de inmediato.</p>
-
-    <h3 class="module-title">El indicador de conexión aparece en rojo</h3>
-    <p class="module-desc">Significa que el panel no logra comunicarse con el servidor en este momento. Revisa la conexión a internet del dispositivo; los datos no se pierden, pero no se podrán guardar cambios hasta que vuelva la conexión.</p>
-
-    <h3 class="module-title">¿Puedo usar el modo tablet en un celular?</h3>
-    <p class="module-desc">Sí, funciona en cualquier navegador — está optimizado para pantallas de tablet apaisadas (horizontales), pero es utilizable en cualquier dispositivo con navegador.</p>
-  </section>
-
-  <div class="footer-note">Golden Bites Admin — Manual de Usuario</div>
+  <div class="footer-note">Golden Bites POS · Manual de Usuario · octubre de 2026</div>
+</section>
 
 </div>
 </body>

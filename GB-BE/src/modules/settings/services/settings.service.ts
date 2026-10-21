@@ -5,16 +5,19 @@ import type { Business } from '../../businesses/domain/business.interface';
 export interface BusinessSettings {
   taxRate: number;
   discountsAtCheckout: boolean;
+  menuTopSellers: boolean;
 }
 
 export interface BusinessSettingsUpdate {
   taxRate?: number;
   discountsAtCheckout?: boolean;
+  menuTopSellers?: boolean;
 }
 
 const toSettings = (business: Business): BusinessSettings => ({
   taxRate: business.taxRate,
   discountsAtCheckout: business.discountsAtCheckout,
+  menuTopSellers: business.menuTopSellers,
 });
 
 @Injectable()
@@ -42,6 +45,13 @@ export class SettingsService {
       await this.businessesService.updateDiscountsAtCheckout(
         businessId,
         changes.discountsAtCheckout,
+        actorUserId,
+      );
+    }
+    if (changes.menuTopSellers !== undefined) {
+      await this.businessesService.updateMenuTopSellers(
+        businessId,
+        changes.menuTopSellers,
         actorUserId,
       );
     }

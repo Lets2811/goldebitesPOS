@@ -10,6 +10,8 @@ export interface Business {
   taxRate: number;
   /** Whether the checkout offers the "Descuento" section. */
   discountsAtCheckout: boolean;
+  /** Whether the customer's menu opens with "Lo más pedido hoy". */
+  menuTopSellers: boolean;
   /** "Arma tu combo" under the business's own name; null: the default. */
   comboBuilderName: string | null;
   /** The line under it; null: the default. */
@@ -35,6 +37,7 @@ export interface BusinessRow {
   timezone: string;
   tax_rate: string;
   discounts_at_checkout: boolean;
+  menu_top_sellers: boolean;
   combo_builder_name: string | null;
   combo_builder_description: string | null;
   has_combo_builder_template: boolean;

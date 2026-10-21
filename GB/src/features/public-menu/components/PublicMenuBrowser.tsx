@@ -8,7 +8,7 @@ import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import Divider from '@mui/material/Divider';
 import { useSnackbar } from 'notistack';
-import { ChevronRight, ShoppingCart, Sparkles, UtensilsCrossed } from 'lucide-react';
+import { ChevronRight, Flame, ShoppingCart, Sparkles, UtensilsCrossed } from 'lucide-react';
 import LoadingSkeleton from '../../../components/common/LoadingSkeleton';
 import ErrorState from '../../../components/common/ErrorState';
 import StatusChip from '../../../components/common/StatusChip';
@@ -101,6 +101,17 @@ export default function PublicMenuBrowser({
     idempotencyKey,
   } = usePublicCart();
   const submitOrder = useSubmitNfcOrder(token);
+
+  // "Lo más pedido": the products are the menu's own, so a tap does the same as in their section.
+  const productsById = new Map(
+    (menu?.categories ?? []).flatMap((category) =>
+      category.products.map((product) => [product.id, product] as const),
+    ),
+  );
+  const topSellers = (menu?.topSellers?.productIds ?? []).flatMap((id) => {
+    const product = productsById.get(id);
+    return product ? [product] : [];
+  });
 
   function handleSubmit() {
     if (!token || !orderType) return;
@@ -236,6 +247,31 @@ export default function PublicMenuBrowser({
                 </ButtonBase>
               )}
 
+            {!inCombo && topSellers.length > 0 && (
+              <Box sx={{ mb: 5 }}>
+                <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
+                  <Flame size={18} color={brand.gold} />
+                  <Typography
+                    variant="overline"
+                    sx={{ color: brand.gold, fontWeight: 700, letterSpacing: 1.5 }}
+                  >
+                    {menu.topSellers?.period === 'TODAY' ? 'Lo más pedido hoy' : 'Lo más pedido'}
+                  </Typography>
+                </Stack>
+                <Divider sx={{ mb: 2, mt: 0.5, borderColor: brand.gold, opacity: 0.3 }} />
+                <Stack spacing={0.5}>
+                  {topSellers.map((product, index) => (
+                    <MenuProductRow
+                      key={product.id}
+                      product={product}
+                      rank={index + 1}
+                      onSelect={setSelectedProduct}
+                    />
+                  ))}
+                </Stack>
+              </Box>
+            )}
+
             {!inCombo && menu.categories.length === 0 && (
               <Typography variant="body1" color="text.secondary" sx={{ textAlign: 'center' }}>
                 Todavía no hay productos disponibles en el menú.
@@ -254,70 +290,11 @@ export default function PublicMenuBrowser({
                   <Divider sx={{ mb: 2, mt: 0.5, borderColor: brand.gold, opacity: 0.3 }} />
                   <Stack spacing={0.5}>
                     {category.products.map((product) => (
-                      <ButtonBase
+                      <MenuProductRow
                         key={product.id}
-                        onClick={() => setSelectedProduct(product)}
-                        sx={{
-                          width: '100%',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: 2,
-                          py: 1.25,
-                          borderRadius: 1.5,
-                          textAlign: 'left',
-                          justifyContent: 'flex-start',
-                          '&:hover': { bgcolor: 'action.hover' },
-                        }}
-                      >
-                        <Box
-                          sx={{
-                            width: 56,
-                            height: 56,
-                            flexShrink: 0,
-                            borderRadius: 2,
-                            overflow: 'hidden',
-                            bgcolor: 'action.hover',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                          }}
-                        >
-                          {product.imageUrl ? (
-                            <Box
-                              component="img"
-                              src={product.imageUrl}
-                              alt={product.name}
-                              sx={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                            />
-                          ) : (
-                            <UtensilsCrossed size={22} color={brand.gold} strokeWidth={1.5} />
-                          )}
-                        </Box>
-                        <Box sx={{ flex: 1, minWidth: 0 }}>
-                          <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
-                            {product.name}
-                          </Typography>
-                          {product.description && (
-                            <Typography
-                              variant="body2"
-                              color="text.secondary"
-                              sx={{
-                                overflow: 'hidden',
-                                textOverflow: 'ellipsis',
-                                whiteSpace: 'nowrap',
-                              }}
-                            >
-                              {product.description}
-                            </Typography>
-                          )}
-                        </Box>
-                        <Typography
-                          variant="subtitle1"
-                          sx={{ fontWeight: 700, whiteSpace: 'nowrap' }}
-                        >
-                          {formatCOP(product.salePrice)}
-                        </Typography>
-                      </ButtonBase>
+                        product={product}
+                        onSelect={setSelectedProduct}
+                      />
                     ))}
                   </Stack>
                 </Box>
@@ -363,5 +340,99 @@ export default function PublicMenuBrowser({
         submitting={submitOrder.isPending}
       />
     </Box>
+  );
+}
+
+/** A product of the menu: photo, name, description and price; `rank` marks it as one of the best sellers. */
+function MenuProductRow({
+  product,
+  rank,
+  onSelect,
+}: {
+  product: PublicMenuProduct;
+  rank?: number;
+  onSelect: (product: PublicMenuProduct) => void;
+}) {
+  return (
+    <ButtonBase
+      onClick={() => onSelect(product)}
+      sx={{
+        width: '100%',
+        display: 'flex',
+        alignItems: 'center',
+        gap: 2,
+        py: 1.25,
+        borderRadius: 1.5,
+        textAlign: 'left',
+        justifyContent: 'flex-start',
+        '&:hover': { bgcolor: 'action.hover' },
+      }}
+    >
+      <Box
+        sx={{
+          width: 56,
+          height: 56,
+          flexShrink: 0,
+          borderRadius: 2,
+          overflow: 'hidden',
+          bgcolor: 'action.hover',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        {product.imageUrl ? (
+          <Box
+            component="img"
+            src={product.imageUrl}
+            alt={product.name}
+            sx={{ width: '100%', height: '100%', objectFit: 'cover' }}
+          />
+        ) : (
+          <UtensilsCrossed size={22} color={brand.gold} strokeWidth={1.5} />
+        )}
+      </Box>
+      <Box sx={{ flex: 1, minWidth: 0 }}>
+        {rank !== undefined && (
+          <Box
+            component="span"
+            sx={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 0.5,
+              px: 1,
+              py: 0.25,
+              mb: 0.5,
+              borderRadius: 10,
+              fontSize: 12,
+              fontWeight: 800,
+              color: '#0B0B0C',
+              bgcolor: brand.gold,
+            }}
+          >
+            <Flame size={12} /> Top {rank}
+          </Box>
+        )}
+        <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
+          {product.name}
+        </Typography>
+        {product.description && (
+          <Typography
+            variant="body2"
+            color="text.secondary"
+            sx={{
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {product.description}
+          </Typography>
+        )}
+      </Box>
+      <Typography variant="subtitle1" sx={{ fontWeight: 700, whiteSpace: 'nowrap' }}>
+        {formatCOP(product.salePrice)}
+      </Typography>
+    </ButtonBase>
   );
 }

@@ -4,6 +4,8 @@ import type { ApiResponse } from '../../../lib/api/api-types';
 export interface BusinessSettings {
   taxRate: number;
   discountsAtCheckout: boolean;
+  /** Si el menú del cliente abre con "Lo más pedido hoy". */
+  menuTopSellers: boolean;
 }
 
 export const settingsApi = {

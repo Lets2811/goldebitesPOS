@@ -13,6 +13,7 @@ export class BusinessMapper {
       timezone: row.timezone,
       taxRate: parseFloat(row.tax_rate),
       discountsAtCheckout: row.discounts_at_checkout,
+      menuTopSellers: row.menu_top_sellers,
       comboBuilderName: row.combo_builder_name,
       comboBuilderDescription: row.combo_builder_description,
       hasComboBuilderTemplate: row.has_combo_builder_template,

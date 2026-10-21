@@ -21,6 +21,7 @@ describe('PublicMenuController', () => {
       builderDescription: 'Escoge lo que quieras, a tu gusto y a tu estilo.',
       hasBuilderTemplate: false,
       optionGroups: [],
+      topSellers: null,
     });
     await controller.getMenu('business-1');
     expect(service.getMenu).toHaveBeenCalledWith('business-1', undefined);

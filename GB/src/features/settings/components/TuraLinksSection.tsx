@@ -27,8 +27,8 @@ function formatDate(value: string | null): string {
 /**
  * Links between this business's users and TURA, the assistant app. A link is
  * created by generating a code here and saying or typing it to TURA, which
- * from then on acts as the user who generated it: it can read (never change)
- * what that user is allowed to see. Rendered only for businesses that have
+ * from then on acts as the user who generated it: it sees, and changes, only
+ * what that user is allowed to. Rendered only for businesses that have
  * the TURA module and for settings.manage, which every endpoint behind it
  * requires.
  */
@@ -49,8 +49,8 @@ export default function TuraLinksSection() {
           <Typography variant="body2" color="text.secondary">
             Para conectar TURA con tu usuario, genera un código y escanea el QR con tu celular (o
             díselo o escríbeselo a TURA). TURA quedará vinculada a ti y podrá consultar lo que tú
-            puedes ver. Los cambios que le pidas (existencias, productos) solo se hacen cuando los
-            confirmas en tu pantalla.
+            puedes ver. Los cambios que le pidas (existencias, insumos, productos) los hace en el
+            momento, con tus permisos, y te dice cómo quedaron.
           </Typography>
 
           <Stack

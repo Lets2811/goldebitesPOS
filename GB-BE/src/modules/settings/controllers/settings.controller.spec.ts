@@ -11,7 +11,11 @@ describe('SettingsController', () => {
   });
 
   it('get() scopes to the current business', async () => {
-    service.get.mockResolvedValue({ taxRate: 0.19, discountsAtCheckout: true });
+    service.get.mockResolvedValue({
+      taxRate: 0.19,
+      discountsAtCheckout: true,
+      menuTopSellers: true,
+    });
     await controller.get('business-1');
     expect(service.get).toHaveBeenCalledWith('business-1');
   });
@@ -20,6 +24,7 @@ describe('SettingsController', () => {
     service.update.mockResolvedValue({
       taxRate: 0.19,
       discountsAtCheckout: true,
+      menuTopSellers: true,
     });
     await controller.update('business-1', 'actor-1', { taxRate: 0.19 });
     expect(service.update).toHaveBeenCalledWith(

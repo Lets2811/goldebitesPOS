@@ -166,6 +166,31 @@ export class BusinessesService {
     return BusinessMapper.toDomain(row);
   }
 
+  /** Turns "Lo más pedido hoy" on the customer's menu on or off. */
+  async updateMenuTopSellers(
+    id: string,
+    enabled: boolean,
+    actorUserId?: string,
+  ): Promise<Business> {
+    await this.getOrFail(id);
+    const row = await this.businessesRepository.updateMenuTopSellers(
+      id,
+      enabled,
+    );
+    if (!row) {
+      throw new EntityNotFoundException('Business', id);
+    }
+    await this.auditService.record({
+      businessId: id,
+      userId: actorUserId,
+      entityType: 'business',
+      entityId: id,
+      action: 'UPDATE_MENU_TOP_SELLERS',
+      newValues: { menuTopSellers: enabled },
+    });
+    return BusinessMapper.toDomain(row);
+  }
+
   /** Names "Arma tu combo" (and its line) the business's own way; empty goes back to the default. */
   async updateComboBuilder(
     id: string,

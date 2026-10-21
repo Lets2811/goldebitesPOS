@@ -25,6 +25,7 @@ import { useUploadBusinessLogo } from '../../../modules/businesses/hooks/use-upl
 import { useDeleteBusinessLogo } from '../../../modules/businesses/hooks/use-delete-business-logo';
 import { useUpdateTaxRate } from '../../../modules/settings/hooks/use-update-tax-rate';
 import { useUpdateDiscountsAtCheckout } from '../../../modules/settings/hooks/use-update-discounts-at-checkout';
+import { useUpdateMenuTopSellers } from '../../../modules/settings/hooks/use-update-menu-top-sellers';
 import { usePermissions } from '../../../modules/auth/hooks/use-permissions';
 import { useBranches } from '../../../modules/branches/hooks/use-branches';
 import BranchTableCountField from '../components/BranchTableCountField';
@@ -59,6 +60,7 @@ export default function SettingsPage() {
   const deleteLogo = useDeleteBusinessLogo();
   const updateTaxRate = useUpdateTaxRate();
   const updateDiscountsAtCheckout = useUpdateDiscountsAtCheckout();
+  const updateMenuTopSellers = useUpdateMenuTopSellers();
   const { hasPermission } = usePermissions();
   const { data: branchesData } = useBranches({ limit: 50 });
   const branches = branchesData?.data ?? [];
@@ -465,6 +467,40 @@ export default function SettingsPage() {
         </AccordionSummary>
         <AccordionDetails>
           <Stack spacing={3}>
+            <Box>
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    checked={business?.menuTopSellers ?? true}
+                    disabled={
+                      !business ||
+                      !hasPermission('settings.manage') ||
+                      updateMenuTopSellers.isPending
+                    }
+                    onChange={(e) => {
+                      const enabled = e.target.checked;
+                      updateMenuTopSellers.mutate(enabled, {
+                        onSuccess: () =>
+                          enqueueSnackbar(
+                            enabled
+                              ? '"Lo más pedido" visible en el menú'
+                              : '"Lo más pedido" oculto del menú',
+                            { variant: 'success' },
+                          ),
+                        onError: (error) =>
+                          enqueueSnackbar(normalizeApiError(error).message, { variant: 'error' }),
+                      });
+                    }}
+                  />
+                }
+                label='Mostrar "Lo más pedido hoy" en el menú del cliente'
+              />
+              <Typography variant="caption" color="text.secondary" sx={{ display: 'block', ml: 4 }}>
+                Una sección arriba del menú con los 5 productos más vendidos del día en cada sede
+                (mientras el día tiene pocas ventas, los de ayer). Solo los que se pueden pedir, sin
+                mostrar cuánto se vende.
+              </Typography>
+            </Box>
             <Box>
               <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 1 }}>
                 Estados de pedido

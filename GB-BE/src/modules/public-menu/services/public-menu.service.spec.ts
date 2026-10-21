@@ -12,6 +12,7 @@ describe('PublicMenuService', () => {
     isActiveBranch: jest.Mock;
     firstActiveBranchId: jest.Mock;
   };
+  let ordersService: { getSalesSummary: jest.Mock; getTopProducts: jest.Mock };
   let service: PublicMenuService;
 
   const businessId = 'business-1';
@@ -109,6 +110,12 @@ describe('PublicMenuService', () => {
       ]),
     };
     branchMenuService = { forBranch: jest.fn().mockResolvedValue(new Map()) };
+    ordersService = {
+      getSalesSummary: jest
+        .fn()
+        .mockResolvedValue({ orderCount: 0, totalAmount: 0 }),
+      getTopProducts: jest.fn().mockResolvedValue([]),
+    };
     branchesService = {
       isActiveBranch: jest.fn().mockResolvedValue(true),
       firstActiveBranchId: jest.fn().mockResolvedValue('branch-1'),
@@ -120,6 +127,7 @@ describe('PublicMenuService', () => {
       optionGroupsService as never,
       branchMenuService as never,
       branchesService as never,
+      ordersService as never,
     );
   });
 
@@ -369,5 +377,110 @@ describe('PublicMenuService', () => {
 
     const menu = await service.getMenu(businessId);
     expect(menu.categories.some((c) => c.id === null)).toBe(false);
+  });
+
+  describe('"Lo más pedido"', () => {
+    const top = (...ids: (string | null)[]) =>
+      ids.map((productId) => ({
+        productId,
+        productName: '',
+        quantitySold: 1,
+        revenue: 0,
+      }));
+
+    function turnedOn() {
+      businessesService.findById.mockResolvedValue({
+        id: businessId,
+        name: 'Golden Bites',
+        timezone: 'America/Bogota',
+        menuTopSellers: true,
+      });
+    }
+
+    it('is left out, without counting anything, when the business turned it off', async () => {
+      const menu = await service.getMenu(businessId);
+
+      expect(menu.topSellers).toBeNull();
+      expect(ordersService.getTopProducts).not.toHaveBeenCalled();
+    });
+
+    it("shows today's best sellers once the day has enough sales, only what can be ordered", async () => {
+      turnedOn();
+      ordersService.getSalesSummary.mockResolvedValue({
+        orderCount: 12,
+        totalAmount: 0,
+      });
+      // p9 is not on the menu (sold out, hidden or only for combos); a deleted product has no id.
+      ordersService.getTopProducts
+        .mockResolvedValueOnce(top('p3', 'p9', null, 'p1'))
+        .mockResolvedValueOnce(top('p2'));
+
+      const menu = await service.getMenu(businessId, 'branch-1');
+
+      expect(menu.topSellers).toEqual({
+        period: 'TODAY',
+        productIds: ['p3', 'p1'],
+      });
+      expect(ordersService.getTopProducts).toHaveBeenCalledWith(
+        businessId,
+        'branch-1',
+        expect.any(String),
+        expect.any(String),
+        expect.any(Number),
+        'quantity',
+      );
+    });
+
+    it("shows yesterday's while today has few sales", async () => {
+      turnedOn();
+      ordersService.getSalesSummary.mockResolvedValue({
+        orderCount: 2,
+        totalAmount: 0,
+      });
+      ordersService.getTopProducts
+        .mockResolvedValueOnce(top('p3'))
+        .mockResolvedValueOnce(top('p2', 'p1'));
+
+      const menu = await service.getMenu(businessId, 'branch-1');
+
+      expect(menu.topSellers).toEqual({
+        period: 'RECENT',
+        productIds: ['p2', 'p1'],
+      });
+    });
+
+    it("shows today's few when yesterday sold nothing (a day the place was closed)", async () => {
+      turnedOn();
+      ordersService.getSalesSummary.mockResolvedValue({
+        orderCount: 1,
+        totalAmount: 0,
+      });
+      ordersService.getTopProducts
+        .mockResolvedValueOnce(top('p1'))
+        .mockResolvedValueOnce(top());
+
+      const menu = await service.getMenu(businessId, 'branch-1');
+
+      expect(menu.topSellers).toEqual({ period: 'TODAY', productIds: ['p1'] });
+    });
+
+    it('shows nothing when no orderable product sold', async () => {
+      turnedOn();
+      ordersService.getTopProducts.mockResolvedValue(top('p9'));
+
+      const menu = await service.getMenu(businessId, 'branch-1');
+
+      expect(menu.topSellers).toBeNull();
+    });
+
+    it('counts the sales once a minute, not on every opening', async () => {
+      turnedOn();
+      ordersService.getTopProducts.mockResolvedValue(top('p1'));
+
+      await service.getMenu(businessId, 'branch-1');
+      await service.getMenu(businessId, 'branch-1');
+
+      expect(ordersService.getSalesSummary).toHaveBeenCalledTimes(1);
+    });
   });
 });
