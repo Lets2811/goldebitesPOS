@@ -55,12 +55,24 @@ describe('AssistantController', () => {
     }) as Promise<AssistantProductsQueryDto>;
   }
 
+  const branchScope = {
+    resolve: jest.fn().mockResolvedValue({
+      branchId: 'branch-1',
+      scope: { branch: null },
+      single: true,
+      namesById: new Map([['branch-1', 'Centro']]),
+      active: [{ id: 'branch-1', name: 'Centro' }],
+    }),
+  };
+
   beforeEach(() => {
     productsService = { search: jest.fn() };
     controller = new AssistantController(
       new AssistantService(),
       productsService as unknown as AssistantProductsService,
       {} as AssistantSalesService,
+      {} as never,
+      branchScope as never,
       {} as never,
     );
   });
@@ -71,15 +83,83 @@ describe('AssistantController', () => {
     );
   });
 
+  describe('findBranches()', () => {
+    it('lists every branch to whoever may see them all', async () => {
+      branchScope.resolve.mockResolvedValueOnce({
+        branchId: undefined,
+        scope: { branch: null, branches: ['Centro', 'Norte'] },
+        single: false,
+        namesById: new Map([
+          ['branch-1', 'Centro'],
+          ['branch-2', 'Norte'],
+        ]),
+        active: [
+          { id: 'branch-1', name: 'Centro' },
+          { id: 'branch-2', name: 'Norte' },
+        ],
+      });
+
+      await expect(
+        controller.findBranches(
+          'business-1',
+          makeUser({ permissions: ['branches.switch'] }),
+        ),
+      ).resolves.toEqual({
+        ownBranch: { id: 'branch-1', name: 'Centro' },
+        canSeeAll: true,
+        branches: [
+          { id: 'branch-1', name: 'Centro' },
+          { id: 'branch-2', name: 'Norte' },
+        ],
+      });
+    });
+
+    it('gives a user kept to their branch that branch only', async () => {
+      branchScope.resolve.mockResolvedValueOnce({
+        branchId: 'branch-2',
+        scope: { branch: 'Norte' },
+        single: false,
+        namesById: new Map([['branch-2', 'Norte']]),
+        active: [
+          { id: 'branch-1', name: 'Centro' },
+          { id: 'branch-2', name: 'Norte' },
+        ],
+      });
+
+      await expect(
+        controller.findBranches(
+          'business-1',
+          makeUser({ branchId: 'branch-2' }),
+        ),
+      ).resolves.toEqual({
+        ownBranch: { id: 'branch-2', name: 'Norte' },
+        canSeeAll: false,
+        branches: [{ id: 'branch-2', name: 'Norte' }],
+      });
+    });
+  });
+
   describe('findProducts()', () => {
-    it('takes the business and the branch from the session, never from the query', async () => {
-      const query = await parseQuery({ search: '  Agua Manantial  ' });
+    it('takes the business from the session and the branch from the scope it resolves for the user', async () => {
+      const query = await parseQuery({
+        search: '  Agua Manantial  ',
+        branch: 'Centro',
+      });
+      const user = makeUser();
 
-      await controller.findProducts('business-1', makeUser(), query);
+      await controller.findProducts('business-1', user, query);
 
+      expect(branchScope.resolve).toHaveBeenCalledWith(
+        'business-1',
+        user,
+        'Centro',
+      );
       expect(productsService.search).toHaveBeenCalledWith({
         businessId: 'business-1',
         branchId: 'branch-1',
+        labelBranches: false,
+        branchNames: new Map([['branch-1', 'Centro']]),
+        scope: { branch: null },
         canReadStock: true,
         search: 'Agua Manantial',
         isActive: undefined,

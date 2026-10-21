@@ -1,8 +1,9 @@
 import { Injectable } from '@nestjs/common';
-import { BranchesService } from '../../branches/services/branches.service';
+import { UnauthorizedOperationException } from '../../../common/exceptions';
 import { InventoryItem } from '../../inventory-items/domain/inventory-item.interface';
 import { InventoryItemsService } from '../../inventory-items/services/inventory-items.service';
 import { InventoryMovementsService } from '../../inventory-movements/services/inventory-movements.service';
+import type { AssistantBranchScope } from './assistant-branch-scope.service';
 
 /** An inventory item as the assistant needs it: enough to name it, its stock and whether it runs low. */
 export interface AssistantInventoryItem {
@@ -16,12 +17,18 @@ export interface AssistantInventoryItem {
   currentStock: number;
   belowMinimum: boolean;
   branchId: string;
+  /** The branch's name, given when the answer covers several. */
+  branch?: string;
 }
 
 export interface AssistantInventoryQuery {
   businessId: string;
-  /** The caller's branch; at a business with several and none assigned, every branch's items. */
+  /** The branch to read; null for every branch the caller may see. */
   branchId: string | null;
+  /** Whether items are labelled with their branch's name (the answer covers several). */
+  labelBranches: boolean;
+  branchNames: Map<string, string>;
+  scope: AssistantBranchScope;
   search?: string;
   isActive?: boolean;
   limit: number;
@@ -38,34 +45,51 @@ export class AssistantInventoryService {
   constructor(
     private readonly inventoryItemsService: InventoryItemsService,
     private readonly movementsService: InventoryMovementsService,
-    private readonly branchesService: BranchesService,
   ) {}
 
   async search(query: AssistantInventoryQuery): Promise<{
     items: AssistantInventoryItem[];
     count: number;
     total: number;
+    scope: AssistantBranchScope;
   }> {
-    const branchId =
-      query.branchId ??
-      (await this.branchesService.findOnlyActiveBranchId(query.businessId));
     const page = await this.inventoryItemsService.findAll({
       businessId: query.businessId,
-      branchId: branchId ?? undefined,
+      branchId: query.branchId ?? undefined,
       search: query.search,
       isActive: query.isActive,
       page: 1,
       limit: query.limit,
     });
-    const items = await this.withStock(query.businessId, page.data);
-    return { items, count: items.length, total: page.meta.total };
+    const items = (await this.withStock(query.businessId, page.data)).map(
+      (item) =>
+        query.labelBranches
+          ? {
+              ...item,
+              branch: query.branchNames.get(item.branchId) ?? item.branchId,
+            }
+          : item,
+    );
+    return {
+      items,
+      count: items.length,
+      total: page.meta.total,
+      scope: query.scope,
+    };
   }
 
+  /** One item; `onlyBranchId` keeps a user tied to a branch to that branch's items. */
   async findOne(
     businessId: string,
     id: string,
+    onlyBranchId: string | null = null,
   ): Promise<AssistantInventoryItem> {
     const item = await this.inventoryItemsService.findOne(businessId, id);
+    if (onlyBranchId && item.branchId !== onlyBranchId) {
+      throw new UnauthorizedOperationException(
+        'This item belongs to another branch',
+      );
+    }
     const [withStock] = await this.withStock(businessId, [item]);
     return withStock;
   }

@@ -1,7 +1,7 @@
 import type Anthropic from '@anthropic-ai/sdk';
 import { mock } from 'node:test';
 import type { ModelClient, ModelStream } from '../agent/agent.service.js';
-import type { Session } from '../auth.js';
+import { NO_BRANCHES, type Session } from '../auth.js';
 import { PosClient } from '../pos/pos-client.js';
 
 /** A signed-in user as the agent sees one. Nothing here reaches a real POS: see mockPos. */
@@ -14,6 +14,7 @@ export function makeSession(overrides: Partial<Session> = {}): Session {
     businessName: 'Golden Bites',
     roleName: 'OWNER',
     branchId: 'branch-1',
+    branches: NO_BRANCHES,
     permissions: ['products.read', 'inventory.read'],
     ...overrides,
   };

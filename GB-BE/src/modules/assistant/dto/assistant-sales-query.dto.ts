@@ -16,7 +16,7 @@ import { isCalendarDay } from '../../../common/utils/business-day.util';
 import { QueryBoolean } from './query-boolean.decorator';
 
 /** A calendar day, not an instant: the business's timezone decides when it starts and ends. */
-function IsCalendarDay(options?: ValidationOptions) {
+export function IsCalendarDay(options?: ValidationOptions) {
   return (target: object, propertyName: string) =>
     registerDecorator({
       name: 'isCalendarDay',

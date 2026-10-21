@@ -16,6 +16,7 @@ describe('TuraLinksService', () => {
     findActive: jest.Mock;
     findAllActive: jest.Mock;
     revoke: jest.Mock;
+    revokeByTokenHash: jest.Mock;
   };
   let businessesService: { findById: jest.Mock };
   let businessFeaturesService: { getEnabledKeys: jest.Mock };
@@ -59,6 +60,7 @@ describe('TuraLinksService', () => {
       findActive: jest.fn().mockResolvedValue(makeRow()),
       findAllActive: jest.fn().mockResolvedValue([]),
       revoke: jest.fn().mockResolvedValue(true),
+      revokeByTokenHash: jest.fn().mockResolvedValue(undefined),
     };
     businessesService = {
       findById: jest
@@ -213,6 +215,18 @@ describe('TuraLinksService', () => {
       await expect(service.issueAccessToken('link-token')).rejects.toThrow(
         UnauthorizedException,
       );
+    });
+  });
+
+  describe('logout', () => {
+    it('revokes the link behind the token, never storing the token itself', async () => {
+      await service.logout('link-token-value');
+
+      const [hash] = turaLinksRepository.revokeByTokenHash.mock.calls[0] as [
+        string,
+      ];
+      expect(hash).toMatch(/^[0-9a-f]{64}$/);
+      expect(hash).not.toContain('link-token-value');
     });
   });
 

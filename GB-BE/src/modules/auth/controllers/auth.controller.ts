@@ -16,6 +16,8 @@ import { RawResponse } from '../../../common/decorators/raw-response.decorator';
 import { SkipMustChangePassword } from '../../../common/decorators/skip-must-change-password.decorator';
 import { BranchSelectionExempt } from '../../../common/decorators/branch-selection-exempt.decorator';
 import { Permissions } from '../../../common/decorators/permissions.decorator';
+import { UnauthorizedOperationException } from '../../../common/exceptions';
+import type { AuthenticatedUser } from '../../../common/interfaces/authenticated-user.interface';
 import { ChangePasswordDto } from '../dto/change-password.dto';
 import { ForgotPasswordDto } from '../dto/forgot-password.dto';
 import { LoginDto } from '../dto/login.dto';
@@ -78,14 +80,20 @@ export class AuthController {
       'Take the session to one branch (or all, with branchId null): a new token pair',
   })
   switchBranch(
-    @CurrentUser('userId') userId: string,
+    @CurrentUser() user: AuthenticatedUser,
     @CurrentBusiness() businessId: string,
     @Body() dto: SwitchBranchDto,
     @Ip() ip: string,
     @Headers('user-agent') userAgent?: string,
   ) {
+    if (user.turaLinkId) {
+      // TURA reads every branch with this permission; it never gets a POS session from it.
+      throw new UnauthorizedOperationException(
+        'TURA cannot open a POS session',
+      );
+    }
     return this.authService.switchBranch(
-      userId,
+      user.userId,
       businessId,
       dto.branchId,
       dto.refreshToken,

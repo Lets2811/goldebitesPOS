@@ -9,5 +9,6 @@ import { BranchComparisonService } from './branch-comparison.service';
   imports: [BusinessesModule],
   controllers: [BranchComparisonController],
   providers: [BranchComparisonService, BranchComparisonRepository],
+  exports: [BranchComparisonService],
 })
 export class BranchComparisonModule {}

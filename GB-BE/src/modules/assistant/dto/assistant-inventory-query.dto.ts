@@ -33,4 +33,13 @@ export class AssistantInventoryQueryDto {
   @Min(1)
   @Max(30)
   limit: number = 10;
+
+  @ApiPropertyOptional({
+    description:
+      'Name of a branch to limit the answer to. Without it, every branch the caller may see (a user tied to one branch only ever sees theirs). Ignored by a business with a single branch.',
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  branch?: string;
 }

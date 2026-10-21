@@ -15,6 +15,8 @@ import {
   useTuraLinks,
 } from '../../../modules/tura-links/hooks/use-tura-links';
 import type { TuraLinkCode } from '../../../modules/tura-links/types/tura-link.types';
+import TuraCodeCard from '../../../modules/tura-links/components/TuraCodeCard';
+import { env } from '../../../config/env';
 
 function formatDate(value: string | null): string {
   return value
@@ -45,39 +47,35 @@ export default function TuraLinksSection() {
       <AccordionDetails>
         <Stack spacing={3}>
           <Typography variant="body2" color="text.secondary">
-            Para conectar TURA con tu usuario, genera un código y díselo o escríbeselo cuando te lo
-            pida. TURA quedará vinculada a ti: podrá consultar lo que tú puedes ver (ventas, pedidos
-            e inventario), pero no puede modificar nada.
+            Para conectar TURA con tu usuario, genera un código y escanea el QR con tu celular (o
+            díselo o escríbeselo a TURA). TURA quedará vinculada a ti y podrá consultar lo que tú
+            puedes ver. Los cambios que le pidas (existencias, productos) solo se hacen cuando los
+            confirmas en tu pantalla.
           </Typography>
 
-          <Stack direction="row" spacing={2} sx={{ alignItems: 'center', flexWrap: 'wrap' }} useFlexGap>
+          <Stack
+            direction="row"
+            spacing={2}
+            sx={{ alignItems: 'center', flexWrap: 'wrap' }}
+            useFlexGap
+          >
             <Button
               variant="outlined"
               loading={generateCode.isPending}
               onClick={() =>
                 generateCode.mutate(undefined, {
                   onSuccess: setCode,
-                  onError: (error) => enqueueSnackbar(normalizeApiError(error).message, { variant: 'error' }),
+                  onError: (error) =>
+                    enqueueSnackbar(normalizeApiError(error).message, { variant: 'error' }),
                 })
               }
             >
               Generar código
             </Button>
-            {code && (
-              <Box>
-                <Typography
-                  component="p"
-                  sx={{ fontSize: 32, fontWeight: 700, letterSpacing: 6, fontVariantNumeric: 'tabular-nums' }}
-                >
-                  {code.code}
-                </Typography>
-                <Typography variant="caption" color="text.secondary">
-                  Sirve una sola vez y vence a las{' '}
-                  {new Date(code.expiresAt).toLocaleTimeString('es-CO', { timeStyle: 'short' })}.
-                </Typography>
-              </Box>
-            )}
           </Stack>
+          {code && (
+            <TuraCodeCard code={code.code} expiresAt={code.expiresAt} turaAppUrl={env.turaAppUrl} />
+          )}
 
           <Box>
             <Stack direction="row" spacing={1} sx={{ alignItems: 'center', mb: 1 }}>
@@ -104,7 +102,8 @@ export default function TuraLinksSection() {
                     <Box>
                       <Typography sx={{ fontWeight: 600 }}>{link.userName}</Typography>
                       <Typography variant="caption" color="text.secondary">
-                        Vinculado el {formatDate(link.createdAt)} · Último uso: {formatDate(link.lastUsedAt)}
+                        Vinculado el {formatDate(link.createdAt)} · Último uso:{' '}
+                        {formatDate(link.lastUsedAt)}
                       </Typography>
                     </Box>
                     <Button
@@ -113,7 +112,10 @@ export default function TuraLinksSection() {
                       loading={revokeLink.isPending && revokeLink.variables === link.id}
                       onClick={() =>
                         revokeLink.mutate(link.id, {
-                          onSuccess: () => enqueueSnackbar('TURA desvinculada de ese usuario', { variant: 'success' }),
+                          onSuccess: () =>
+                            enqueueSnackbar('TURA desvinculada de ese usuario', {
+                              variant: 'success',
+                            }),
                           onError: (error) =>
                             enqueueSnackbar(normalizeApiError(error).message, { variant: 'error' }),
                         })

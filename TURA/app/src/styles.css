@@ -774,3 +774,61 @@ button {
   width: min(100%, 420px);
   margin: 12px auto 0;
 }
+
+/* What happened to the connection: linked from a QR, signed out, access cut. */
+.notice {
+  position: fixed;
+  top: max(12px, env(safe-area-inset-top));
+  left: 50%;
+  z-index: 50;
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  width: min(calc(100% - 24px), 480px);
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: var(--graphite);
+  border: 1px solid var(--border);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 40%);
+  transform: translateX(-50%);
+}
+
+.notice p {
+  flex: 1;
+  margin: 0;
+}
+
+.notice--success {
+  border-color: #4caf7a;
+}
+
+.notice--error {
+  border-color: var(--error);
+}
+
+.notice__close {
+  padding: 0 4px;
+  font-size: 1.25rem;
+  line-height: 1;
+  color: var(--gray);
+  background: none;
+  border: none;
+}
+
+.install-hint {
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--graphite);
+}
+
+.install-hint p {
+  margin: 0;
+}
+
+.install-hint__buttons {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  margin-top: 12px;
+}

@@ -97,6 +97,18 @@ export class TuraLinksController {
   }
 
   @Public()
+  @Post('logout')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @RawResponse()
+  @ApiOperation({
+    summary:
+      'Sign a TURA app out: its link stops working here and now, not only on the device',
+  })
+  async logout(@Body() dto: LinkTokenDto) {
+    await this.turaLinksService.logout(dto.linkToken);
+  }
+
+  @Public()
   @Post('token')
   @ApiOperation({
     summary: 'Exchange a TURA link token for a short-lived access token',

@@ -29,10 +29,21 @@ POS.
    (asistente)**. La sección solo existe si el negocio tiene el módulo y el
    usuario tiene el permiso `settings.manage`. El código tiene seis dígitos,
    sirve una vez y vence a los 10 minutos.
-3. **Se lo dice o escribe a TURA.** La primera conversación de la app (por chat
-   o por voz) es un guion fijo que solo pide ese código y lo lee con una
-   expresión regular (`app/src/onboarding.ts`), sin llamar al modelo, así que
-   no cuesta nada hasta que la app queda vinculada.
+3. **Lo escanea o abre en el celular.** Junto al código, el POS y el admin
+   muestran un QR y botones para enviarlo por WhatsApp o copiarlo: llevan a
+   `https://<tura>/?vincular=123456`, y al abrirlo la app queda conectada sola
+   (`linkFromAddress` en `app/src/link.ts`), sin escribir nada; el código sale
+   de la dirección enseguida. También se puede **decir o escribir** en la
+   primera conversación, que es un guion fijo que solo pide ese código y lo lee
+   con una expresión regular (`app/src/onboarding.ts`), sin llamar al modelo.
+
+No hay pantalla de inicio de sesión: el código se usa una vez por dispositivo.
+Al abrir la app y cada vez que vuelve a primer plano, la conexión se valida en
+silencio con el POS; si la quitaron, la app lo dice y la olvida. **Cerrar
+sesión** (en el inicio) revoca la conexión en el POS (`POST /tura-links/logout`),
+no solo en el celular. La app invita a instalarse en la pantalla de inicio: en
+iPhone, Safari puede borrar lo que guarda un sitio no instalado tras una semana
+sin uso.
 
 Al canjear el código, `GB-BE` devuelve un token de vínculo **para el usuario
 que lo generó**. Se guarda en el dispositivo y se cambia por tokens de acceso
@@ -76,16 +87,38 @@ en desarrollo.
 
 ## Estado
 
-Chat de texto y conversación por voz, solo lectura.
+Chat de texto y conversación por voz. Consulta productos, inventario y ventas;
+los cambios (existencias, insumos, productos) solo se hacen cuando el usuario
+los confirma con un botón en su pantalla.
 
-| Herramienta           | Endpoint del POS          | Qué consulta                                   | Permiso del POS |
-| --------------------- | ------------------------- | ---------------------------------------------- | --------------- |
-| `consultar_productos` | `GET /assistant/products` | Productos por nombre o SKU: precio, estado y existencias | `products.read` |
-| `consultar_ventas`    | `GET /assistant/sales`    | Ventas de un período: total, número de ventas, ticket promedio, detalle por día/semana/mes y productos más vendidos | `analytics.read` |
+| Herramienta            | Endpoint del POS                    | Qué hace                                                                                                             | Permiso del POS    |
+| ---------------------- | ----------------------------------- | -------------------------------------------------------------------------------------------------------------------- | ------------------ |
+| `consultar_productos`  | `GET /assistant/products`           | Productos por nombre o SKU: precio, estado, existencias y si están agotados                                          | `products.read`    |
+| `consultar_ventas`     | `GET /assistant/sales`              | Ventas de un período: total, número de ventas, ticket promedio, detalle por día/semana/mes y productos más vendidos | `analytics.read`   |
+| `consultar_inventario` | `GET /assistant/inventory`          | Insumos por nombre o SKU: existencias, mínimo y si están por debajo                                                  | `inventory.read`   |
+| `ajustar_existencias`  | `POST /inventory/adjustments`       | Suma, resta o fija las existencias de un insumo (con confirmación)                                                   | `inventory.adjust` |
+| `modificar_insumo`     | `PATCH /inventory-items/:id`, `/status` | Activa, desactiva o cambia el mínimo de un insumo (con confirmación)                                                 | `inventory.manage` |
+| `modificar_producto`   | `PATCH /products/:id`, `/status`, `/visibility` | Activa, desactiva, oculta, muestra o cambia el precio de un producto (con confirmación)                              | `products.update`  |
+| `comparar_sedes`       | `GET /assistant/branch-comparison`  | Todas las sedes lado a lado en un período: ventas, ticket, descuentos, gastos, mermas, pedidos en curso y caja       | `branches.switch`  |
 
-Cada herramienta corresponde a un solo endpoint del POS y vive en su propio
+### Varias sedes
+
+Cada sede funciona por separado (catálogo, insumos, existencias y ventas). En
+cada turno TURA pregunta al POS qué sedes puede ver el usuario
+(`GET /assistant/branches`) y se las dice al modelo:
+
+- Quien puede ver todas las sedes (`branches.switch` en su rol) consulta todas
+  a la vez (cada resultado dice de qué sede es) o una por nombre (`sede`),
+  compara sedes con `comparar_sedes` y puede cambiar insumos y productos de
+  cualquiera; la confirmación dice en qué sede se hace el cambio.
+- Quien trabaja en una sede solo consulta y cambia la suya: el POS rechaza
+  cualquier otra, aunque el modelo la pida.
+- El token de TURA nunca puede abrir una sesión del POS en otra sede
+  (`/auth/switch-branch` lo rechaza).
+
+Cada herramienta corresponde a un endpoint del POS y vive en su propio
 archivo en `api/src/tools/`. Para añadir una: crear el archivo con
-`defineReadTool` (nombre, descripción para el modelo, permiso, parámetros y la
+`defineReadTool` o `defineWriteTool` (nombre, descripción para el modelo, permiso, parámetros y la
 llamada al endpoint) y agregarla a la lista de `api/src/tools/registry.ts`.
 TURA solo ofrece las que el token del usuario permite usar, y el POS vuelve a
 comprobar cada llamada.

@@ -1,12 +1,38 @@
 import { useState, useSyncExternalStore, type FormEvent } from 'react';
 import { AiModeBadge } from './AiModeBadge';
 import { ChatIcon, MicIcon } from './icons';
-import { getLink, getLinks, redeemLink, subscribe, switchLink, unlink } from './link';
+import { getLink, getLinks, redeemLink, signOut, subscribe, switchLink } from './link';
+import { dismissInstall, install, useInstallOption } from './install';
 import { parseCode } from './onboarding';
 import { navigate } from './route';
 
-const UNLINK_WARNING =
-  '¿Desvincular este dispositivo del negocio? Tendrás que pedir un código nuevo para volver a conectarlo.';
+const signOutWarning = (businessName: string) =>
+  `¿Cerrar sesión en ${businessName}? Para volver a entrar necesitarás un QR o un código nuevo del POS.`;
+
+/** Installing TURA on the home screen: opens like an app, and keeps its connection (see install.ts). */
+function InstallHint() {
+  const option = useInstallOption();
+  if (!option) return null;
+  return (
+    <section className="install-hint">
+      <p>
+        {option === 'prompt'
+          ? 'Instala TURA en tu celular: se abre como una app y no tendrás que conectarte otra vez.'
+          : 'Agrega TURA a tu inicio: toca Compartir y luego "Agregar a inicio". Así se abre como una app y no tendrás que conectarte otra vez.'}
+      </p>
+      <div className="install-hint__buttons">
+        {option === 'prompt' && (
+          <button type="button" className="button" onClick={() => void install()}>
+            Instalar
+          </button>
+        )}
+        <button type="button" className="home__unlink" onClick={dismissInstall}>
+          Ahora no
+        </button>
+      </div>
+    </section>
+  );
+}
 
 /**
  * Links this device to one more business, with a code from its POS. The first
@@ -91,13 +117,16 @@ export function HomeScreen() {
               <button
                 type="button"
                 className="home__unlink"
-                onClick={() => window.confirm(UNLINK_WARNING) && unlink()}
+                onClick={() => window.confirm(signOutWarning(link.businessName)) && void signOut()}
               >
-                Desvincular
+                Cerrar sesión
               </button>
             </p>
           ) : (
-            <p>Todavía no estoy conectado con tu negocio. Entra al chat o háblame para vincularnos.</p>
+            <p>
+              Todavía no estoy conectado con tu negocio. Escanea el QR que te dan en el POS, o entra al chat y
+              dime tu código.
+            </p>
           )}
         </div>
 
@@ -128,6 +157,8 @@ export function HomeScreen() {
             )}
           </section>
         )}
+
+        <InstallHint />
 
         <nav className="home__options">
           <button type="button" className="option" onClick={() => navigate('chat')}>

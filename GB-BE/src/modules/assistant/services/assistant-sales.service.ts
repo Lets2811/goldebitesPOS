@@ -6,7 +6,6 @@ import {
   daysInRange,
 } from '../../../common/utils/business-day.util';
 import { AnalyticsService } from '../../analytics/services/analytics.service';
-import { BranchesService } from '../../branches/services/branches.service';
 import { BusinessesService } from '../../businesses/services/businesses.service';
 import { DailySales } from '../../orders/domain/order.interface';
 import {
@@ -17,12 +16,7 @@ import {
   SalesFigures,
   SalesGroupBy,
 } from '../domain/assistant-sales.interface';
-
-interface BranchScope {
-  /** The branch to limit the figures to; undefined for the whole business. */
-  branchId: string | undefined;
-  scope: AssistantSalesResult['scope'];
-}
+import { AssistantBranchScopeService } from './assistant-branch-scope.service';
 
 /**
  * Sales of a range of days, as the assistant needs them: one total, and on
@@ -38,16 +32,19 @@ export class AssistantSalesService {
   constructor(
     private readonly analyticsService: AnalyticsService,
     private readonly businessesService: BusinessesService,
-    private readonly branchesService: BranchesService,
+    private readonly branchScope: AssistantBranchScopeService,
   ) {}
 
   async getSales(query: AssistantSalesQuery): Promise<AssistantSalesResult> {
     assertRange(query);
 
-    const [timezone, { branchId, scope }] = await Promise.all([
+    const [timezone, resolved] = await Promise.all([
       this.businessesService.getTimezone(query.businessId),
-      this.resolveBranch(query.businessId, query.branchName),
+      this.branchScope.resolve(query.businessId, query.user, query.branchName),
     ]);
+    // A business with one branch is counted whole, closed branches' past sales included.
+    const branchId = resolved.single ? undefined : resolved.branchId;
+    const { scope } = resolved;
     const { dateFrom, dateTo } = businessDayRange(
       query.dateFrom,
       query.dateTo,
@@ -98,55 +95,6 @@ export class AssistantSalesService {
       }),
     };
   }
-
-  /**
-   * Which branch the figures are for. Nothing asked means the whole business.
-   * A business with a single branch has nothing to choose between, so a name
-   * is ignored there. Otherwise the name has to point at exactly one active
-   * branch: an unknown or ambiguous one is refused with the names to pick
-   * from, rather than answered with some other branch's sales.
-   */
-  private async resolveBranch(
-    businessId: string,
-    branchName: string | undefined,
-  ): Promise<BranchScope> {
-    const { data: branches } = await this.branchesService.findAll({
-      businessId,
-      isActive: true,
-      page: 1,
-      limit: 100,
-    });
-    if (branches.length <= 1) {
-      return { branchId: undefined, scope: { branch: null } };
-    }
-
-    const names = branches.map((branch) => branch.name);
-    if (!branchName?.trim()) {
-      return { branchId: undefined, scope: { branch: null, branches: names } };
-    }
-
-    const wanted = normalize(branchName);
-    const exact = branches.filter(
-      (branch) => normalize(branch.name) === wanted,
-    );
-    const matches =
-      exact.length > 0
-        ? exact
-        : branches.filter((branch) => normalize(branch.name).includes(wanted));
-    if (matches.length !== 1) {
-      throw new BusinessRuleException(
-        matches.length === 0
-          ? `No active branch is called "${branchName}". Branches: ${names.join(', ')}`
-          : `"${branchName}" matches several branches: ${matches.map((branch) => branch.name).join(', ')}`,
-        matches.length === 0 ? 'BRANCH_NOT_FOUND' : 'BRANCH_AMBIGUOUS',
-        { branches: names },
-      );
-    }
-    return {
-      branchId: matches[0].id,
-      scope: { branch: matches[0].name, branches: names },
-    };
-  }
 }
 
 function assertRange(query: AssistantSalesQuery): void {
@@ -172,14 +120,6 @@ function assertRange(query: AssistantSalesQuery): void {
 }
 
 /** Branch names are compared without regard to case, accents or surrounding space. */
-function normalize(name: string): string {
-  return name
-    .normalize('NFD')
-    .replace(/\p{Diacritic}/gu, '')
-    .trim()
-    .toLowerCase();
-}
-
 /** Monday of the week a day falls in: weeks run Monday to Sunday. */
 function weekStart(day: string): string {
   const weekday = new Date(`${day}T00:00:00Z`).getUTCDay();

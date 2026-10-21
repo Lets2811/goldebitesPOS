@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import type { Session } from '../auth.js';
-import { assertOwnBranch, pesos, readProduct } from './inventory-shared.js';
+import { assertOwnBranch, atBranch, pesos, readProduct } from './inventory-shared.js';
 import { defineWriteTool, ToolRefusedError } from './types.js';
 
 const input = z.object({
@@ -65,7 +65,7 @@ export const modificarProducto = defineWriteTool({
       mostrar: `Mostrar "${product.name}" otra vez en el menú de los clientes.`,
       cambiar_precio: `Cambiar el precio de "${product.name}" de ${pesos(product.salePrice)} a ${pesos(args.precio ?? 0)}.`,
     };
-    return { summary: summaries[args.accion] };
+    return { summary: atBranch(session, summaries[args.accion], product.branchId) };
   },
   async commit(args, { session }) {
     const product = await checked(session, args);

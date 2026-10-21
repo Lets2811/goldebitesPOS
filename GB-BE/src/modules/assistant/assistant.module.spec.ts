@@ -1,6 +1,8 @@
 import { MODULE_METADATA } from '@nestjs/common/constants';
 import { AssistantModule } from './assistant.module';
 import { AssistantController } from './controllers/assistant.controller';
+import { AssistantBranchComparisonService } from './services/assistant-branch-comparison.service';
+import { AssistantBranchScopeService } from './services/assistant-branch-scope.service';
 import { AssistantProductsService } from './services/assistant-products.service';
 import { AssistantInventoryService } from './services/assistant-inventory.service';
 import { AssistantSalesService } from './services/assistant-sales.service';
@@ -18,9 +20,11 @@ describe('AssistantModule', () => {
       Reflect.getMetadata(MODULE_METADATA.PROVIDERS, AssistantModule),
     ).toEqual([
       AssistantService,
+      AssistantBranchScopeService,
       AssistantProductsService,
       AssistantSalesService,
       AssistantInventoryService,
+      AssistantBranchComparisonService,
     ]);
   });
 });

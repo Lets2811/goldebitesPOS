@@ -43,6 +43,18 @@ function pos(read: () => unknown) {
 const session = makeSession({
   permissions: ['inventory.read', 'inventory.adjust', 'inventory.manage', 'products.read', 'products.update'],
 });
+/** Someone who may see every branch: their own is Centro. */
+const owner = makeSession({
+  permissions: [...session.permissions, 'branches.switch'],
+  branches: {
+    own: { id: 'branch-1', name: 'Centro' },
+    canSeeAll: true,
+    list: [
+      { id: 'branch-1', name: 'Centro' },
+      { id: 'branch-2', name: 'Norte' },
+    ],
+  },
+});
 const writes = (requests: PosRequest[]) => requests.filter((request) => request.method !== 'GET');
 
 afterEach(() => mock.restoreAll());
@@ -63,6 +75,36 @@ describe('consultar_inventario', () => {
         { id: ITEM_ID, nombre: 'Papa', existencias: 8, unidad: 'kg', minimo: 5, bajo_el_minimo: false, activo: true },
       ],
     });
+  });
+});
+
+describe('consultar_inventario across branches', () => {
+  it('asks for the branch named, and labels each item with its branch', async () => {
+    const requests = mockPos(() => ({
+      body: {
+        success: true,
+        data: {
+          items: [item({ branch: 'Centro' }), item({ id: 'i-2', branchId: 'branch-2', branch: 'Norte' })],
+          count: 2,
+          total: 2,
+          scope: { branch: null, branches: ['Centro', 'Norte'] },
+        },
+      },
+    }));
+
+    const result = (await consultarInventario.execute({ buscar: 'papa' }, { session: owner })) as {
+      alcance: string;
+      insumos: { sede?: string }[];
+    };
+    await consultarInventario.execute({ buscar: 'papa', sede: 'Norte' }, { session: owner });
+
+    assert.equal(requests[0].url.searchParams.get('branch'), null);
+    assert.equal(requests[1].url.searchParams.get('branch'), 'Norte');
+    assert.equal(result.alcance, 'todas las sedes');
+    assert.deepEqual(
+      result.insumos.map((insumo) => insumo.sede),
+      ['Centro', 'Norte'],
+    );
   });
 });
 
@@ -93,6 +135,17 @@ describe('ajustar_existencias', () => {
       ajustarExistencias.prepare({ insumo_id: ITEM_ID, operacion: 'fijar', cantidad: 8, motivo: 'conteo' }, { session }),
       ToolRefusedError,
     );
+  });
+
+  it("lets whoever may see every branch change another branch's item, naming the branch", async () => {
+    pos(() => item({ branchId: 'branch-2' }));
+
+    const { summary } = await ajustarExistencias.prepare(
+      { insumo_id: ITEM_ID, operacion: 'sumar', cantidad: 1, motivo: 'compra' },
+      { session: owner },
+    );
+
+    assert.equal(summary, 'Sumar 1 kg a "Papa": pasa de 8 kg a 9 kg. Motivo: compra. Sede: Norte.');
   });
 
   it("refuses another branch's item", async () => {

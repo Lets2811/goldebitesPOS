@@ -7,7 +7,7 @@
  */
 import { PosClient } from '../pos/pos-client.js';
 import { config } from '../config.js';
-import type { Session } from '../auth.js';
+import { NO_BRANCHES, type Session } from '../auth.js';
 import { consultarInventario } from '../tools/consultar-inventario.js';
 import { consultarProductos } from '../tools/consultar-productos.js';
 import { ajustarExistencias } from '../tools/ajustar-existencias.js';
@@ -41,6 +41,7 @@ const session: Session = {
   businessName: null,
   roleName: claims.roleName,
   branchId: claims.branchId,
+  branches: NO_BRANCHES,
   permissions: claims.permissions,
 };
 const ctx = { session };

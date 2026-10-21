@@ -182,6 +182,18 @@ describe('BranchScopeGuard', () => {
       ).toBe(true);
     });
 
+    it('lets TURA record a change it was asked for and the user confirmed', () => {
+      expect(
+        guard.canActivate(
+          contextFor('filtered', {
+            method: 'POST',
+            user: { ...allBranches, turaLinkId: 'link-1' },
+            body: {},
+          }),
+        ),
+      ).toBe(true);
+    });
+
     it('records at a branch picked', () => {
       expect(
         guard.canActivate(

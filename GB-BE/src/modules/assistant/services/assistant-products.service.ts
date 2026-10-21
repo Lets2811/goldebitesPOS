@@ -1,9 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import {
-  BusinessRuleException,
-  UnauthorizedOperationException,
-} from '../../../common/exceptions';
-import { BranchesService } from '../../branches/services/branches.service';
+import { UnauthorizedOperationException } from '../../../common/exceptions';
 import { InventoryMovementsService } from '../../inventory-movements/services/inventory-movements.service';
 import { Product } from '../../products/domain/product.interface';
 import { ProductsService } from '../../products/services/products.service';
@@ -33,20 +29,18 @@ export class AssistantProductsService {
     private readonly productsService: ProductsService,
     private readonly recipesService: RecipesService,
     private readonly movementsService: InventoryMovementsService,
-    private readonly branchesService: BranchesService,
     private readonly branchMenuService: BranchMenuService,
   ) {}
 
-  /** How the products sell at the caller's branch, when there is one to tell. */
+  /** How the products sell, each at its own branch. */
   private async branchMenu(
     query: AssistantProductsQuery,
     products: Product[],
   ): Promise<Map<string, BranchMenuEntry>> {
-    const branchId = await this.resolveBranchId(query);
-    if (!branchId || products.length === 0) return new Map();
+    if (products.length === 0) return new Map();
     return this.branchMenuService.forBranch(
       query.businessId,
-      branchId,
+      query.branchId,
       products.map((product) => product.id),
     );
   }
@@ -74,14 +68,6 @@ export class AssistantProductsService {
         'Ordering products by stock requires access to inventory',
       );
     }
-    const stockBranchId = await this.resolveBranchId(query);
-    if (!stockBranchId) {
-      throw new BusinessRuleException(
-        'Stock is kept per branch and this user has no branch assigned',
-        'BRANCH_UNKNOWN',
-      );
-    }
-
     const products = await this.findAllMatching(query);
     const tracked = products.filter((product) => product.trackInventory);
     const links =
@@ -93,7 +79,7 @@ export class AssistantProductsService {
         : new Map<string, ProductInventoryLink[]>();
     const stockByItem =
       links.size > 0
-        ? await this.getStockByItem(query.businessId, stockBranchId)
+        ? await this.getStockByItem(query.businessId, query.branchId)
         : new Map<string, number>();
 
     const branchMenu = await this.branchMenu(query, tracked);
@@ -103,7 +89,6 @@ export class AssistantProductsService {
         product,
         links.get(product.id) ?? [],
         true,
-        stockBranchId,
         stockByItem,
       );
       // Only a product with a figure can be placed: a recipe of several
@@ -111,6 +96,7 @@ export class AssistantProductsService {
       if (inventory.controlled && typeof inventory.currentStock === 'number') {
         ranked.push({
           item: this.toAssistantProduct(
+            query,
             product,
             inventory,
             branchMenu.get(product.id),
@@ -127,7 +113,12 @@ export class AssistantProductsService {
         a.item.name.localeCompare(b.item.name),
     );
     const items = ranked.slice(0, query.limit).map(({ item }) => item);
-    return { items, count: items.length, total: ranked.length, stockBranchId };
+    return {
+      items,
+      count: items.length,
+      total: ranked.length,
+      scope: query.scope,
+    };
   }
 
   /** Every product matching the filters, read a page at a time. */
@@ -138,7 +129,7 @@ export class AssistantProductsService {
     for (let page = 1; page <= RANKING_MAX_PAGES; page++) {
       const result = await this.productsService.findAll({
         businessId: query.businessId,
-        branchId: (await this.resolveBranchId(query)) ?? undefined,
+        branchId: query.branchId ?? undefined,
         page,
         limit: RANKING_PAGE_SIZE,
         search: query.search,
@@ -161,8 +152,8 @@ export class AssistantProductsService {
   ): Promise<AssistantProductsResult> {
     const page = await this.productsService.findAll({
       businessId: query.businessId,
-      // The caller's branch catalog (each branch has its own).
-      branchId: (await this.resolveBranchId(query)) ?? undefined,
+      // The branch's catalog (each branch has its own), or every branch's.
+      branchId: query.branchId ?? undefined,
       page: 1,
       limit: query.limit,
       search: query.search,
@@ -192,27 +183,20 @@ export class AssistantProductsService {
       );
     });
 
-    let stockBranchId: string | null = null;
-    let stockByItem = new Map<string, number>();
-    if (needsStock && query.canReadStock) {
-      stockBranchId = await this.resolveBranchId(query);
-      if (stockBranchId) {
-        stockByItem = await this.getStockByItem(
-          query.businessId,
-          stockBranchId,
-        );
-      }
-    }
+    const stockByItem =
+      needsStock && query.canReadStock
+        ? await this.getStockByItem(query.businessId, query.branchId)
+        : new Map<string, number>();
 
     const branchMenu = await this.branchMenu(query, products);
     const items = products.map((product) =>
       this.toAssistantProduct(
+        query,
         product,
         this.describeInventory(
           product,
           links.get(product.id) ?? [],
           query.canReadStock,
-          stockBranchId,
           stockByItem,
         ),
         branchMenu.get(product.id),
@@ -223,11 +207,12 @@ export class AssistantProductsService {
       items,
       count: items.length,
       total: page.meta.total,
-      stockBranchId,
+      scope: query.scope,
     };
   }
 
   private toAssistantProduct(
+    query: AssistantProductsQuery,
     product: Product,
     inventory: AssistantProductInventory,
     atBranch?: BranchMenuEntry,
@@ -242,6 +227,9 @@ export class AssistantProductsService {
       isActive: product.isActive,
       isVisible: product.isVisible,
       inventory,
+      ...(query.labelBranches && {
+        branch: query.branchNames.get(product.branchId) ?? product.branchId,
+      }),
       ...(atBranch && {
         atBranch: {
           offered: atBranch.isAvailable,
@@ -252,39 +240,23 @@ export class AssistantProductsService {
   }
 
   /**
-   * Stock is kept per branch and is never added up across branches. The
-   * caller's own branch is used; a caller without one is taken to be at the
-   * business's only active branch, the same rule the login applies. With
-   * several branches and none assigned there is no way to choose.
-   */
-  private async resolveBranchId(
-    query: AssistantProductsQuery,
-  ): Promise<string | null> {
-    return (
-      query.branchId ??
-      (await this.branchesService.findOnlyActiveBranchId(query.businessId))
-    );
-  }
-
-  /**
-   * The branch's stock per item, from the one call that returns every level
-   * of the branch. An item stored in several locations has a level in each;
-   * they add up, as InventoryMovementsService.getStockForItem does.
+   * Stock per item and branch (`item:branch`), from the one call that returns
+   * every level of the branch, or of the business. Stock is never added up
+   * across branches; an item stored in several locations of one branch has a
+   * level in each, and those add up, as InventoryMovementsService.getStockForItem does.
    */
   private async getStockByItem(
     businessId: string,
-    branchId: string,
+    branchId: string | null,
   ): Promise<Map<string, number>> {
     const levels = await this.movementsService.getStock({
       businessId,
-      branchId,
+      ...(branchId && { branchId }),
     });
     const stockByItem = new Map<string, number>();
     for (const level of levels) {
-      stockByItem.set(
-        level.inventoryItemId,
-        (stockByItem.get(level.inventoryItemId) ?? 0) + level.stock,
-      );
+      const key = stockKey(level.inventoryItemId, level.branchId);
+      stockByItem.set(key, (stockByItem.get(key) ?? 0) + level.stock);
     }
     return stockByItem;
   }
@@ -293,7 +265,6 @@ export class AssistantProductsService {
     product: Product,
     links: ProductInventoryLink[],
     canReadStock: boolean,
-    stockBranchId: string | null,
     stockByItem: Map<string, number>,
   ): AssistantProductInventory {
     if (!product.trackInventory) {
@@ -325,15 +296,15 @@ export class AssistantProductsService {
     if (!link.inventoryItemAvailable) {
       return this.directWithoutStock('INVENTORY_ITEM_UNAVAILABLE', item);
     }
-    if (!stockBranchId) {
-      return this.directWithoutStock('BRANCH_UNKNOWN', item);
-    }
     return {
       controlled: true,
       mode: 'DIRECT',
       ...item,
-      // An item with no movements in the branch has no level at all: its stock is zero.
-      currentStock: roundQuantity(stockByItem.get(link.inventoryItemId) ?? 0),
+      // The stock at the product's own branch. An item with no movements
+      // there has no level at all: its stock is zero.
+      currentStock: roundQuantity(
+        stockByItem.get(stockKey(link.inventoryItemId, product.branchId)) ?? 0,
+      ),
     };
   }
 
@@ -363,6 +334,10 @@ export class AssistantProductsService {
  */
 const RANKING_PAGE_SIZE = 100;
 const RANKING_MAX_PAGES = 20;
+
+function stockKey(itemId: string, branchId: string): string {
+  return `${itemId}:${branchId}`;
+}
 
 /** Quantities are kept to three decimals; adding levels in floating point can leave a stray tail. */
 function roundQuantity(value: number): number {

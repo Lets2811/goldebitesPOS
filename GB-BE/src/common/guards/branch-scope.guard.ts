@@ -42,7 +42,9 @@ interface RouteArg {
  *
  * - A session working across all branches ("Todas las sedes") is for
  *   review: it reads everything but records nothing of a branch's daily
- *   work (routes marked @BranchOperation()).
+ *   work (routes marked @BranchOperation()). TURA is not such a session:
+ *   each change it makes names the branch of the item it changes, and the
+ *   user confirms it first.
  *
  * Users who may work at every branch, and users with no branch at a business
  * with several (who have always seen them all), are not narrowed.
@@ -75,7 +77,7 @@ export class BranchScopeGuard implements CanActivate {
 
     const own = user.branchId;
     const canSwitch = user.permissions.includes(BRANCH_SWITCH_PERMISSION);
-    if (canSwitch && !own && request.method !== 'GET') {
+    if (canSwitch && !own && !user.turaLinkId && request.method !== 'GET') {
       const operational = this.reflector.getAllAndOverride<boolean>(
         BRANCH_OPERATION_KEY,
         [context.getHandler(), context.getClass()],

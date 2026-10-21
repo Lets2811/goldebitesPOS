@@ -5,6 +5,7 @@ import { consultarInventario } from './consultar-inventario.js';
 import { ajustarExistencias } from './ajustar-existencias.js';
 import { modificarInsumo } from './modificar-insumo.js';
 import { modificarProducto } from './modificar-producto.js';
+import { compararSedes } from './comparar-sedes.js';
 import type { AssistantTool } from './types.js';
 
 /**
@@ -19,6 +20,7 @@ const TOOLS: AssistantTool[] = [
   ajustarExistencias,
   modificarInsumo,
   modificarProducto,
+  compararSedes,
 ];
 
 /**

@@ -46,6 +46,16 @@ function load(): Stored {
 }
 
 let state: Stored = load();
+
+/**
+ * Something to tell the person about their connection, shown on any screen
+ * until dismissed: linked from a QR, signed out, or access that was cut.
+ */
+export interface Notice {
+  tone: 'success' | 'info' | 'error';
+  message: string;
+}
+let notice: Notice | null = null;
 /** Kept in memory only, for the active link; a reload gets a new one with the link token. */
 let access: { token: string; expiresAt: number } | null = null;
 const listeners = new Set<() => void>();
@@ -63,6 +73,19 @@ function setState(next: Stored): void {
     // Private mode or storage full: the links last until the app is closed.
   }
   listeners.forEach((listener) => listener());
+}
+
+function setNotice(next: Notice | null): void {
+  notice = next;
+  listeners.forEach((listener) => listener());
+}
+
+export function getNotice(): Notice | null {
+  return notice;
+}
+
+export function dismissNotice(): void {
+  setNotice(null);
 }
 
 export function subscribe(listener: () => void): () => void {
@@ -94,12 +117,31 @@ function removeLink(linkToken: string): void {
   setState({ links, active });
 }
 
-/** Forgets the active link on this device. Revoking it for good is done in the POS. */
-export function unlink(): void {
+/**
+ * Signs out of the active business: the POS revokes the link (so it can
+ * never be used again, wherever it was copied) and this device forgets it.
+ * Without a connection the device still forgets it; the link was only ever
+ * on this device.
+ */
+export async function signOut(): Promise<void> {
   const current = state.links[state.active];
-  if (current) {
-    removeLink(current.linkToken);
+  if (!current) {
+    return;
   }
+  await post('/tura-links/logout', { linkToken: current.linkToken }).catch(() => undefined);
+  removeLink(current.linkToken);
+  setNotice({ tone: 'info', message: `Cerraste sesión en ${current.businessName}.` });
+}
+
+/** The POS no longer honours a link: it is forgotten here, and the person is told why. */
+function linkCut(link: StoredLink): void {
+  removeLink(link.linkToken);
+  setNotice({
+    tone: 'error',
+    message:
+      `Tu acceso a ${link.businessName} se cerró: lo quitaron desde el POS, el usuario ya no está activo ` +
+      'o la empresa ya no tiene TURA. Pide un QR o un código nuevo para volver a entrar.',
+  });
 }
 
 async function post<T>(path: string, body: unknown): Promise<{ status: number; data: T | null; message: string | null }> {
@@ -178,7 +220,7 @@ export function getAccessToken(renew = false): Promise<string | null> {
     if (status === 401) {
       // The POS no longer honours the link (it was revoked, the user was
       // deactivated or the business lost TURA): that business has to be linked again.
-      removeLink(linkToken);
+      linkCut(link);
       return null;
     }
     if (!data) {
@@ -197,4 +239,65 @@ export function getAccessToken(renew = false): Promise<string | null> {
   });
   pending = { linkToken, token: request };
   return request;
+}
+
+/** How often the active connection is checked with the POS while the app is in use. */
+const VALIDATE_EVERY_MS = 2 * 60_000;
+let lastValidated: { linkToken: string; at: number } | null = null;
+
+/**
+ * Checks, quietly, that the POS still honours the active connection: on
+ * opening the app and on coming back to it. A cut connection is noticed then,
+ * not on the next question.
+ */
+export async function validateActiveLink(): Promise<void> {
+  const link = state.links[state.active];
+  if (!link) {
+    return;
+  }
+  if (lastValidated?.linkToken === link.linkToken && Date.now() - lastValidated.at < VALIDATE_EVERY_MS) {
+    return;
+  }
+  lastValidated = { linkToken: link.linkToken, at: Date.now() };
+  // A network failure is not a verdict: the connection stays and is checked again later.
+  await getAccessToken(true).catch(() => {
+    lastValidated = null;
+  });
+}
+
+/** The query parameter a QR or a shared link carries the code in: /?vincular=123456. */
+const LINK_PARAM = 'vincular';
+
+/**
+ * Links this device from the address it was opened with (a QR scanned, a
+ * link from WhatsApp), with no typing. The code leaves the address right
+ * away, so it is neither bookmarked nor shared again.
+ */
+export async function linkFromAddress(): Promise<void> {
+  const params = new URLSearchParams(window.location.search);
+  const raw = params.get(LINK_PARAM);
+  if (raw === null) {
+    return;
+  }
+  params.delete(LINK_PARAM);
+  const query = params.toString();
+  window.history.replaceState(null, '', `${window.location.pathname}${query ? `?${query}` : ''}${window.location.hash}`);
+
+  const code = raw.replace(/\D/g, '');
+  if (code.length !== 6) {
+    setNotice({ tone: 'error', message: 'Ese enlace de TURA no es válido. Pide uno nuevo en el POS.' });
+    return;
+  }
+  try {
+    const link = await redeemLink(code);
+    setNotice({ tone: 'success', message: `¡Listo, ${link.userName}! Ya estoy conectado con ${link.businessName}.` });
+  } catch (error) {
+    setNotice({
+      tone: 'error',
+      message:
+        error instanceof Error
+          ? error.message.replace('dímelo otra vez', 'pide uno nuevo')
+          : 'No pude conectarme con ese enlace. Pide uno nuevo en el POS.',
+    });
+  }
 }

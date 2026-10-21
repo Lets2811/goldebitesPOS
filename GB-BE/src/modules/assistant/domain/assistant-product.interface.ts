@@ -1,3 +1,5 @@
+import type { AssistantBranchScope } from '../services/assistant-branch-scope.service';
+
 /**
  * How a product relates to inventory, as far as the POS can tell.
  *
@@ -40,8 +42,6 @@ export type AssistantProductInventory =
 export type StockUnavailableReason =
   /** The caller may read products but not inventory. */
   | 'NO_INVENTORY_ACCESS'
-  /** Stock is kept per branch and the caller's branch cannot be told. */
-  | 'BRANCH_UNKNOWN'
   /** The recipe points at an inventory item that was deleted or deactivated. */
   | 'INVENTORY_ITEM_UNAVAILABLE';
 
@@ -55,10 +55,11 @@ export interface AssistantProduct {
   isActive: boolean;
   isVisible: boolean;
   inventory: AssistantProductInventory;
+  /** The branch the product is sold at (each branch has its own catalog); given when the answer covers several. */
+  branch?: string;
   /**
-   * At the caller's branch, when it can be told (salePrice is then the
-   * branch's): whether the branch offers it, and whether it ran out there.
-   * Neither can be ordered.
+   * At the product's branch (salePrice is then the branch's): whether the
+   * branch offers it, and whether it ran out there. Neither can be ordered.
    */
   atBranch?: { offered: boolean; soldOut: boolean };
 }
@@ -72,14 +73,19 @@ export interface AssistantProductsResult {
    */
   count: number;
   total: number;
-  /** The branch the stock figures are for; null when none could be determined. */
-  stockBranchId: string | null;
+  /** Which branches the answer covers. */
+  scope: AssistantBranchScope;
 }
 
 export interface AssistantProductsQuery {
   businessId: string;
-  /** The caller's branch, straight from their session. */
+  /** The branch to read; null for every branch the caller may see (each product's stock is its own branch's). */
   branchId: string | null;
+  /** Whether products are labelled with their branch's name (the answer covers several). */
+  labelBranches: boolean;
+  /** Branch names by id, for those labels. */
+  branchNames: Map<string, string>;
+  scope: AssistantBranchScope;
   /** Whether the caller may see stock at all (the inventory permission and module). */
   canReadStock: boolean;
   search?: string;

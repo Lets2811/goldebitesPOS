@@ -244,6 +244,7 @@ describe('consultar_productos', () => {
       'buscar',
       'limite',
       'ordenar_por_existencias',
+      'sede',
       'solo_activos',
       'solo_visibles',
     ]);

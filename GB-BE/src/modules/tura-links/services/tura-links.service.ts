@@ -41,6 +41,10 @@ export const TURA_FEATURE = 'tura';
  * out those changes — but never on the model's word alone: TURA/api only
  * prepares a change, and it runs once the user confirms it on their screen
  * (see PendingAction there). Orders, cash and money stay out of reach.
+ *
+ * branches.switch lets TURA answer about every branch for whoever may see
+ * them all in the POS. It never takes a TURA session to another branch:
+ * switch-branch refuses TURA's tokens.
  */
 export const TURA_PERMISSIONS = [
   'dashboard.read',
@@ -51,6 +55,7 @@ export const TURA_PERMISSIONS = [
   'inventory.adjust',
   'inventory.manage',
   'products.update',
+  'branches.switch',
 ];
 
 const CODE_LENGTH = 6;
@@ -165,6 +170,15 @@ export class TuraLinksService {
       expiresIn: Math.floor(parseDurationMs(jwt.accessExpiresIn) / 1000),
       ...identity,
     };
+  }
+
+  /**
+   * The app signs out: the link it holds is revoked, so the same token can
+   * never be used again, wherever it was copied to. Quiet about tokens it
+   * does not know: there is nothing to tell the caller.
+   */
+  async logout(linkToken: string): Promise<void> {
+    await this.turaLinksRepository.revokeByTokenHash(this.hash(linkToken));
   }
 
   /** The link behind an access token. Fails once the link is revoked, even while the token is still valid. */

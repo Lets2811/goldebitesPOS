@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import type { Session } from '../auth.js';
-import { assertOwnBranch, quantity, readItem, type PosInventoryItem } from './inventory-shared.js';
+import { assertOwnBranch, atBranch, quantity, readItem, type PosInventoryItem } from './inventory-shared.js';
 import { defineWriteTool, ToolRefusedError } from './types.js';
 
 const input = z.object({
@@ -76,9 +76,12 @@ export const ajustarExistencias = defineWriteTool({
           ? `Restar ${quantity(args.cantidad, item.unit)} de`
           : 'Dejar en el conteo real';
     return {
-      summary:
+      summary: atBranch(
+        session,
         `${verb} "${item.name}": pasa de ${quantity(item.currentStock, item.unit)} a ` +
-        `${quantity(target, item.unit)}. Motivo: ${args.motivo}.`,
+          `${quantity(target, item.unit)}. Motivo: ${args.motivo}.`,
+        item.branchId,
+      ),
     };
   },
   async commit(args, { session }) {

@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import type { Session } from '../auth.js';
-import { assertOwnBranch, quantity, readItem } from './inventory-shared.js';
+import { assertOwnBranch, atBranch, quantity, readItem } from './inventory-shared.js';
 import { defineWriteTool, ToolRefusedError } from './types.js';
 
 const input = z.object({
@@ -58,7 +58,7 @@ export const modificarInsumo = defineWriteTool({
         : args.accion === 'desactivar'
           ? `Desactivar el insumo "${item.name}": deja de aparecer para compras y recetas nuevas. Sus existencias (${quantity(item.currentStock, item.unit)}) no cambian.`
           : `Cambiar el mínimo de "${item.name}" de ${quantity(item.minimumStock, item.unit)} a ${quantity(args.minimo!, item.unit)}.`;
-    return { summary };
+    return { summary: atBranch(session, summary, item.branchId) };
   },
   async commit(args, { session }) {
     const item = await checked(session, args);

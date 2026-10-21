@@ -1,3 +1,4 @@
+import type { AuthenticatedUser } from '../../../common/interfaces/authenticated-user.interface';
 import { TopProductsOrder } from '../../orders/domain/order.interface';
 
 export type SalesGroupBy = 'day' | 'week' | 'month';
@@ -11,6 +12,8 @@ export interface AssistantSalesQuery {
   /** First and last calendar day of the range, both included, as the business lives them (YYYY-MM-DD). */
   dateFrom: string;
   dateTo: string;
+  /** Who asks: a user tied to one branch is answered about that branch only. */
+  user: Pick<AuthenticatedUser, 'branchId' | 'permissions'>;
   /** A branch named by the user. Ignored by a business with a single branch. */
   branchName?: string;
   groupBy?: SalesGroupBy;

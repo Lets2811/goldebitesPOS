@@ -1,8 +1,5 @@
 import { ProductMenuAvailability } from '../../products/domain/product.types';
-import {
-  BusinessRuleException,
-  UnauthorizedOperationException,
-} from '../../../common/exceptions';
+import { UnauthorizedOperationException } from '../../../common/exceptions';
 import { Product } from '../../products/domain/product.interface';
 import { ProductInventoryLink } from '../../recipes/domain/recipe.interface';
 import { AssistantProductsQuery } from '../domain/assistant-product.interface';
@@ -12,7 +9,6 @@ describe('AssistantProductsService', () => {
   let productsService: { findAll: jest.Mock };
   let recipesService: { findInventoryLinksByProducts: jest.Mock };
   let movementsService: { getStock: jest.Mock };
-  let branchesService: { findOnlyActiveBranchId: jest.Mock };
   let service: AssistantProductsService;
 
   const businessId = 'business-1';
@@ -61,6 +57,9 @@ describe('AssistantProductsService', () => {
     return {
       businessId,
       branchId,
+      labelBranches: false,
+      branchNames: new Map([[branchId, 'Centro']]),
+      scope: { branch: null },
       canReadStock: true,
       limit: 10,
       sortBy: 'name',
@@ -87,7 +86,9 @@ describe('AssistantProductsService', () => {
     recipesService.findInventoryLinksByProducts.mockResolvedValue(byProduct);
   }
 
-  function givenStock(levels: { inventoryItemId: string; stock: number }[]) {
+  function givenStock(
+    levels: { inventoryItemId: string; stock: number; branchId?: string }[],
+  ) {
     movementsService.getStock.mockResolvedValue(
       levels.map((level) => ({
         businessId,
@@ -104,14 +105,10 @@ describe('AssistantProductsService', () => {
       findInventoryLinksByProducts: jest.fn().mockResolvedValue(new Map()),
     };
     movementsService = { getStock: jest.fn().mockResolvedValue([]) };
-    branchesService = {
-      findOnlyActiveBranchId: jest.fn().mockResolvedValue(null),
-    };
     service = new AssistantProductsService(
       productsService as never,
       recipesService as never,
       movementsService as never,
-      branchesService as never,
       { forBranch: jest.fn().mockResolvedValue(new Map()) } as never,
     );
     givenProducts([]);
@@ -199,7 +196,7 @@ describe('AssistantProductsService', () => {
         items: [],
         count: 0,
         total: 0,
-        stockBranchId: null,
+        scope: { branch: null },
       });
       expect(
         recipesService.findInventoryLinksByProducts,
@@ -247,7 +244,7 @@ describe('AssistantProductsService', () => {
         quantityPerUnit: 1,
         currentStock: 10,
       });
-      expect(result.stockBranchId).toBe(branchId);
+      expect(result.items[0]).not.toHaveProperty('branch');
     });
 
     it('reports a real stock of zero as zero', async () => {
@@ -392,42 +389,49 @@ describe('AssistantProductsService', () => {
         businessId,
         branchId: 'branch-7',
       });
-      expect(branchesService.findOnlyActiveBranchId).not.toHaveBeenCalled();
     });
 
-    it("uses the business's only active branch when the caller has none assigned", async () => {
-      givenProducts([makeProduct()]);
-      givenLinks([makeLink()]);
-      givenStock([{ inventoryItemId: 'item-water', stock: 4 }]);
-      branchesService.findOnlyActiveBranchId.mockResolvedValue('only-branch');
+    it('across every branch, gives each product the stock of its own branch, labelled', async () => {
+      givenProducts([
+        makeProduct({ id: 'p-centro', branchId }),
+        makeProduct({ id: 'p-norte', branchId: 'branch-2' }),
+      ]);
+      givenLinks([
+        makeLink({ productId: 'p-centro' }),
+        makeLink({ productId: 'p-norte', inventoryItemId: 'item-norte' }),
+      ]);
+      givenStock([
+        { inventoryItemId: 'item-water', stock: 4 },
+        // Stock of the same item at another branch is never added in.
+        { inventoryItemId: 'item-water', stock: 50, branchId: 'branch-2' },
+        { inventoryItemId: 'item-norte', stock: 7, branchId: 'branch-2' },
+      ]);
 
-      const result = await service.search(makeQuery({ branchId: null }));
-
-      expect(branchesService.findOnlyActiveBranchId).toHaveBeenCalledWith(
-        businessId,
+      const result = await service.search(
+        makeQuery({
+          branchId: null,
+          labelBranches: true,
+          branchNames: new Map([
+            [branchId, 'Centro'],
+            ['branch-2', 'Norte'],
+          ]),
+        }),
       );
-      expect(movementsService.getStock).toHaveBeenCalledWith({
-        businessId,
-        branchId: 'only-branch',
-      });
-      expect(result.stockBranchId).toBe('only-branch');
-      expect(result.items[0].inventory).toMatchObject({ currentStock: 4 });
-    });
 
-    it('gives no stock rather than adding up branches when the branch cannot be told', async () => {
-      givenProducts([makeProduct()]);
-      givenLinks([makeLink()]);
-
-      const result = await service.search(makeQuery({ branchId: null }));
-
-      expect(movementsService.getStock).not.toHaveBeenCalled();
-      expect(result.stockBranchId).toBeNull();
-      expect(result.items[0].inventory).toMatchObject({
-        mode: 'DIRECT',
-        itemId: 'item-water',
-        currentStock: null,
-        stockUnavailableReason: 'BRANCH_UNKNOWN',
-      });
+      expect(movementsService.getStock).toHaveBeenCalledWith({ businessId });
+      expect(productsService.findAll).toHaveBeenCalledWith(
+        expect.objectContaining({ branchId: undefined }),
+      );
+      expect(result.items).toEqual([
+        expect.objectContaining({
+          branch: 'Centro',
+          inventory: expect.objectContaining({ currentStock: 4 }) as unknown,
+        }),
+        expect.objectContaining({
+          branch: 'Norte',
+          inventory: expect.objectContaining({ currentStock: 7 }) as unknown,
+        }),
+      ]);
     });
   });
 
@@ -446,7 +450,6 @@ describe('AssistantProductsService', () => {
         stockUnavailableReason: 'NO_INVENTORY_ACCESS',
       });
       expect(movementsService.getStock).not.toHaveBeenCalled();
-      expect(branchesService.findOnlyActiveBranchId).not.toHaveBeenCalled();
     });
   });
 
@@ -521,7 +524,6 @@ describe('AssistantProductsService', () => {
       );
       expect(result.count).toBe(4);
       expect(result.total).toBe(4);
-      expect(result.stockBranchId).toBe(branchId);
     });
 
     it('applies the limit after ordering, not before', async () => {
@@ -602,31 +604,17 @@ describe('AssistantProductsService', () => {
         items: [],
         count: 0,
         total: 0,
-        stockBranchId: branchId,
+        scope: { branch: null },
       });
       expect(movementsService.getStock).not.toHaveBeenCalled();
     });
 
-    it("uses the caller's branch, or the business's only one", async () => {
+    it('ranks across every branch, each product by its own branch stock', async () => {
       givenCatalog();
-      branchesService.findOnlyActiveBranchId.mockResolvedValue('only-branch');
 
       await service.search(byStock({ branchId: null }));
 
-      expect(movementsService.getStock).toHaveBeenCalledWith({
-        businessId,
-        branchId: 'only-branch',
-      });
-    });
-
-    it('refuses, rather than ranking across branches, when the branch cannot be told', async () => {
-      givenCatalog();
-
-      await expect(service.search(byStock({ branchId: null }))).rejects.toThrow(
-        BusinessRuleException,
-      );
-      expect(productsService.findAll).not.toHaveBeenCalled();
-      expect(movementsService.getStock).not.toHaveBeenCalled();
+      expect(movementsService.getStock).toHaveBeenCalledWith({ businessId });
     });
 
     it('refuses a caller without access to inventory', async () => {

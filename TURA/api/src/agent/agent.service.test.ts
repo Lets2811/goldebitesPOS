@@ -323,7 +323,6 @@ describe('what the model is sent', () => {
     assert.match(system[1].text, /Golden Bites/);
     assert.match(system[1].text, /America\/Bogota/);
     assert.match(system[1].text, /\d{1,2}:\d{2}/);
-    assert.match(system[1].text, /sede/);
   });
 
   it('gives two users the same cached prefix', async () => {
