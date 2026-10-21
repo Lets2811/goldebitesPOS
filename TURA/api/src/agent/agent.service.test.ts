@@ -6,6 +6,8 @@ import type { Session } from '../auth.js';
 import { config } from '../config.js';
 import { makeSession, mockPos, scriptedModel, type ScriptedResponse } from '../testing/fixtures.js';
 import { newMeter, type TurnMeter } from '../usage/usage-log.js';
+import type { PendingActionStore } from '../tools/types.js';
+import { MemoryPendingActionStore } from './pending-actions.js';
 import {
   LIMIT_REACHED_MESSAGE,
   recentHistory,
@@ -58,6 +60,7 @@ async function ask(
   responses: ScriptedResponse[],
   history: ChatTurn[] = [{ role: 'user', content: '¿Cuánta agua manantial queda?' }],
   session: Session = makeSession(),
+  actions?: PendingActionStore,
 ): Promise<Outcome> {
   const { client, requests } = scriptedModel(responses);
   const events: TuraEvent[] = [];
@@ -73,6 +76,7 @@ async function ask(
       emit: (event) => events.push(event),
       isCancelled: () => false,
       model: client,
+      actions,
     });
   } catch (error) {
     // What was collected up to the failure is part of what the tests check.
@@ -536,5 +540,108 @@ describe('changes (write tools)', () => {
     const toolResult = outcome.requests[1].messages.at(-1)?.content as Anthropic.ToolResultBlockParam[];
     assert.equal(toolResult[0].is_error, true);
     assert.match(String(toolResult[0].content), /ya está desactivado/);
+  });
+
+  describe('answered in the conversation', () => {
+    const hide = {
+      content: [
+        { type: 'tool_use' as const, id: 'w1', name: 'modificar_producto', input: { producto_id: PRODUCT_ID, accion: 'ocultar' } },
+      ],
+      stop_reason: 'tool_use' as const,
+    };
+    const answer = (name: string) => ({
+      content: [{ type: 'tool_use' as const, id: 'a1', name, input: {} }],
+      stop_reason: 'tool_use' as const,
+    });
+    const papas = () =>
+      mockPos((request) => ({
+        body: {
+          success: true,
+          data:
+            request.method === 'GET'
+              ? { id: PRODUCT_ID, name: 'Papas fritas', salePrice: 8000, isActive: true, isVisible: true }
+              : {},
+        },
+      }));
+
+    it('makes the change when the user says yes in their next message', async () => {
+      const requests = papas();
+      const actions = new MemoryPendingActionStore();
+      const first = await ask(
+        [hide, say('Voy a ocultar las papas fritas del menú. ¿Lo hago?')],
+        [{ role: 'user', content: 'Oculta las papas fritas' }],
+        writer,
+        actions,
+      );
+      const prepared = first.events.find((event) => event.type === 'confirm');
+      assert.ok(prepared && prepared.type === 'confirm');
+      assert.ok(requests.every((request) => request.method === 'GET'));
+
+      const second = await ask(
+        [answer('confirmar_cambios'), say('Listo, ya no aparecen en el menú.')],
+        [
+          { role: 'user', content: 'Oculta las papas fritas' },
+          { role: 'assistant', content: 'Voy a ocultar las papas fritas del menú. ¿Lo hago?' },
+          { role: 'user', content: 'Sí, dale' },
+        ],
+        writer,
+        actions,
+      );
+
+      const visibility = requests.find((request) => request.method === 'PATCH');
+      assert.ok(visibility?.url.pathname.endsWith(`/products/${PRODUCT_ID}/visibility`));
+      assert.deepEqual(visibility?.body, { isVisible: false });
+      const settled = second.events.find((event) => event.type === 'settled');
+      assert.ok(settled && settled.type === 'settled');
+      assert.equal(settled.id, prepared.action.id);
+      assert.equal(settled.outcome.state, 'done');
+      // And it cannot be made twice.
+      assert.equal((await actions.takeFromTurn('user-1', 1)).length, 0);
+    });
+
+    it('never confirms a change prepared in the same turn, which the user has not heard', async () => {
+      const requests = papas();
+
+      const outcome = await ask(
+        [
+          { content: [...hide.content, ...answer('confirmar_cambios').content], stop_reason: 'tool_use' },
+          say('¿Lo hago?'),
+        ],
+        [{ role: 'user', content: 'Oculta las papas fritas' }],
+        writer,
+        new MemoryPendingActionStore(),
+      );
+
+      assert.ok(requests.every((request) => request.method === 'GET'), 'nothing was written');
+      assert.ok(!outcome.events.some((event) => event.type === 'settled'));
+      assert.equal(toolResults(outcome.requests[1])[1].is_error, true);
+    });
+
+    it('drops the change when the user says no', async () => {
+      const requests = papas();
+      const actions = new MemoryPendingActionStore();
+      await ask([hide, say('¿Lo hago?')], [{ role: 'user', content: 'Oculta las papas' }], writer, actions);
+
+      const outcome = await ask(
+        [answer('cancelar_cambios'), say('Listo, no cambié nada.')],
+        [
+          { role: 'user', content: 'Oculta las papas' },
+          { role: 'assistant', content: '¿Lo hago?' },
+          { role: 'user', content: 'No, mejor no' },
+        ],
+        writer,
+        actions,
+      );
+
+      assert.ok(requests.every((request) => request.method === 'GET'));
+      const settled = outcome.events.find((event) => event.type === 'settled');
+      assert.ok(settled && settled.type === 'settled' && settled.outcome.state === 'cancelled');
+    });
+
+    it('is offered only to someone who can make changes', async () => {
+      const reader = await ask([say('Hola')], undefined, makeSession({ permissions: ['products.read'] }));
+      const names = reader.requests[0].tools?.map((tool) => ('name' in tool ? tool.name : null));
+      assert.ok(!names?.includes('confirmar_cambios'));
+    });
   });
 });

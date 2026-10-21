@@ -13,6 +13,7 @@ export const PENDING_ACTION_TTL_MS = 10 * 60 * 1000;
  */
 export class MemoryPendingActionStore implements PendingActionStore {
   private readonly actions = new Map<string, PendingAction>();
+  private readonly turns = new Map<string, number>();
 
   constructor(
     private readonly ttlMs = PENDING_ACTION_TTL_MS,
@@ -43,6 +44,24 @@ export class MemoryPendingActionStore implements PendingActionStore {
     if (this.actions.get(id)?.userId === userId) {
       this.actions.delete(id);
     }
+  }
+
+  async beginTurn(userId: string): Promise<number> {
+    const turn = (this.turns.get(userId) ?? 0) + 1;
+    this.turns.set(userId, turn);
+    return turn;
+  }
+
+  async takeFromTurn(userId: string, turn: number): Promise<PendingAction[]> {
+    this.sweep();
+    const taken: PendingAction[] = [];
+    for (const [id, action] of this.actions) {
+      if (action.userId === userId && action.turn === turn) {
+        this.actions.delete(id);
+        taken.push(action);
+      }
+    }
+    return taken;
   }
 
   /** When it would expire, if prepared now. */

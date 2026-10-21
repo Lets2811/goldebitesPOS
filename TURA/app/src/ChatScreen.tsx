@@ -14,6 +14,8 @@ interface Message {
   /** For an 'action' message: the change TURA prepared, and what became of it. */
   action?: PendingChange;
   outcome?: ActionOutcome;
+  /** The outcome came from TURA itself (the user answered it in the conversation), so it already knows. */
+  answeredInChat?: boolean;
   /**
    * Part of linking the app (the name, the code), handled on this device.
    * It is shown like any other message but never sent to the assistant.
@@ -35,11 +37,13 @@ const TOOL_STATUS: Record<string, string> = {
   ajustar_existencias: 'Preparando el ajuste…',
   modificar_insumo: 'Preparando el cambio…',
   modificar_producto: 'Preparando el cambio…',
+  confirmar_cambios: 'Haciendo el cambio…',
+  cancelar_cambios: 'Cancelando el cambio…',
 };
 
 /** What became of a change, told to TURA so the conversation knows (it never sees the buttons). */
 function describeOutcome(message: Message): string | null {
-  if (!message.action || !message.outcome) {
+  if (!message.action || !message.outcome || message.answeredInChat) {
     return null;
   }
   return describeChangeOutcome(message.action.summary, message.outcome);
@@ -170,6 +174,13 @@ export function ChatScreen({ hidden }: { hidden: boolean }) {
             ...current,
             { id: nextId.current++, role: 'action', content: '', action },
           ]);
+        } else if (event.type === 'settled') {
+          const { id, outcome } = event;
+          setMessages((current) =>
+            current.map((message) =>
+              message.action?.id === id ? { ...message, outcome, answeredInChat: true } : message,
+            ),
+          );
         } else if (event.type === 'error') {
           showError(event.message);
         }
@@ -223,6 +234,7 @@ export function ChatScreen({ hidden }: { hidden: boolean }) {
               <ActionCard
                 key={message.id}
                 action={message.action}
+                outcome={message.answeredInChat ? message.outcome : undefined}
                 onSettled={(outcome) =>
                   setMessages((current) =>
                     current.map((m) => (m.id === message.id ? { ...m, outcome } : m)),

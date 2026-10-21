@@ -87,9 +87,12 @@ en desarrollo.
 
 ## Estado
 
-Chat de texto y conversación por voz. Consulta productos, inventario y ventas;
-los cambios (existencias, insumos, productos) solo se hacen cuando el usuario
-los confirma con un botón en su pantalla.
+Chat de texto y conversación por voz. Consulta productos, inventario y ventas.
+Los cambios (existencias, insumos, productos) se hacen en dos pasos: TURA dice
+qué va a hacer y pregunta "¿Lo hago?"; solo si el usuario responde que sí en su
+siguiente mensaje (hablado o escrito) llama `confirmar_cambios` y el cambio se
+hace. Nunca puede confirmar un cambio que preparó en esa misma respuesta. La
+tarjeta del cambio también tiene botones para confirmar o cancelar.
 
 | Herramienta            | Endpoint del POS                    | Qué hace                                                                                                             | Permiso del POS    |
 | ---------------------- | ----------------------------------- | -------------------------------------------------------------------------------------------------------------------- | ------------------ |

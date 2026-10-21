@@ -10,6 +10,7 @@ describe('pending actions', () => {
     summary: 'Ocultar "Papas"',
     input: { producto_id: 'p' },
     userId: 'user-1',
+    turn: 1,
     expiresAt: new Date(now + expiresInMs).toISOString(),
   });
 
@@ -35,5 +36,24 @@ describe('pending actions', () => {
     await actions.discard(created.id, 'someone-else');
     await actions.discard(created.id, 'user-1');
     assert.equal(await actions.take(created.id, 'user-1'), null);
+  });
+
+  it('hands over, once, what was prepared in a given turn of its user', async () => {
+    const actions = store();
+    const turn = await actions.beginTurn('user-1');
+    await actions.create({ ...action(), turn });
+    await actions.create({ ...action(), turn, userId: 'someone-else' });
+    await actions.create({ ...action(), turn: turn + 1 });
+
+    assert.equal(await actions.beginTurn('user-1'), turn + 1);
+    assert.equal((await actions.takeFromTurn('user-1', turn)).length, 1);
+    assert.equal((await actions.takeFromTurn('user-1', turn)).length, 0);
+  });
+
+  it('does not hand over an expired one', async () => {
+    const actions = store();
+    await actions.create({ ...action(1000), turn: 1 });
+    now += 2000;
+    assert.deepEqual(await actions.takeFromTurn('user-1', 1), []);
   });
 });

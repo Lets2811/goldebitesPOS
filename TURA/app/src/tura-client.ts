@@ -12,6 +12,12 @@ export type TuraEvent =
   | { type: 'tool'; name: string }
   /** A change TURA prepared: it happens only if the user confirms it (see confirmAction). */
   | { type: 'confirm'; action: PendingChange }
+  /** The user answered a prepared change in the conversation ("sí", "no"): what became of it. */
+  | {
+      type: 'settled';
+      id: string;
+      outcome: { state: 'done' | 'failed'; message: string } | { state: 'cancelled' };
+    }
   | { type: 'done' }
   | { type: 'error'; message: string };
 

@@ -361,6 +361,7 @@ button {
 /* The accent follows the hologram's glow in each state (see HologramAssistant). */
 .voice {
   --halo: 56 169 255;
+  position: relative;
   display: flex;
   /* The hologram's mist is wider than the stage and must not widen the page. */
   overflow-x: clip;
@@ -440,6 +441,21 @@ button {
 
 .voice__mic--off:active {
   background: var(--border);
+}
+
+/* Changes TURA prepared: over the hologram, just above the microphone, so they are always in view. */
+.voice__actions {
+  position: absolute;
+  z-index: 2;
+  right: 16px;
+  bottom: calc(112px + env(safe-area-inset-bottom));
+  left: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: 45dvh;
+  overflow-y: auto;
+  text-align: left;
 }
 
 .voice__note {
@@ -714,6 +730,12 @@ button {
 
 .action-card__summary {
   margin: 0;
+}
+
+.action-card__hint {
+  margin: 8px 0 0;
+  font-size: 0.8125rem;
+  color: var(--gray);
 }
 
 .action-card__result {

@@ -22,18 +22,23 @@ export function describeChangeOutcome(summary: string, outcome: ActionOutcome): 
 
 /**
  * A change TURA prepared, shown as it is: nothing happens in the POS until
- * the user taps "Confirmar". The answer (or why it could not be done) stays
- * on the card.
+ * the user says yes to TURA, or taps "Confirmar". The answer (or why it
+ * could not be done) stays on the card.
  */
 export function ActionCard({
   action,
+  outcome,
   onSettled,
 }: {
   action: PendingChange;
+  /** What became of it when the user answered TURA in the conversation instead of with the buttons. */
+  outcome?: ActionOutcome;
   onSettled?: (outcome: ActionOutcome) => void;
 }) {
-  const [state, setState] = useState<CardState>('pending');
-  const [message, setMessage] = useState('');
+  const [tapped, setState] = useState<CardState>('pending');
+  const [tappedMessage, setMessage] = useState('');
+  const state: CardState = outcome?.state ?? tapped;
+  const message = outcome && outcome.state !== 'cancelled' ? outcome.message : tappedMessage;
 
   async function confirm() {
     setState('working');
@@ -68,6 +73,7 @@ export function ActionCard({
               : 'Cambio por confirmar'}
       </p>
       <p className="action-card__summary">{action.summary}</p>
+      {state === 'pending' && <p className="action-card__hint">Dile «sí» a TURA para hacerlo, o «no» para dejarlo.</p>}
       {message && <p className="action-card__result">{message}</p>}
       {(state === 'pending' || state === 'working') && (
         <div className="action-card__buttons">

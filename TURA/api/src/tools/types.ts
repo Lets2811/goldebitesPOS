@@ -63,6 +63,12 @@ export interface PendingAction {
   input: unknown;
   /** The user who must confirm it; nobody else can. */
   userId: string;
+  /**
+   * The user's turn it was prepared in (see PendingActionStore.beginTurn).
+   * Confirmed in conversation only in the next one: the user has to have
+   * answered after hearing it.
+   */
+  turn: number;
   createdAt: string;
   /** After this it can no longer be confirmed. */
   expiresAt: string;
@@ -74,6 +80,10 @@ export interface PendingActionStore {
   /** Hands the action over exactly once, and only to its own user while it has not expired. */
   take(id: string, userId: string): Promise<PendingAction | null>;
   discard(id: string, userId: string): Promise<void>;
+  /** Starts a new turn of the user's conversation and returns its number. */
+  beginTurn(userId: string): Promise<number>;
+  /** Hands over, once, the user's unexpired actions prepared in `turn`. */
+  takeFromTurn(userId: string, turn: number): Promise<PendingAction[]>;
 }
 
 /**

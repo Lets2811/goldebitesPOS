@@ -11,8 +11,7 @@ import {
 } from './agent/agent.service.js';
 import { runSimulatedTurn } from './agent/simulated-turn.js';
 import { pendingActions } from './agent/pending-actions.js';
-import { toolsFor } from './tools/registry.js';
-import { ToolRefusedError } from './tools/types.js';
+import { commitAction } from './agent/commit-action.js';
 import { newAudit, recordAudit } from './audit/audit-log.js';
 import { authenticate, UnauthenticatedError, type Session } from './auth.js';
 import { config } from './config.js';
@@ -206,34 +205,15 @@ app.post('/tura/actions/:id/confirm', async (req, res) => {
     });
     return;
   }
-  const tool = toolsFor(session).find((candidate) => candidate.definition.name === action.tool);
-  if (!tool || tool.kind !== 'write') {
-    res.status(403).json({ message: 'Tu usuario ya no tiene permiso para hacer este cambio.' });
-    return;
-  }
-
   const startedAt = Date.now();
-  let message: string;
-  let failure: string | undefined;
-  try {
-    ({ message } = await tool.commit(action.input, { session }));
-    res.json({ message });
-  } catch (error) {
-    if (error instanceof ToolRefusedError) {
-      failure = error.message;
-      res.status(409).json({ message: `No hice el cambio: ${error.message}` });
-    } else if (error instanceof PosApiError) {
-      failure = `POS ${error.status}: ${error.message}`;
-      res
-        .status(error.status >= 500 ? 502 : 422)
-        .json({ message: `El POS no hizo el cambio: ${error.message}` });
-    } else {
-      failure = error instanceof Error ? `${error.name}: ${error.message}` : String(error);
-      console.error('Confirmed action failed', error);
-      res.status(500).json({ message: 'Ocurrió un error al hacer el cambio. Intenta de nuevo.' });
-    }
-    message = '';
+  const outcome = await commitAction(action, session);
+  if (outcome.ok) {
+    res.json({ message: outcome.message });
+  } else {
+    res.status(outcome.status).json({ message: outcome.message });
   }
+  const message = outcome.ok ? outcome.message : '';
+  const failure = outcome.ok ? undefined : outcome.failure;
 
   recordAudit({
     at: new Date(startedAt).toISOString(),

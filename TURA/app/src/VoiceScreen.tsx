@@ -119,7 +119,7 @@ export function VoiceScreen() {
   const [caption, setCaption] = useState(opening);
   const [failure, setFailure] = useState('');
   const history = useRef<ChatTurn[]>([]);
-  /** Changes TURA prepared: confirmed with a tap, never by voice (a transcription can be wrong). */
+  /** Changes TURA prepared: answered aloud ("sí", "no"), or with the card's buttons. */
   const [changes, setChanges] = useState<{ action: PendingChange; outcome?: ActionOutcome }[]>([]);
 
   function settle(action: PendingChange, outcome: ActionOutcome) {
@@ -178,7 +178,8 @@ export function VoiceScreen() {
       },
       onPhrase(text) {
         setCaption(text);
-        // A new question: the changes already settled leave the screen.
+        // A new question: the changes already settled leave the screen; the
+        // ones still waiting stay, since this may be the answer to them.
         setChanges((current) => current.filter((change) => !change.outcome));
         setQuestion({ text });
         setState('thinking');
@@ -277,10 +278,16 @@ export function VoiceScreen() {
             unsaid = rest;
             sentences.forEach(sayAloud);
           } else if (event.type === 'tool') {
-            setCaption('Consultando el POS…');
+            setCaption(event.name === 'confirmar_cambios' ? 'Haciendo el cambio…' : 'Consultando el POS…');
           } else if (event.type === 'confirm') {
             const action = event.action;
             setChanges((current) => [...current, { action }]);
+          } else if (event.type === 'settled') {
+            // Answered aloud: TURA already knows, and says how it went.
+            const { id, outcome } = event;
+            setChanges((current) =>
+              current.map((change) => (change.action.id === id ? { ...change, outcome } : change)),
+            );
           } else if (event.type === 'error') {
             cancelled = true;
             fail(event.message);
@@ -364,8 +371,13 @@ export function VoiceScreen() {
 
         {changes.length > 0 && (
           <div className="voice__actions">
-            {changes.map(({ action }) => (
-              <ActionCard key={action.id} action={action} onSettled={(outcome) => settle(action, outcome)} />
+            {changes.map(({ action, outcome }) => (
+              <ActionCard
+                key={action.id}
+                action={action}
+                outcome={outcome}
+                onSettled={(tapped) => settle(action, tapped)}
+              />
             ))}
           </div>
         )}
