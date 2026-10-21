@@ -23,6 +23,11 @@ const TOOLS: AssistantTool[] = [
   compararSedes,
 ];
 
+/** Every tool, as the Golden Bites Admin lists them. */
+export function allTools(): AssistantTool[] {
+  return TOOLS;
+}
+
 /**
  * The tools offered in one conversation. Those the user has no permission
  * for are left out, so the assistant never promises something the POS would

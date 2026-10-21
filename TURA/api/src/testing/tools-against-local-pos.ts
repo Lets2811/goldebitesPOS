@@ -1,7 +1,7 @@
 /**
  * Runs the inventory and product tools against a local POS, as a signed-in
- * user, without the model: each change is prepared, committed (as if the
- * user confirmed it) and then undone. For development only:
+ * user, without the model: each change is made and then undone. For
+ * development only:
  *
  *   POS_API_TARGET=local npx tsx src/testing/tools-against-local-pos.ts <email> <password>
  */
@@ -47,9 +47,8 @@ const session: Session = {
 const ctx = { session };
 
 async function change<T>(label: string, tool: typeof ajustarExistencias, args: T) {
-  const { summary } = await tool.prepare(args, ctx);
-  const { message } = await tool.commit(args, ctx);
-  console.log(`${label}\n   preparado: ${summary}\n   confirmado: ${message}`);
+  const { message } = await tool.run(args, ctx);
+  console.log(`${label}\n   ${message}`);
 }
 
 const inventory = (await consultarInventario.execute({ buscar: 'agua', limite: 3 }, ctx)) as {
@@ -77,14 +76,18 @@ await change('5. ocultar del menú', modificarProducto, { producto_id: product.i
 await change('6. mostrar otra vez', modificarProducto, { producto_id: product.id, accion: 'mostrar' });
 await change('7. cambiar el precio', modificarProducto, { producto_id: product.id, accion: 'cambiar_precio', precio: product.precio + 500 });
 await change('8. volver al precio', modificarProducto, { producto_id: product.id, accion: 'cambiar_precio', precio: product.precio });
+await change('9. desactivar el producto', modificarProducto, { producto_id: product.id, accion: 'desactivar' });
+await change('10. activarlo otra vez', modificarProducto, { producto_id: product.id, accion: 'activar' });
+await change('11. desactivar el insumo', modificarInsumo, { insumo_id: water.id, accion: 'desactivar' });
+await change('12. activarlo otra vez', modificarInsumo, { insumo_id: water.id, accion: 'activar' });
 
 try {
-  await ajustarExistencias.prepare(
+  await ajustarExistencias.run(
     { insumo_id: water.id, operacion: 'restar', cantidad: water.existencias + 1000, motivo: 'prueba' },
     ctx,
   );
 } catch (error) {
-  console.log(`\n9. restar más de lo que hay -> rechazado: ${(error as Error).message}`);
+  console.log(`\n13. restar más de lo que hay -> rechazado: ${(error as Error).message}`);
 }
 
 const after = (await consultarInventario.execute({ buscar: water.nombre, limite: 1 }, ctx)) as typeof inventory;

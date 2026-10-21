@@ -7,7 +7,10 @@ import { PlatformFeatureFlagsModule } from '../../modules/platform-feature-flags
 import { RolesModule } from '../../modules/roles/roles.module';
 import { UsersModule } from '../../modules/users/users.module';
 import { PlatformAdminController } from './controllers/platform-admin.controller';
+import { PlatformOverviewController } from './controllers/platform-overview.controller';
+import { PlatformOverviewRepository } from './repositories/platform-overview.repository';
 import { PlatformAdminService } from './services/platform-admin.service';
+import { PlatformOverviewService } from './services/platform-overview.service';
 
 @Module({
   imports: [
@@ -19,7 +22,11 @@ import { PlatformAdminService } from './services/platform-admin.service';
     PlatformFeatureFlagsModule,
     AuditModule,
   ],
-  controllers: [PlatformAdminController],
-  providers: [PlatformAdminService],
+  controllers: [PlatformAdminController, PlatformOverviewController],
+  providers: [
+    PlatformAdminService,
+    PlatformOverviewService,
+    PlatformOverviewRepository,
+  ],
 })
 export class PlatformAdminModule {}

@@ -18,10 +18,10 @@ import {
 } from '../../../modules/businesses/hooks/use-business-branches';
 import { normalizeApiError } from '../../../shared/lib/api/api-error';
 import type { Branch } from '../../../shared/modules/branches/types/branch.types';
-import type { Business } from '../../../modules/businesses/types/platform-admin.types';
+import type { BusinessRef } from '../../../modules/businesses/types/platform-admin.types';
 
 interface BusinessBranchesDrawerProps {
-  business: Business | null;
+  business: BusinessRef | null;
   onClose: () => void;
 }
 

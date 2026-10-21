@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import type { Session } from '../auth.js';
-import { assertOwnBranch, atBranch, quantity, readItem, type PosInventoryItem } from './inventory-shared.js';
+import { assertOwnBranch, quantity, readItem, type PosInventoryItem } from './inventory-shared.js';
 import { defineWriteTool, ToolRefusedError } from './types.js';
 
 const input = z.object({
@@ -62,30 +62,10 @@ export const ajustarExistencias = defineWriteTool({
   description:
     'Ajusta las existencias de un insumo del inventario: suma lo que entró, resta lo que salió o lo deja ' +
     'en una cantidad exacta tras un conteo. Primero busca el insumo con consultar_inventario para tener su ' +
-    '"id" y sus existencias actuales. Esta herramienta NO hace el cambio: lo deja listo y el usuario lo ' +
-    'confirma con un botón en su pantalla. Después de llamarla di en una frase qué va a pasar y pídele que ' +
-    'lo confirme; nunca digas que ya quedó hecho.',
+    '"id" y sus existencias actuales. Hace el cambio de inmediato; después di en una frase cómo quedó.',
   permission: 'inventory.adjust',
   input,
-  async prepare(args, { session }) {
-    const { item, target } = await checked(session, args);
-    const verb =
-      args.operacion === 'sumar'
-        ? `Sumar ${quantity(args.cantidad, item.unit)} a`
-        : args.operacion === 'restar'
-          ? `Restar ${quantity(args.cantidad, item.unit)} de`
-          : 'Dejar en el conteo real';
-    return {
-      summary: atBranch(
-        session,
-        `${verb} "${item.name}": pasa de ${quantity(item.currentStock, item.unit)} a ` +
-          `${quantity(target, item.unit)}. Motivo: ${args.motivo}.`,
-        item.branchId,
-      ),
-    };
-  },
-  async commit(args, { session }) {
-    // Read again: what it holds may have changed since it was prepared.
+  async run(args, { session }) {
     const { item, delta } = await checked(session, args);
     await session.pos.post('/inventory/adjustments', {
       branchId: item.branchId,
@@ -96,6 +76,7 @@ export const ajustarExistencias = defineWriteTool({
     });
     const after = await readItem(session, item.id);
     return {
+      branchId: item.branchId,
       message:
         `Listo: "${after.name}" quedó en ${quantity(after.currentStock, after.unit)}.` +
         (after.belowMinimum ? ` Sigue por debajo de su mínimo (${quantity(after.minimumStock, after.unit)}).` : ''),

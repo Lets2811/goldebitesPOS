@@ -11,6 +11,8 @@ export interface AdminConfig {
   posInternalUrl: string;
   /** Shared with GB-BE (its INTERNAL_API_KEY). */
   internalApiKey: string;
+  /** TURA's service and its admin key (TURA_ADMIN_KEY); empty when TURA is not connected. */
+  tura: { url: string; adminKey: string };
   database: {
     host: string;
     port: number;
@@ -39,6 +41,10 @@ export default registerAs(
     refreshExpiresIn: process.env.ADMIN_REFRESH_EXPIRES_IN ?? '7d',
     posInternalUrl: (process.env.POS_INTERNAL_URL ?? 'http://localhost:3000/api/v1/internal').replace(/\/+$/, ''),
     internalApiKey: required('INTERNAL_API_KEY', 32),
+    tura: {
+      url: (process.env.TURA_API_URL ?? '').replace(/\/+$/, ''),
+      adminKey: process.env.TURA_ADMIN_KEY ?? '',
+    },
     database: {
       host: process.env.DB_HOST ?? 'localhost',
       port: parseInt(process.env.DB_PORT ?? '5432', 10),

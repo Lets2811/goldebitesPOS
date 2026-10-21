@@ -1,4 +1,3 @@
-import { AdminScreen } from './AdminScreen';
 import { NoticeBanner } from './NoticeBanner';
 import { ChatScreen } from './ChatScreen';
 import { HomeScreen } from './HomeScreen';
@@ -19,7 +18,6 @@ export function App() {
       <NoticeBanner />
       {route === 'home' && <HomeScreen />}
       {route === 'voice' && <VoiceScreen />}
-      {route === 'admin' && <AdminScreen />}
       {/* The chat stays mounted while hidden so going back to the menu does
           not discard the conversation or interrupt an answer in progress. */}
       <ChatScreen hidden={route !== 'chat'} />

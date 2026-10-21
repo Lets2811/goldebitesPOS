@@ -4,9 +4,8 @@ import type { Session } from '../auth.js';
 import { config } from '../config.js';
 import { PosApiError } from '../pos/pos-client.js';
 import { toolsFor } from '../tools/registry.js';
-import { ToolRefusedError, type AssistantTool, type PendingActionStore } from '../tools/types.js';
-import { PENDING_ACTION_TTL_MS, pendingActions } from './pending-actions.js';
-import { commitAction } from './commit-action.js';
+import { atBranch } from '../tools/inventory-shared.js';
+import { ToolRefusedError, type AssistantTool } from '../tools/types.js';
 import type { TurnMeter } from '../usage/usage-log.js';
 import { buildSystemPrompt, type ConversationMode } from './system-prompt.js';
 
@@ -24,14 +23,8 @@ export interface ChatTurn {
 export type TuraEvent =
   | { type: 'text'; delta: string }
   | { type: 'tool'; name: string }
-  /** A change TURA prepared: confirmed by the user's next answer, or with its buttons (see /tura/actions). */
-  | { type: 'confirm'; action: { id: string; summary: string; expiresAt: string } }
-  /** A prepared change the user confirmed or cancelled in the conversation. */
-  | {
-      type: 'settled';
-      id: string;
-      outcome: { state: 'done' | 'failed'; message: string } | { state: 'cancelled' };
-    }
+  /** A change TURA made in the POS, as it was left: shown to the user besides what TURA says. */
+  | { type: 'change'; message: string }
   | { type: 'done' };
 
 /** The model declined to answer (a safety classifier stopped the request). */
@@ -108,8 +101,6 @@ export interface TurnInput {
   isCancelled: () => boolean;
   model?: ModelClient;
   tools?: AssistantTool[];
-  /** Where prepared changes wait for the user's confirmation. */
-  actions?: PendingActionStore;
 }
 
 /**
@@ -129,20 +120,10 @@ export async function runTurn({
   isCancelled,
   model = claude(),
   tools = toolsFor(session),
-  actions = pendingActions,
 }: TurnInput): Promise<void> {
   const messages: Anthropic.MessageParam[] = recentHistory(history);
   const system = buildSystemPrompt(session, mode);
-  // Whoever can make changes can also answer, in the conversation, the ones TURA asked them about.
-  const canChange = tools.some((tool) => tool.kind === 'write');
-  const definitions = [
-    ...tools.map((tool) => tool.definition),
-    ...(canChange ? ANSWER_TOOLS : []),
-  ];
-  const turn = { userId: session.userId ?? 'anonymous', number: 0 };
-  if (canChange) {
-    turn.number = await actions.beginTurn(turn.userId);
-  }
+  const definitions = tools.map((tool) => tool.definition);
 
   for (let iteration = 1; iteration <= config.maxToolIterations; iteration++) {
     audit.iterations = iteration;
@@ -215,11 +196,7 @@ export async function runTurn({
     messages.push({
       role: 'user',
       content: await Promise.all(
-        calls.map((call) =>
-          ANSWER_TOOL_NAMES.has(call.name)
-            ? answerPendingChanges(call, tools, session, audit, emit, actions, turn)
-            : runTool(call, tools, session, audit, emit, actions, turn),
-        ),
+        calls.map((call) => runTool(call, tools, session, audit, emit)),
       ),
     });
   }
@@ -238,8 +215,6 @@ async function runTool(
   session: Session,
   audit: TurnAudit,
   emit: (event: TuraEvent) => void,
-  actions: PendingActionStore,
-  turn: { userId: string; number: number },
 ): Promise<Anthropic.ToolResultBlockParam> {
   const startedAt = Date.now();
   const entry: ToolAudit = { name: call.name, input: call.input, ok: false, ms: 0 };
@@ -262,26 +237,14 @@ async function runTool(
 
   try {
     if (tool.kind === 'write') {
-      // The model's call only prepares the change, with the input checked
-      // here: it waits for the user's answer in their next message.
-      const { summary } = await tool.prepare(input.value, { session });
-      const action = await actions.create({
-        tool: tool.definition.name,
-        summary,
-        input: input.value,
-        userId: turn.userId,
-        turn: turn.number,
-        expiresAt: new Date(Date.now() + PENDING_ACTION_TTL_MS).toISOString(),
-      });
-      emit({ type: 'confirm', action: { id: action.id, summary, expiresAt: action.expiresAt } });
-      const content =
-        `Cambio preparado, todavía NO hecho: ${summary} Dile al usuario en una frase qué va a pasar y ` +
-        'pregúntale si lo haces. Termina ahí tu respuesta: solo si en su siguiente mensaje dice que sí, ' +
-        'llama confirmar_cambios; si dice que no, cancelar_cambios. No digas que ya quedó hecho.';
+      // Made right away, as the user who asked; the tool checks it first and the POS authorizes it.
+      const done = await tool.run(input.value, { session });
+      const message = atBranch(session, done.message, done.branchId);
+      emit({ type: 'change', message });
       entry.ok = true;
       entry.ms = Date.now() - startedAt;
-      entry.result = previewResult(`[pendiente ${action.id}] ${summary}`);
-      return { type: 'tool_result', tool_use_id: call.id, content };
+      entry.result = previewResult(message);
+      return { type: 'tool_result', tool_use_id: call.id, content: `Hecho. ${message}` };
     }
     const content = JSON.stringify(await tool.execute(input.value, { session }));
     entry.ok = true;
@@ -305,92 +268,4 @@ async function runTool(
     console.error(`Tool ${call.name} failed unexpectedly`, error);
     return fail('Ocurrió un error interno al ejecutar la herramienta.');
   }
-}
-
-/**
- * The user's answer to the changes TURA asked about in its previous reply:
- * yes (they are made now) or no. Not POS tools: they act on what is pending
- * here, and only on what was prepared in the user's previous turn — never
- * on a change prepared in this same turn, which the user has not heard yet.
- */
-const ANSWER_TOOLS: Anthropic.Tool[] = [
-  {
-    name: 'confirmar_cambios',
-    description:
-      'Hace los cambios que preparaste en tu respuesta anterior y que el usuario acaba de aceptar. Úsala ' +
-      'solo si su último mensaje los acepta claramente ("sí", "dale", "hazlo", "confirmo"). Si duda, pide ' +
-      'algo distinto o no responde a la pregunta, no la uses. Hace todos los que preparaste esa vez.',
-    input_schema: { type: 'object', properties: {} },
-  },
-  {
-    name: 'cancelar_cambios',
-    description:
-      'Descarta los cambios que preparaste en tu respuesta anterior, cuando el usuario dice que no o que ' +
-      'ya no los quiere.',
-    input_schema: { type: 'object', properties: {} },
-  },
-];
-const ANSWER_TOOL_NAMES = new Set(ANSWER_TOOLS.map((tool) => tool.name));
-
-async function answerPendingChanges(
-  call: Anthropic.ToolUseBlock,
-  tools: AssistantTool[],
-  session: Session,
-  audit: TurnAudit,
-  emit: (event: TuraEvent) => void,
-  actions: PendingActionStore,
-  turn: { userId: string; number: number },
-): Promise<Anthropic.ToolResultBlockParam> {
-  const startedAt = Date.now();
-  const entry: ToolAudit = { name: call.name, input: call.input, ok: false, ms: 0 };
-  audit.tools.push(entry);
-  const pending = await actions.takeFromTurn(turn.userId, turn.number - 1);
-
-  if (pending.length === 0) {
-    entry.error = 'nothing pending';
-    entry.ms = Date.now() - startedAt;
-    return {
-      type: 'tool_result',
-      tool_use_id: call.id,
-      content:
-        'No hay cambios esperando respuesta: ya se hicieron o cancelaron, vencieron (duran 10 minutos) o ' +
-        'no los preparaste en tu respuesta anterior. Si el usuario aún quiere el cambio, prepáralo de nuevo.',
-      is_error: true,
-    };
-  }
-
-  if (call.name === 'cancelar_cambios') {
-    for (const action of pending) {
-      emit({ type: 'settled', id: action.id, outcome: { state: 'cancelled' } });
-    }
-    entry.ok = true;
-    entry.ms = Date.now() - startedAt;
-    entry.result = previewResult(pending.map((action) => `Cancelado: ${action.summary}`).join(' '));
-    return {
-      type: 'tool_result',
-      tool_use_id: call.id,
-      content: `Cancelado, no se hizo nada: ${pending.map((action) => action.summary).join(' ')}`,
-    };
-  }
-
-  // One after another: two changes to the same item must not race.
-  const results: string[] = [];
-  let failed = false;
-  for (const action of pending) {
-    const outcome = await commitAction(action, session, tools);
-    emit({
-      type: 'settled',
-      id: action.id,
-      outcome: { state: outcome.ok ? 'done' : 'failed', message: outcome.message },
-    });
-    results.push(outcome.ok ? `Hecho: ${outcome.message}` : `No se hizo (${action.summary}): ${outcome.message}`);
-    failed ||= !outcome.ok;
-  }
-  entry.ok = !failed;
-  entry.ms = Date.now() - startedAt;
-  entry.result = previewResult(results.join(' '));
-  if (failed) {
-    entry.error = results.filter((result) => result.startsWith('No se hizo')).join(' ');
-  }
-  return { type: 'tool_result', tool_use_id: call.id, content: results.join('\n') };
 }

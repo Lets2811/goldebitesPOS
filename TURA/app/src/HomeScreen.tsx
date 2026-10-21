@@ -103,9 +103,6 @@ export function HomeScreen() {
       <header className="screen__header">
         <h1 className="screen__brand">TURA</h1>
         <AiModeBadge />
-        <button type="button" className="screen__action" onClick={() => navigate('admin')}>
-          Costos
-        </button>
       </header>
 
       <main className="home">

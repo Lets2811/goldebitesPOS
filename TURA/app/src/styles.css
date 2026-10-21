@@ -443,7 +443,7 @@ button {
   background: var(--border);
 }
 
-/* Changes TURA prepared: over the hologram, just above the microphone, so they are always in view. */
+/* Changes TURA made: over the hologram, just above the microphone, so they are always in view. */
 .voice__actions {
   position: absolute;
   z-index: 2;
@@ -453,7 +453,9 @@ button {
   display: flex;
   flex-direction: column;
   gap: 10px;
+  width: min(calc(100% - 32px), 420px);
   max-height: 45dvh;
+  margin-inline: auto;
   overflow-y: auto;
   text-align: left;
 }
@@ -560,157 +562,7 @@ button {
   border-top: 1px solid var(--border);
 }
 
-/* ---- Admin (usage and cost, for the developer) ---- */
-
-.admin {
-  display: flex;
-  flex: 1;
-  flex-direction: column;
-  gap: 24px;
-  padding: 16px 16px calc(24px + env(safe-area-inset-bottom));
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
-}
-
-.admin__unlock {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  margin: auto 0;
-}
-
-.admin__unlock label {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  font-size: 0.875rem;
-  color: var(--gray);
-}
-
-.admin__note {
-  font-size: 0.8125rem;
-  color: var(--gray);
-}
-
-.admin__error {
-  font-size: 0.875rem;
-  color: var(--error);
-}
-
-.admin__periods {
-  display: grid;
-  flex: none;
-  grid-template-columns: repeat(3, 1fr);
-  padding: 3px;
-  background: var(--graphite);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-}
-
-.admin__periods button {
-  min-height: 40px;
-  padding: 0;
-  font-size: 0.875rem;
-  color: var(--gray);
-  background: none;
-  border: none;
-  border-radius: 9px;
-}
-
-.admin__periods button[aria-pressed='true'] {
-  font-weight: 600;
-  color: var(--white);
-  background: var(--border);
-}
-
-.admin__section {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.admin__section h2 {
-  font-size: 1rem;
-  font-weight: 600;
-  color: var(--gold);
-}
-
-.admin__facts {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-  gap: 10px;
-  margin: 0;
-}
-
-.admin__facts div {
-  padding: 12px;
-  background: var(--graphite);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-}
-
-.admin__facts dt {
-  font-size: 0.8125rem;
-  color: var(--gray);
-}
-
-.admin__facts dd {
-  margin: 2px 0 0;
-  font-size: 1.25rem;
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-}
-
-.admin__table {
-  width: 100%;
-  font-size: 0.8125rem;
-  font-variant-numeric: tabular-nums;
-  border-collapse: collapse;
-}
-
-.admin__table th,
-.admin__table td {
-  padding: 8px 4px;
-  text-align: right;
-  border-bottom: 1px solid var(--border);
-}
-
-.admin__table thead th {
-  font-weight: 400;
-  color: var(--gray);
-}
-
-.admin__table th:first-child {
-  font-weight: 600;
-  text-align: left;
-}
-
-.admin__turns {
-  display: flex;
-  flex-direction: column;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.admin__turns li {
-  padding: 10px 0;
-  border-bottom: 1px solid var(--border);
-}
-
-.admin__turns div {
-  display: flex;
-  justify-content: space-between;
-  font-variant-numeric: tabular-nums;
-}
-
-.admin__turns span,
-.admin__turns p {
-  font-size: 0.8125rem;
-  color: var(--gray);
-}
-
-/* A change TURA prepared: nothing happens until the user confirms it. */
+/* A change TURA made, as it was left. */
 .action-card {
   align-self: stretch;
   padding: 14px;
@@ -732,69 +584,12 @@ button {
   margin: 0;
 }
 
-.action-card__hint {
-  margin: 8px 0 0;
-  font-size: 0.8125rem;
-  color: var(--gray);
-}
-
-.action-card__result {
-  margin: 10px 0 0;
-  font-weight: 600;
-}
-
-.action-card__buttons {
-  display: flex;
-  gap: 10px;
-  margin-top: 14px;
-}
-
-.action-card__buttons .button {
-  flex: 1;
-}
-
-.button--ghost {
-  color: var(--gold);
-  background: none;
-  border: 1px solid var(--border);
-}
-
-.button--ghost:active {
-  background: var(--graphite);
-}
-
 .action-card--done {
   border-color: #4caf7a;
 }
 
 .action-card--done .action-card__label {
   color: #4caf7a;
-}
-
-.action-card--failed {
-  border-color: var(--error);
-}
-
-.action-card--failed .action-card__label,
-.action-card--failed .action-card__result {
-  color: var(--error);
-}
-
-.action-card--cancelled {
-  opacity: 0.6;
-  border-color: var(--border);
-}
-
-.action-card--cancelled .action-card__label {
-  color: var(--gray);
-}
-
-.voice__actions {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  width: min(100%, 420px);
-  margin: 12px auto 0;
 }
 
 /* What happened to the connection: linked from a QR, signed out, access cut. */

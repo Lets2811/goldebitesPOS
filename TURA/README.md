@@ -87,21 +87,20 @@ en desarrollo.
 
 ## Estado
 
-Chat de texto y conversación por voz. Consulta productos, inventario y ventas.
-Los cambios (existencias, insumos, productos) se hacen en dos pasos: TURA dice
-qué va a hacer y pregunta "¿Lo hago?"; solo si el usuario responde que sí en su
-siguiente mensaje (hablado o escrito) llama `confirmar_cambios` y el cambio se
-hace. Nunca puede confirmar un cambio que preparó en esa misma respuesta. La
-tarjeta del cambio también tiene botones para confirmar o cancelar.
+Chat de texto y conversación por voz. Consulta productos, inventario y ventas,
+y hace cambios (existencias, insumos, productos) en el momento en que se le
+piden, sin pedir confirmación: al terminar dice cómo quedó. Cada cambio se hace
+como el usuario que lo pidió, así que el POS solo deja hacer lo que su rol
+permite, y queda en el registro de auditoría.
 
 | Herramienta            | Endpoint del POS                    | Qué hace                                                                                                             | Permiso del POS    |
 | ---------------------- | ----------------------------------- | -------------------------------------------------------------------------------------------------------------------- | ------------------ |
 | `consultar_productos`  | `GET /assistant/products`           | Productos por nombre o SKU: precio, estado, existencias y si están agotados                                          | `products.read`    |
 | `consultar_ventas`     | `GET /assistant/sales`              | Ventas de un período: total, número de ventas, ticket promedio, detalle por día/semana/mes y productos más vendidos | `analytics.read`   |
 | `consultar_inventario` | `GET /assistant/inventory`          | Insumos por nombre o SKU: existencias, mínimo y si están por debajo                                                  | `inventory.read`   |
-| `ajustar_existencias`  | `POST /inventory/adjustments`       | Suma, resta o fija las existencias de un insumo (con confirmación)                                                   | `inventory.adjust` |
-| `modificar_insumo`     | `PATCH /inventory-items/:id`, `/status` | Activa, desactiva o cambia el mínimo de un insumo (con confirmación)                                                 | `inventory.manage` |
-| `modificar_producto`   | `PATCH /products/:id`, `/status`, `/visibility` | Activa, desactiva, oculta, muestra o cambia el precio de un producto (con confirmación)                              | `products.update`  |
+| `ajustar_existencias`  | `POST /inventory/adjustments`       | Suma, resta o fija las existencias de un insumo                                                    | `inventory.adjust` |
+| `modificar_insumo`     | `PATCH /inventory-items/:id`, `/status` | Activa, desactiva o cambia el mínimo de un insumo                                                  | `inventory.manage` |
+| `modificar_producto`   | `PATCH /products/:id`, `/status`, `/visibility` | Activa, desactiva, oculta, muestra o cambia el precio de un producto                               | `products.update`  |
 | `comparar_sedes`       | `GET /assistant/branch-comparison`  | Todas las sedes lado a lado en un período: ventas, ticket, descuentos, gastos, mermas, pedidos en curso y caja       | `branches.switch`  |
 
 ### Varias sedes
@@ -113,7 +112,7 @@ cada turno TURA pregunta al POS qué sedes puede ver el usuario
 - Quien puede ver todas las sedes (`branches.switch` en su rol) consulta todas
   a la vez (cada resultado dice de qué sede es) o una por nombre (`sede`),
   compara sedes con `comparar_sedes` y puede cambiar insumos y productos de
-  cualquiera; la confirmación dice en qué sede se hace el cambio.
+  cualquiera; al terminar TURA dice en qué sede hizo el cambio.
 - Quien trabaja en una sede solo consulta y cambia la suya: el POS rechaza
   cualquier otra, aunque el modelo la pida.
 - El token de TURA nunca puede abrir una sesión del POS en otra sede
@@ -137,10 +136,13 @@ Pruebas: `npm test` en `api/` (POS y modelo simulados, sin gastar créditos).
 La voz (pantalla Hablar) la oye y la dice el navegador: reconocimiento de voz
 para transcribir y síntesis de voz para responder. Funciona en Chrome y Edge.
 
-La pantalla **Costos** (`#admin` en la app) es para quien desarrolla TURA:
-gasto, velocidad y lo que costaría el mismo uso en otro modelo. Se abre con
-`TURA_ADMIN_KEY` y lee el registro que el servicio escribe en
-`api/data/usage.jsonl` (tokens y tiempos por conversación, no su texto).
+Los costos de la IA (gasto por día, modelo y empresa, velocidad y lo que
+costaría el mismo uso en otro modelo) y la lista de herramientas se ven en el
+Admin de Golden Bites, sección **Costos de IA** y **TURA**. El servidor del
+Admin los pide a `GET /tura/admin/usage` y `GET /tura/admin/tools` con
+`TURA_ADMIN_KEY`, que nunca llega al navegador. El uso sale del registro que el
+servicio escribe en `api/data/usage.jsonl` (tokens y tiempos por conversación,
+no su texto).
 
 El holograma de la pantalla Hablar (`app/src/HologramAssistant.tsx`) es un campo de
 partículas que se reúne en un rostro, dibujado con Three.js y React Three
@@ -152,7 +154,7 @@ El modelo actual es "Infinite, 3D Head Scan" de Lee Perry-Smith
 (www.triplegangers.com), con licencia Creative Commons Attribution 3.0, que
 exige mantener esa atribución.
 
-Pendiente: acciones con confirmación en pantalla, avisos proactivos, y el
+Pendiente: avisos proactivos, y el
 despliegue (Dockerfile y entrada en `docker-compose.prod.yml`).
 
 ## Contrato del servicio

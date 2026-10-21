@@ -34,56 +34,14 @@ export interface ReadToolSpec<Schema extends z.ZodType> extends ToolSpec<Schema>
 }
 
 /**
- * A tool that changes something in the POS.
- *
- * A write is never executed by the model's call. The call only *prepares* it:
- * `prepare` checks it can be done and returns a summary in plain words, the
- * agent stores it as a PendingAction and shows the user what is about to
- * happen, with a button to confirm. `commit` runs only once the user confirms
- * that exact action (POST /tura/actions/:id/confirm), with the input it was
- * prepared with — never re-read from the model.
+ * A tool that changes something in the POS. It runs when the model calls it,
+ * as the user who asked: `run` checks the change can be made (the item
+ * exists, is theirs, is not already so), makes it, and says how it was left.
+ * The POS still authorizes the call.
  */
 export interface WriteToolSpec<Schema extends z.ZodType> extends ToolSpec<Schema> {
-  /** Validates against the POS that the action is possible and describes it for the user. Changes nothing. */
-  prepare(input: z.infer<Schema>, context: ToolContext): Promise<{ summary: string }>;
-  /**
-   * Performs the action. Called only for a confirmed PendingAction, with the
-   * input it was prepared with. Returns what to tell the user it did.
-   */
-  commit(input: z.infer<Schema>, context: ToolContext): Promise<{ message: string }>;
-}
-
-/** A write the model asked for, waiting for the user to confirm it. */
-export interface PendingAction {
-  id: string;
-  tool: string;
-  /** What will happen, in the words shown to the user. */
-  summary: string;
-  /** The validated input `commit` will receive. Never re-read from the model. */
-  input: unknown;
-  /** The user who must confirm it; nobody else can. */
-  userId: string;
-  /**
-   * The user's turn it was prepared in (see PendingActionStore.beginTurn).
-   * Confirmed in conversation only in the next one: the user has to have
-   * answered after hearing it.
-   */
-  turn: number;
-  createdAt: string;
-  /** After this it can no longer be confirmed. */
-  expiresAt: string;
-}
-
-/** Where pending actions live between the model's call and the user's answer. */
-export interface PendingActionStore {
-  create(action: Omit<PendingAction, 'id' | 'createdAt'>): Promise<PendingAction>;
-  /** Hands the action over exactly once, and only to its own user while it has not expired. */
-  take(id: string, userId: string): Promise<PendingAction | null>;
-  discard(id: string, userId: string): Promise<void>;
-  /** Starts a new turn of the user's conversation and returns its number. */
-  beginTurn(userId: string): Promise<number>;
-  /** Hands over, once, the user's unexpired actions prepared in `turn`. */
-  takeFromTurn(userId: string, turn: number): Promise<PendingAction[]>;
+  /** Makes the change. `branchId` is the branch it happened at, for the answer. */
+  run(input: z.infer<Schema>, context: ToolContext): Promise<{ message: string; branchId?: string }>;
 }
 
 /**
@@ -108,8 +66,7 @@ export type ReadAssistantTool = AssistantToolBase & {
 
 export type WriteAssistantTool = AssistantToolBase & {
   kind: 'write';
-  prepare(input: unknown, context: ToolContext): Promise<{ summary: string }>;
-  commit(input: unknown, context: ToolContext): Promise<{ message: string }>;
+  run(input: unknown, context: ToolContext): Promise<{ message: string; branchId?: string }>;
 };
 
 /** A tool as the agent holds it: its definition for the model, plus how to run it. */
@@ -150,12 +107,11 @@ export function defineReadTool<Schema extends z.ZodType>(spec: ReadToolSpec<Sche
   };
 }
 
-/** Declares a write tool: the model's call prepares it, the user's confirmation commits it. */
+/** Declares a write tool: the model's call makes the change. */
 export function defineWriteTool<Schema extends z.ZodType>(spec: WriteToolSpec<Schema>): WriteAssistantTool {
   return {
     ...describeTool(spec),
     kind: 'write',
-    prepare: (input, context) => spec.prepare(input as z.infer<Schema>, context),
-    commit: (input, context) => spec.commit(input as z.infer<Schema>, context),
+    run: (input, context) => spec.run(input as z.infer<Schema>, context),
   };
 }

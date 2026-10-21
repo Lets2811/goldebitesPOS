@@ -2,6 +2,9 @@ import type { Business } from '../../../shared/modules/businesses/types/business
 
 export type { Business };
 
+/** What the business drawers need to know of the business they open on. */
+export type BusinessRef = Pick<Business, 'id' | 'name'>;
+
 export interface CreatePlatformBusinessPayload {
   name: string;
   currency?: string;

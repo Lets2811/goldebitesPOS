@@ -12,6 +12,7 @@ import adminConfig from './config';
 import { DatabaseService } from './database.service';
 import { EnvelopeInterceptor, ErrorFilter } from './http';
 import { PosController } from './pos/pos.controller';
+import { TuraController } from './tura/tura.controller';
 
 @Controller('health')
 class HealthController {
@@ -29,7 +30,7 @@ class HealthController {
     // Secrets are given per call (AuthService, AuthGuard), from the config.
     JwtModule.register({}),
   ],
-  controllers: [HealthController, AuthController, PosController],
+  controllers: [HealthController, AuthController, PosController, TuraController],
   providers: [
     DatabaseService,
     AdminUsersRepository,

@@ -6,8 +6,6 @@ import type { Session } from '../auth.js';
 import { config } from '../config.js';
 import { makeSession, mockPos, scriptedModel, type ScriptedResponse } from '../testing/fixtures.js';
 import { newMeter, type TurnMeter } from '../usage/usage-log.js';
-import type { PendingActionStore } from '../tools/types.js';
-import { MemoryPendingActionStore } from './pending-actions.js';
 import {
   LIMIT_REACHED_MESSAGE,
   recentHistory,
@@ -60,7 +58,6 @@ async function ask(
   responses: ScriptedResponse[],
   history: ChatTurn[] = [{ role: 'user', content: '¿Cuánta agua manantial queda?' }],
   session: Session = makeSession(),
-  actions?: PendingActionStore,
 ): Promise<Outcome> {
   const { client, requests } = scriptedModel(responses);
   const events: TuraEvent[] = [];
@@ -76,7 +73,6 @@ async function ask(
       emit: (event) => events.push(event),
       isCancelled: () => false,
       model: client,
-      actions,
     });
   } catch (error) {
     // What was collected up to the failure is part of what the tests check.
@@ -480,168 +476,78 @@ describe('sales questions', () => {
 describe('changes (write tools)', () => {
   const PRODUCT_ID = '1c8d9e3f-0a2b-4d4c-9e6f-7a8b9c0d1e2f';
   const writer = makeSession({ permissions: ['products.read', 'products.update'] });
-
-  it('only prepares the change: the user is asked to confirm it, and nothing is written', async () => {
-    const requests = mockPos(() => ({
+  const papas = (overrides: Record<string, unknown> = {}) =>
+    mockPos((request) => ({
       body: {
         success: true,
-        data: { id: PRODUCT_ID, name: 'Papas fritas', salePrice: 8000, isActive: true, isVisible: true },
+        data:
+          request.method === 'GET'
+            ? { id: PRODUCT_ID, name: 'Papas fritas', salePrice: 8000, isActive: true, isVisible: true, ...overrides }
+            : {},
       },
     }));
-
-    const outcome = await ask(
-      [
-        {
-          content: [
-            { type: 'tool_use', id: 'w1', name: 'modificar_producto', input: { producto_id: PRODUCT_ID, accion: 'ocultar' } },
-          ],
-          stop_reason: 'tool_use',
-        },
-        say('Listo para ocultarlas: confírmalo en el botón.'),
-      ],
-      [{ role: 'user', content: 'Oculta las papas fritas del menú' }],
-      writer,
-    );
-
-    const confirm = outcome.events.find((event) => event.type === 'confirm');
-    assert.ok(confirm && confirm.type === 'confirm');
-    assert.equal(confirm.action.summary, 'Ocultar "Papas fritas" del menú de los clientes: se sigue vendiendo en el POS.');
-    assert.ok(requests.every((request) => request.method === 'GET'), 'nothing was written to the POS');
-
-    // The model is told it is pending, not done.
-    const toolResult = outcome.requests[1].messages.at(-1)?.content as Anthropic.ToolResultBlockParam[];
-    assert.match(String(toolResult[0].content), /todavía NO hecho/);
-    assert.equal(toolResult[0].is_error, undefined);
-  });
-
-  it('a change the POS would refuse is explained instead of prepared', async () => {
-    mockPos(() => ({
-      body: {
-        success: true,
-        data: { id: PRODUCT_ID, name: 'Papas fritas', salePrice: 8000, isActive: false, isVisible: true },
+  const deactivate = {
+    content: [
+      {
+        type: 'tool_use' as const,
+        id: 'w1',
+        name: 'modificar_producto',
+        input: { producto_id: PRODUCT_ID, accion: 'desactivar' },
       },
-    }));
+    ],
+    stop_reason: 'tool_use' as const,
+  };
+
+  it('makes the change right away, without asking, and tells the model it is done', async () => {
+    const requests = papas();
 
     const outcome = await ask(
-      [
-        {
-          content: [
-            { type: 'tool_use', id: 'w1', name: 'modificar_producto', input: { producto_id: PRODUCT_ID, accion: 'desactivar' } },
-          ],
-          stop_reason: 'tool_use',
-        },
-        say('Ya estaban desactivadas.'),
-      ],
+      [deactivate, say('Listo, desactivé las papas fritas.')],
       [{ role: 'user', content: 'Desactiva las papas fritas' }],
       writer,
     );
 
-    assert.ok(!outcome.events.some((event) => event.type === 'confirm'));
-    const toolResult = outcome.requests[1].messages.at(-1)?.content as Anthropic.ToolResultBlockParam[];
-    assert.equal(toolResult[0].is_error, true);
-    assert.match(String(toolResult[0].content), /ya está desactivado/);
+    const [change] = requests.filter((request) => request.method !== 'GET');
+    assert.ok(change.url.pathname.endsWith(`/products/${PRODUCT_ID}/status`));
+    assert.deepEqual(change.body, { isActive: false });
+    const shown = outcome.events.find((event) => event.type === 'change');
+    assert.ok(shown && shown.type === 'change');
+    assert.equal(shown.message, 'Listo: "Papas fritas" quedó desactivado.');
+    assert.match(String(toolResults(outcome.requests[1])[0].content), /^Hecho\./);
   });
 
-  describe('answered in the conversation', () => {
-    const hide = {
-      content: [
-        { type: 'tool_use' as const, id: 'w1', name: 'modificar_producto', input: { producto_id: PRODUCT_ID, accion: 'ocultar' } },
-      ],
-      stop_reason: 'tool_use' as const,
-    };
-    const answer = (name: string) => ({
-      content: [{ type: 'tool_use' as const, id: 'a1', name, input: {} }],
-      stop_reason: 'tool_use' as const,
-    });
-    const papas = () =>
-      mockPos((request) => ({
-        body: {
-          success: true,
-          data:
-            request.method === 'GET'
-              ? { id: PRODUCT_ID, name: 'Papas fritas', salePrice: 8000, isActive: true, isVisible: true }
-              : {},
-        },
-      }));
-
-    it('makes the change when the user says yes in their next message', async () => {
-      const requests = papas();
-      const actions = new MemoryPendingActionStore();
-      const first = await ask(
-        [hide, say('Voy a ocultar las papas fritas del menú. ¿Lo hago?')],
-        [{ role: 'user', content: 'Oculta las papas fritas' }],
-        writer,
-        actions,
-      );
-      const prepared = first.events.find((event) => event.type === 'confirm');
-      assert.ok(prepared && prepared.type === 'confirm');
-      assert.ok(requests.every((request) => request.method === 'GET'));
-
-      const second = await ask(
-        [answer('confirmar_cambios'), say('Listo, ya no aparecen en el menú.')],
-        [
-          { role: 'user', content: 'Oculta las papas fritas' },
-          { role: 'assistant', content: 'Voy a ocultar las papas fritas del menú. ¿Lo hago?' },
-          { role: 'user', content: 'Sí, dale' },
+  it('names the branch of the change to whoever works across several', async () => {
+    papas({ branchId: 'branch-2' });
+    const owner = makeSession({
+      permissions: ['products.read', 'products.update', 'branches.switch'],
+      branches: {
+        own: { id: 'branch-1', name: 'Centro' },
+        canSeeAll: true,
+        list: [
+          { id: 'branch-1', name: 'Centro' },
+          { id: 'branch-2', name: 'Norte' },
         ],
-        writer,
-        actions,
-      );
-
-      const visibility = requests.find((request) => request.method === 'PATCH');
-      assert.ok(visibility?.url.pathname.endsWith(`/products/${PRODUCT_ID}/visibility`));
-      assert.deepEqual(visibility?.body, { isVisible: false });
-      const settled = second.events.find((event) => event.type === 'settled');
-      assert.ok(settled && settled.type === 'settled');
-      assert.equal(settled.id, prepared.action.id);
-      assert.equal(settled.outcome.state, 'done');
-      // And it cannot be made twice.
-      assert.equal((await actions.takeFromTurn('user-1', 1)).length, 0);
+      },
     });
 
-    it('never confirms a change prepared in the same turn, which the user has not heard', async () => {
-      const requests = papas();
+    const outcome = await ask([deactivate, say('Listo.')], [{ role: 'user', content: 'Desactiva las papas' }], owner);
 
-      const outcome = await ask(
-        [
-          { content: [...hide.content, ...answer('confirmar_cambios').content], stop_reason: 'tool_use' },
-          say('¿Lo hago?'),
-        ],
-        [{ role: 'user', content: 'Oculta las papas fritas' }],
-        writer,
-        new MemoryPendingActionStore(),
-      );
+    assert.match(String(toolResults(outcome.requests[1])[0].content), /Sede: Norte\.$/);
+  });
 
-      assert.ok(requests.every((request) => request.method === 'GET'), 'nothing was written');
-      assert.ok(!outcome.events.some((event) => event.type === 'settled'));
-      assert.equal(toolResults(outcome.requests[1])[1].is_error, true);
-    });
+  it('a change the POS would refuse is explained instead of made', async () => {
+    const requests = papas({ isActive: false });
 
-    it('drops the change when the user says no', async () => {
-      const requests = papas();
-      const actions = new MemoryPendingActionStore();
-      await ask([hide, say('¿Lo hago?')], [{ role: 'user', content: 'Oculta las papas' }], writer, actions);
+    const outcome = await ask(
+      [deactivate, say('Ya estaban desactivadas.')],
+      [{ role: 'user', content: 'Desactiva las papas fritas' }],
+      writer,
+    );
 
-      const outcome = await ask(
-        [answer('cancelar_cambios'), say('Listo, no cambié nada.')],
-        [
-          { role: 'user', content: 'Oculta las papas' },
-          { role: 'assistant', content: '¿Lo hago?' },
-          { role: 'user', content: 'No, mejor no' },
-        ],
-        writer,
-        actions,
-      );
-
-      assert.ok(requests.every((request) => request.method === 'GET'));
-      const settled = outcome.events.find((event) => event.type === 'settled');
-      assert.ok(settled && settled.type === 'settled' && settled.outcome.state === 'cancelled');
-    });
-
-    it('is offered only to someone who can make changes', async () => {
-      const reader = await ask([say('Hola')], undefined, makeSession({ permissions: ['products.read'] }));
-      const names = reader.requests[0].tools?.map((tool) => ('name' in tool ? tool.name : null));
-      assert.ok(!names?.includes('confirmar_cambios'));
-    });
+    assert.ok(requests.every((request) => request.method === 'GET'), 'nothing was written');
+    assert.ok(!outcome.events.some((event) => event.type === 'change'));
+    const [result] = toolResults(outcome.requests[1]);
+    assert.equal(result.is_error, true);
+    assert.match(String(result.content), /ya está desactivado/);
   });
 });

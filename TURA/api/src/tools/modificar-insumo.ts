@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import type { Session } from '../auth.js';
-import { assertOwnBranch, atBranch, quantity, readItem } from './inventory-shared.js';
+import { assertOwnBranch, quantity, readItem } from './inventory-shared.js';
 import { defineWriteTool, ToolRefusedError } from './types.js';
 
 const input = z.object({
@@ -45,29 +45,17 @@ export const modificarInsumo = defineWriteTool({
   description:
     'Activa o desactiva un insumo del inventario, o cambia su mínimo (desde cuántas existencias se avisa ' +
     'que se acaba). Para cambiar las existencias usa ajustar_existencias. Primero busca el insumo con ' +
-    'consultar_inventario para tener su "id". Esta herramienta NO hace el cambio: lo deja listo y el usuario ' +
-    'lo confirma con un botón en su pantalla. Después de llamarla di qué va a pasar y pídele que lo ' +
-    'confirme; nunca digas que ya quedó hecho.',
+    'consultar_inventario para tener su "id". Hace el cambio de inmediato; después di en una frase cómo quedó.',
   permission: 'inventory.manage',
   input,
-  async prepare(args, { session }) {
-    const item = await checked(session, args);
-    const summary =
-      args.accion === 'activar'
-        ? `Activar el insumo "${item.name}": vuelve a estar disponible para compras y recetas.`
-        : args.accion === 'desactivar'
-          ? `Desactivar el insumo "${item.name}": deja de aparecer para compras y recetas nuevas. Sus existencias (${quantity(item.currentStock, item.unit)}) no cambian.`
-          : `Cambiar el mínimo de "${item.name}" de ${quantity(item.minimumStock, item.unit)} a ${quantity(args.minimo!, item.unit)}.`;
-    return { summary: atBranch(session, summary, item.branchId) };
-  },
-  async commit(args, { session }) {
+  async run(args, { session }) {
     const item = await checked(session, args);
     if (args.accion === 'cambiar_minimo') {
       await session.pos.patch(`/inventory-items/${item.id}`, { minimumStock: args.minimo });
-      return { message: `Listo: el mínimo de "${item.name}" ahora es ${quantity(args.minimo!, item.unit)}.` };
+      return { branchId: item.branchId, message: `Listo: el mínimo de "${item.name}" ahora es ${quantity(args.minimo!, item.unit)}.` };
     }
     const isActive = args.accion === 'activar';
     await session.pos.patch(`/inventory-items/${item.id}/status`, { isActive });
-    return { message: `Listo: "${item.name}" quedó ${isActive ? 'activo' : 'desactivado'}.` };
+    return { branchId: item.branchId, message: `Listo: "${item.name}" quedó ${isActive ? 'activo' : 'desactivado'}.` };
   },
 });

@@ -28,7 +28,7 @@ export class PosApiError extends Error {
  * Client for GB-BE, bound to one user's access token. Every call carries that
  * token, so GB-BE's own guards decide what TURA may see or change — this
  * service holds no credentials of its own for the POS. Writes go only through
- * a write tool's `commit`, which runs once the user has confirmed it.
+ * a write tool's `run`, as the user who asked for the change.
  */
 export class PosClient {
   constructor(private readonly accessToken: string) {}

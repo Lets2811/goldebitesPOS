@@ -48,7 +48,7 @@ export async function readProduct(session: Session, id: string): Promise<PosProd
 /**
  * Each branch keeps its own items and products: a user who works at one may
  * only change that one's; whoever may see every branch may change any. Said
- * before anything is prepared, in words the model can pass on, instead of
+ * before anything is changed, in words the model can pass on, instead of
  * the POS's refusal at the end.
  */
 export function assertOwnBranch(session: Session, branchId: string | undefined, what: string): void {
@@ -59,12 +59,12 @@ export function assertOwnBranch(session: Session, branchId: string | undefined, 
 }
 
 /**
- * A change about to be confirmed, with the branch it happens at when the
- * user works across several: the same item can exist at each one, and the
- * confirmation has to say which.
+ * A change that was made, with the branch it happened at when the user works
+ * across several: the same item can exist at each one, so the answer has to
+ * say which.
  */
-export function atBranch(session: Session, summary: string, branchId: string | undefined): string {
-  if (!session.branches.canSeeAll || !branchId) return summary;
+export function atBranch(session: Session, message: string, branchId: string | undefined): string {
+  if (!session.branches.canSeeAll || !branchId) return message;
   const branch = session.branches.list.find((candidate) => candidate.id === branchId);
-  return branch ? `${summary} Sede: ${branch.name}.` : summary;
+  return branch ? `${message} Sede: ${branch.name}.` : message;
 }

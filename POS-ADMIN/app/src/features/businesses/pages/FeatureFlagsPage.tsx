@@ -21,7 +21,7 @@ export default function FeatureFlagsPage() {
       <PageHeader
         title="Feature Flags"
         subtitle="Funcionalidades activas o apagadas para toda la plataforma, sin importar el negocio."
-        breadcrumbs={[{ label: 'Plataforma', path: '/plataforma' }, { label: 'Feature Flags' }]}
+        backTo={{ label: 'Panel', path: '/' }}
       />
 
       {isLoading || !flags ? (

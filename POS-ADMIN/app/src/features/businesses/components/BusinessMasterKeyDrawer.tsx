@@ -14,7 +14,7 @@ import ConfirmDialog from '../../../shared/components/common/ConfirmDialog';
 import DetailDrawer from '../../../shared/components/common/DetailDrawer';
 import LoadingSkeleton from '../../../shared/components/common/LoadingSkeleton';
 import { normalizeApiError } from '../../../shared/lib/api/api-error';
-import type { Business } from '../../../modules/businesses/types/platform-admin.types';
+import type { BusinessRef } from '../../../modules/businesses/types/platform-admin.types';
 import {
   useMasterKeyStatus,
   useResetMasterKey,
@@ -26,11 +26,11 @@ import {
  * type to rectify a closed cash session. Recovered and reset only here; the
  * POS never shows it. Every reveal and reset lands in the business's audit log.
  */
-export default function BusinessMasterKeyDrawer({ business, onClose }: { business: Business | null; onClose: () => void }) {
+export default function BusinessMasterKeyDrawer({ business, onClose }: { business: BusinessRef | null; onClose: () => void }) {
   return business ? <MasterKeyContent key={business.id} business={business} onClose={onClose} /> : null;
 }
 
-function MasterKeyContent({ business, onClose }: { business: Business; onClose: () => void }) {
+function MasterKeyContent({ business, onClose }: { business: BusinessRef; onClose: () => void }) {
   const { enqueueSnackbar } = useSnackbar();
   const { data: status, isLoading } = useMasterKeyStatus(business.id);
   const reveal = useRevealMasterKey(business.id);

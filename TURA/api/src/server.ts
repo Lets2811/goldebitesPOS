@@ -10,8 +10,7 @@ import {
   type TuraEvent,
 } from './agent/agent.service.js';
 import { runSimulatedTurn } from './agent/simulated-turn.js';
-import { pendingActions } from './agent/pending-actions.js';
-import { commitAction } from './agent/commit-action.js';
+import { allTools } from './tools/registry.js';
 import { newAudit, recordAudit } from './audit/audit-log.js';
 import { authenticate, UnauthenticatedError, type Session } from './auth.js';
 import { config } from './config.js';
@@ -164,6 +163,7 @@ app.post('/tura/chat', async (req, res) => {
     // Failed and abandoned turns are logged too: they still cost what they used.
     recordTurn({
       at: new Date(startedAt).toISOString(),
+      businessId: session.businessId,
       mode: parsed.data.mode,
       outcome,
       firstTextMs: meter.firstTextAt === null ? null : meter.firstTextAt - startedAt,
@@ -187,69 +187,6 @@ app.post('/tura/chat', async (req, res) => {
   }
 });
 
-/**
- * The user confirms a change TURA prepared (see the 'confirm' event): it runs
- * now, as that user, with exactly the input it was prepared with. A change
- * runs once, only for the user it was prepared for, and only while that user
- * still has the permission it needs.
- */
-app.post('/tura/actions/:id/confirm', async (req, res) => {
-  const session = await authenticateOrReply(req, res);
-  if (!session) {
-    return;
-  }
-  const action = await pendingActions.take(String(req.params.id), session.userId ?? 'anonymous');
-  if (!action) {
-    res.status(404).json({
-      message: 'Este cambio ya no se puede confirmar: venció o ya se usó. Pídeselo de nuevo a TURA.',
-    });
-    return;
-  }
-  const startedAt = Date.now();
-  const outcome = await commitAction(action, session);
-  if (outcome.ok) {
-    res.json({ message: outcome.message });
-  } else {
-    res.status(outcome.status).json({ message: outcome.message });
-  }
-  const message = outcome.ok ? outcome.message : '';
-  const failure = outcome.ok ? undefined : outcome.failure;
-
-  recordAudit({
-    at: new Date(startedAt).toISOString(),
-    userId: session.userId,
-    businessId: session.businessId,
-    branchId: session.branchId,
-    role: session.roleName,
-    mode: 'action',
-    message: `Confirmó: ${action.summary}`,
-    outcome: failure ? 'error' : 'ok',
-    error: failure,
-    totalMs: Date.now() - startedAt,
-    iterations: 0,
-    limitReached: false,
-    tools: [
-      {
-        name: action.tool,
-        input: action.input,
-        ok: !failure,
-        ms: Date.now() - startedAt,
-        ...(failure ? { error: failure } : { result: message }),
-      },
-    ],
-  }).catch((error: unknown) => console.error('Could not record audit', error));
-});
-
-/** The user cancels a change TURA prepared: it can no longer be confirmed. */
-app.post('/tura/actions/:id/discard', async (req, res) => {
-  const session = await authenticateOrReply(req, res);
-  if (!session) {
-    return;
-  }
-  await pendingActions.discard(String(req.params.id), session.userId ?? 'anonymous');
-  res.status(204).end();
-});
-
 function isAdmin(header: string | undefined): boolean {
   const presented = Buffer.from(header?.startsWith('Bearer ') ? header.slice(7).trim() : '');
   const expected = Buffer.from(config.adminKey);
@@ -259,17 +196,26 @@ function isAdmin(header: string | undefined): boolean {
 }
 
 /**
- * Usage and cost of the last `days` days, for the developer. Guarded by its own
- * key (TURA_ADMIN_KEY) rather than a POS role: what TURA costs to run is not
- * something the restaurant's staff should see.
+ * Whether a request may read the developer's endpoints below: what TURA
+ * costs and which tools it has. They are not part of the product, so they
+ * take their own key (TURA_ADMIN_KEY) instead of a POS role; the Golden
+ * Bites Admin holds it on its server and shows them to its team.
  */
-app.get('/tura/admin/usage', async (req, res) => {
+function allowAdmin(req: Request, res: Response): boolean {
   if (!config.adminKey) {
     res.status(404).json({ message: 'No disponible' });
-    return;
+    return false;
   }
   if (!isAdmin(req.headers.authorization)) {
     res.status(401).json({ message: 'Clave de administración incorrecta' });
+    return false;
+  }
+  return true;
+}
+
+/** Usage and cost of the last `days` days, in total, by model, by day and by business. */
+app.get('/tura/admin/usage', async (req, res) => {
+  if (!allowAdmin(req, res)) {
     return;
   }
   const days = z.coerce.number().int().min(1).max(365).catch(30).parse(req.query.days);
@@ -279,6 +225,22 @@ app.get('/tura/admin/usage', async (req, res) => {
     console.error('Could not read usage', error);
     res.status(500).json({ message: 'No se pudo leer el registro de uso' });
   }
+});
+
+/** Every tool TURA has: what it does, as the model is told, and the POS permission it needs. */
+app.get('/tura/admin/tools', (req, res) => {
+  if (!allowAdmin(req, res)) {
+    return;
+  }
+  res.json({
+    model: config.model,
+    tools: allTools().map((tool) => ({
+      name: tool.definition.name,
+      description: tool.definition.description ?? '',
+      permission: tool.permission,
+      kind: tool.kind,
+    })),
+  });
 });
 
 app.listen(config.port, () => {

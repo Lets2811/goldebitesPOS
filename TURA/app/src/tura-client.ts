@@ -10,24 +10,10 @@ export interface ChatTurn {
 export type TuraEvent =
   | { type: 'text'; delta: string }
   | { type: 'tool'; name: string }
-  /** A change TURA prepared: it happens only if the user confirms it (see confirmAction). */
-  | { type: 'confirm'; action: PendingChange }
-  /** The user answered a prepared change in the conversation ("sí", "no"): what became of it. */
-  | {
-      type: 'settled';
-      id: string;
-      outcome: { state: 'done' | 'failed'; message: string } | { state: 'cancelled' };
-    }
+  /** A change TURA made in the POS, as it was left. */
+  | { type: 'change'; message: string }
   | { type: 'done' }
   | { type: 'error'; message: string };
-
-/** A change TURA prepared, waiting for the user. */
-export interface PendingChange {
-  id: string;
-  /** What will happen, in plain words. */
-  summary: string;
-  expiresAt: string;
-}
 
 /** See ConversationMode in TURA/api: typed in the chat, or spoken and heard. */
 export type ConversationMode = 'chat' | 'voice';
@@ -101,38 +87,4 @@ export async function* streamChat(
       }
     }
   }
-}
-
-/** Calls TURA/api as the linked user, renewing an expired access token once. */
-async function postAuthorized(path: string): Promise<Response> {
-  let accessToken = await getAccessToken();
-  const post = (token: string | null) =>
-    fetch(path, { method: 'POST', headers: token ? { Authorization: `Bearer ${token}` } : {} });
-  let response = await post(accessToken);
-  if (response.status === 401) {
-    accessToken = await getAccessToken(true);
-    if (!accessToken) {
-      throw new NotLinkedError();
-    }
-    response = await post(accessToken);
-  }
-  return response;
-}
-
-/**
- * The user confirms a change TURA prepared: only now is it made in the POS.
- * Resolves with what was done; rejects with why it was not.
- */
-export async function confirmAction(id: string): Promise<string> {
-  const response = await postAuthorized(`/tura/actions/${encodeURIComponent(id)}/confirm`);
-  const payload = await response.json().catch(() => null);
-  if (!response.ok) {
-    throw new Error(payload?.message ?? 'No se pudo hacer el cambio. Intenta de nuevo.');
-  }
-  return payload?.message ?? 'Listo.';
-}
-
-/** The user cancels a change TURA prepared: it can no longer be made. */
-export async function discardAction(id: string): Promise<void> {
-  await postAuthorized(`/tura/actions/${encodeURIComponent(id)}/discard`).catch(() => undefined);
 }

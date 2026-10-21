@@ -24,7 +24,7 @@ import {
 } from "../../../modules/integrations/tura";
 import type { TuraLinkCode } from "../../../shared/modules/tura-links/types/tura-link.types";
 import TuraCodeCard from "../../../shared/modules/tura-links/components/TuraCodeCard";
-import type { Business } from "../../../modules/businesses/types/platform-admin.types";
+import type { BusinessRef } from "../../../modules/businesses/types/platform-admin.types";
 
 const TURA_FEATURE = "tura";
 
@@ -71,7 +71,7 @@ export default function BusinessTuraDrawer({
   business,
   onClose,
 }: {
-  business: Business | null;
+  business: BusinessRef | null;
   onClose: () => void;
 }) {
   return business ? (
@@ -83,7 +83,7 @@ function TuraContent({
   business,
   onClose,
 }: {
-  business: Business;
+  business: BusinessRef;
   onClose: () => void;
 }) {
   const { enqueueSnackbar } = useSnackbar();

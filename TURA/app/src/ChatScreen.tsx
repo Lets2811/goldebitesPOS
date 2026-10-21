@@ -4,18 +4,14 @@ import { BackIcon } from './icons';
 import { getLink, subscribe } from './link';
 import { onboardingOpening, onboardingReply } from './onboarding';
 import { navigate } from './route';
-import { NotLinkedError, streamChat, type ChatTurn, type PendingChange } from './tura-client';
-import { ActionCard, describeChangeOutcome, type ActionOutcome } from './ActionCard';
+import { NotLinkedError, streamChat, type ChatTurn } from './tura-client';
+import { ChangeCard } from './ChangeCard';
 
 interface Message {
   id: number;
-  role: 'user' | 'assistant' | 'error' | 'action';
+  /** 'change': a change TURA made, shown as a card (TURA's own answer already tells it). */
+  role: 'user' | 'assistant' | 'error' | 'change';
   content: string;
-  /** For an 'action' message: the change TURA prepared, and what became of it. */
-  action?: PendingChange;
-  outcome?: ActionOutcome;
-  /** The outcome came from TURA itself (the user answered it in the conversation), so it already knows. */
-  answeredInChat?: boolean;
   /**
    * Part of linking the app (the name, the code), handled on this device.
    * It is shown like any other message but never sent to the assistant.
@@ -35,19 +31,9 @@ const TOOL_STATUS: Record<string, string> = {
   consultar_ventas: 'Consultando ventas…',
   consultar_inventario: 'Revisando el inventario…',
   ajustar_existencias: 'Preparando el ajuste…',
-  modificar_insumo: 'Preparando el cambio…',
-  modificar_producto: 'Preparando el cambio…',
-  confirmar_cambios: 'Haciendo el cambio…',
-  cancelar_cambios: 'Cancelando el cambio…',
+  modificar_insumo: 'Haciendo el cambio…',
+  modificar_producto: 'Haciendo el cambio…',
 };
-
-/** What became of a change, told to TURA so the conversation knows (it never sees the buttons). */
-function describeOutcome(message: Message): string | null {
-  if (!message.action || !message.outcome || message.answeredInChat) {
-    return null;
-  }
-  return describeChangeOutcome(message.action.summary, message.outcome);
-}
 
 /** TURA/api accepts at most this many turns; older ones are dropped. */
 const MAX_HISTORY = 40;
@@ -56,16 +42,16 @@ const MAX_HISTORY = 40;
 function toHistory(messages: Message[]): ChatTurn[] {
   const turns: ChatTurn[] = [];
   for (const message of messages) {
-    if (message.local || message.role === 'error') {
+    // A change card repeats what TURA's answer already says.
+    if (message.local || message.role === 'error' || message.role === 'change') {
       continue;
     }
-    const content = message.role === 'action' ? describeOutcome(message) : message.content;
+    const content = message.content;
     if (!content || content.trim() === '') {
       continue;
     }
     const role = message.role === 'user' ? 'user' : 'assistant';
     const last = turns.at(-1);
-    // A change's outcome joins TURA's answer it came with: one assistant turn.
     if (last && last.role === role) {
       last.content = `${last.content}\n\n${content}`;
     } else {
@@ -168,19 +154,12 @@ export function ChatScreen({ hidden }: { hidden: boolean }) {
           appendToAnswer(event.delta);
         } else if (event.type === 'tool') {
           setStatus(TOOL_STATUS[event.name] ?? 'Consultando el POS…');
-        } else if (event.type === 'confirm') {
-          const action = event.action;
+        } else if (event.type === 'change') {
+          const { message } = event;
           setMessages((current) => [
             ...current,
-            { id: nextId.current++, role: 'action', content: '', action },
+            { id: nextId.current++, role: 'change', content: message },
           ]);
-        } else if (event.type === 'settled') {
-          const { id, outcome } = event;
-          setMessages((current) =>
-            current.map((message) =>
-              message.action?.id === id ? { ...message, outcome, answeredInChat: true } : message,
-            ),
-          );
         } else if (event.type === 'error') {
           showError(event.message);
         }
@@ -230,17 +209,8 @@ export function ChatScreen({ hidden }: { hidden: boolean }) {
       <main className="chat__messages">
         {messages.length > 0 ? (
           messages.map((message) =>
-            message.role === 'action' && message.action ? (
-              <ActionCard
-                key={message.id}
-                action={message.action}
-                outcome={message.answeredInChat ? message.outcome : undefined}
-                onSettled={(outcome) =>
-                  setMessages((current) =>
-                    current.map((m) => (m.id === message.id ? { ...m, outcome } : m)),
-                  )
-                }
-              />
+            message.role === 'change' ? (
+              <ChangeCard key={message.id} message={message.content} />
             ) : (
               message.content !== '' && (
                 <p key={message.id} className={`bubble bubble--${message.role}`}>

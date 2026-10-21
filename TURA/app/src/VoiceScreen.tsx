@@ -5,8 +5,8 @@ import { BackIcon, MicIcon, MicOffIcon } from './icons';
 import { getLink } from './link';
 import { onboardingOpening, onboardingReply } from './onboarding';
 import { navigate } from './route';
-import { NotLinkedError, streamChat, type ChatTurn, type PendingChange } from './tura-client';
-import { ActionCard, describeChangeOutcome, type ActionOutcome } from './ActionCard';
+import { NotLinkedError, streamChat, type ChatTurn } from './tura-client';
+import { ChangeCard } from './ChangeCard';
 import {
   canListen,
   say,
@@ -119,22 +119,8 @@ export function VoiceScreen() {
   const [caption, setCaption] = useState(opening);
   const [failure, setFailure] = useState('');
   const history = useRef<ChatTurn[]>([]);
-  /** Changes TURA prepared: answered aloud ("sí", "no"), or with the card's buttons. */
-  const [changes, setChanges] = useState<{ action: PendingChange; outcome?: ActionOutcome }[]>([]);
-
-  function settle(action: PendingChange, outcome: ActionOutcome) {
-    setChanges((current) =>
-      current.map((change) => (change.action.id === action.id ? { ...change, outcome } : change)),
-    );
-    // TURA hears what became of it on the next turn.
-    const said = describeChangeOutcome(action.summary, outcome);
-    const last = history.current.at(-1);
-    if (last?.role === 'assistant') {
-      history.current = [...history.current.slice(0, -1), { ...last, content: `${last.content}\n\n${said}` }];
-    } else {
-      history.current = [...history.current, { role: 'assistant', content: said }];
-    }
-  }
+  /** Changes TURA made in this answer, shown while it tells them. */
+  const [changes, setChanges] = useState<string[]>([]);
   // The microphone stays closed until TURA has said its opening line. The
   // shared state cannot say so by itself: on the first render it still holds
   // whatever it was when the screen was last left.
@@ -178,9 +164,8 @@ export function VoiceScreen() {
       },
       onPhrase(text) {
         setCaption(text);
-        // A new question: the changes already settled leave the screen; the
-        // ones still waiting stay, since this may be the answer to them.
-        setChanges((current) => current.filter((change) => !change.outcome));
+        // A new question: the changes of the last answer leave the screen.
+        setChanges([]);
         setQuestion({ text });
         setState('thinking');
       },
@@ -278,16 +263,10 @@ export function VoiceScreen() {
             unsaid = rest;
             sentences.forEach(sayAloud);
           } else if (event.type === 'tool') {
-            setCaption(event.name === 'confirmar_cambios' ? 'Haciendo el cambio…' : 'Consultando el POS…');
-          } else if (event.type === 'confirm') {
-            const action = event.action;
-            setChanges((current) => [...current, { action }]);
-          } else if (event.type === 'settled') {
-            // Answered aloud: TURA already knows, and says how it went.
-            const { id, outcome } = event;
-            setChanges((current) =>
-              current.map((change) => (change.action.id === id ? { ...change, outcome } : change)),
-            );
+            setCaption('Consultando el POS…');
+          } else if (event.type === 'change') {
+            const { message } = event;
+            setChanges((current) => [...current, message]);
           } else if (event.type === 'error') {
             cancelled = true;
             fail(event.message);
@@ -371,13 +350,8 @@ export function VoiceScreen() {
 
         {changes.length > 0 && (
           <div className="voice__actions">
-            {changes.map(({ action, outcome }) => (
-              <ActionCard
-                key={action.id}
-                action={action}
-                outcome={outcome}
-                onSettled={(tapped) => settle(action, tapped)}
-              />
+            {changes.map((message, index) => (
+              <ChangeCard key={index} message={message} />
             ))}
           </div>
         )}

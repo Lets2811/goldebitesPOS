@@ -23,7 +23,7 @@ import type {
   EInvoicingSettingsPayload,
   NumberingRange,
 } from '../../../shared/modules/e-invoicing/types/e-invoicing.types';
-import type { Business } from '../../../modules/businesses/types/platform-admin.types';
+import type { BusinessRef } from '../../../modules/businesses/types/platform-admin.types';
 
 interface Form {
   environment: EInvoicingEnvironment;
@@ -49,11 +49,11 @@ const fromSettings = (settings: EInvoicingSettings | undefined): Form => ({
  * Conecta una empresa con SU cuenta de Factus (cada NIT factura con su propia
  * cuenta y resolución DIAN). Las claves se guardan cifradas y nunca se muestran.
  */
-export default function BusinessEInvoicingDrawer({ business, onClose }: { business: Business | null; onClose: () => void }) {
+export default function BusinessEInvoicingDrawer({ business, onClose }: { business: BusinessRef | null; onClose: () => void }) {
   return business ? <EInvoicingContent key={business.id} business={business} onClose={onClose} /> : null;
 }
 
-function EInvoicingContent({ business, onClose }: { business: Business; onClose: () => void }) {
+function EInvoicingContent({ business, onClose }: { business: BusinessRef; onClose: () => void }) {
   const { enqueueSnackbar } = useSnackbar();
   const { data: settings, isLoading } = useEInvoicingSettings(business.id);
   const save = useSaveEInvoicingSettings(business.id);

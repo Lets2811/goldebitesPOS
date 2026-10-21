@@ -15,10 +15,10 @@ import { useSetBusinessFeature } from '../../../modules/businesses/hooks/use-set
 import { useBusinessUsers } from '../../../modules/businesses/hooks/use-business-users';
 import { useResetUserPassword } from '../../../modules/businesses/hooks/use-reset-user-password';
 import { normalizeApiError } from '../../../shared/lib/api/api-error';
-import type { Business, BusinessUserSummary } from '../../../modules/businesses/types/platform-admin.types';
+import type { BusinessRef, BusinessUserSummary } from '../../../modules/businesses/types/platform-admin.types';
 
 interface BusinessFeaturesDrawerProps {
-  business: Business | null;
+  business: BusinessRef | null;
   onClose: () => void;
 }
 

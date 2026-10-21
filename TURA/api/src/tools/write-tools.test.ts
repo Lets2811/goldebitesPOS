@@ -109,62 +109,16 @@ describe('consultar_inventario across branches', () => {
 });
 
 describe('ajustar_existencias', () => {
-  it('prepares without changing anything, and says what will happen', async () => {
-    const requests = pos(() => item());
+  it('adds what came in, right away, and says how it was left', async () => {
+    let stock = 8;
+    const requests = pos(() => item({ currentStock: stock }));
 
-    const { summary } = await ajustarExistencias.prepare(
+    const promise = ajustarExistencias.run(
       { insumo_id: ITEM_ID, operacion: 'sumar', cantidad: 10, motivo: 'compra en plaza' },
       { session },
     );
-
-    assert.equal(summary, 'Sumar 10 kg a "Papa": pasa de 8 kg a 18 kg. Motivo: compra en plaza.');
-    assert.deepEqual(writes(requests), []);
-  });
-
-  it('refuses to take out more than there is', async () => {
-    pos(() => item());
-    await assert.rejects(
-      ajustarExistencias.prepare({ insumo_id: ITEM_ID, operacion: 'restar', cantidad: 9, motivo: 'se dañó' }, { session }),
-      (error) => error instanceof ToolRefusedError && /no se pueden restar 9 kg/.test(error.message),
-    );
-  });
-
-  it('refuses a count that changes nothing', async () => {
-    pos(() => item());
-    await assert.rejects(
-      ajustarExistencias.prepare({ insumo_id: ITEM_ID, operacion: 'fijar', cantidad: 8, motivo: 'conteo' }, { session }),
-      ToolRefusedError,
-    );
-  });
-
-  it("lets whoever may see every branch change another branch's item, naming the branch", async () => {
-    pos(() => item({ branchId: 'branch-2' }));
-
-    const { summary } = await ajustarExistencias.prepare(
-      { insumo_id: ITEM_ID, operacion: 'sumar', cantidad: 1, motivo: 'compra' },
-      { session: owner },
-    );
-
-    assert.equal(summary, 'Sumar 1 kg a "Papa": pasa de 8 kg a 9 kg. Motivo: compra. Sede: Norte.');
-  });
-
-  it("refuses another branch's item", async () => {
-    pos(() => item({ branchId: 'branch-2' }));
-    await assert.rejects(
-      ajustarExistencias.prepare({ insumo_id: ITEM_ID, operacion: 'sumar', cantidad: 1, motivo: 'compra' }, { session }),
-      (error) => error instanceof ToolRefusedError && /otra sede/.test(error.message),
-    );
-  });
-
-  it('commits a count against the stock there is when confirmed, not when prepared', async () => {
-    // Prepared at 8; by the time it is confirmed 2 more were used: 6 on hand.
-    let stock = 6;
-    const requests = pos(() => item({ currentStock: stock }));
-    const args = { insumo_id: ITEM_ID, operacion: 'fijar' as const, cantidad: 10, motivo: 'conteo del cierre' };
-
-    const promise = ajustarExistencias.commit(args, { session });
-    stock = 10; // what the POS holds after the adjustment, read back for the message
-    const { message } = await promise;
+    stock = 18; // what the POS holds after the adjustment, read back for the message
+    const { message, branchId } = await promise;
 
     const [adjustment] = writes(requests);
     assert.equal(adjustment.url.pathname.endsWith('/inventory/adjustments'), true);
@@ -172,74 +126,138 @@ describe('ajustar_existencias', () => {
       branchId: 'branch-1',
       inventoryItemId: ITEM_ID,
       direction: 'IN',
+      quantity: 10,
+      reason: 'compra en plaza (vía TURA)',
+    });
+    assert.equal(message, 'Listo: "Papa" quedó en 18 kg.');
+    assert.equal(branchId, 'branch-1');
+  });
+
+  it('sets a count against the stock there is', async () => {
+    const requests = pos(() => item({ currentStock: 6 }));
+
+    await ajustarExistencias.run(
+      { insumo_id: ITEM_ID, operacion: 'fijar', cantidad: 10, motivo: 'conteo del cierre' },
+      { session },
+    );
+
+    assert.deepEqual(writes(requests)[0].body, {
+      branchId: 'branch-1',
+      inventoryItemId: ITEM_ID,
+      direction: 'IN',
       quantity: 4,
       reason: 'conteo del cierre (vía TURA)',
     });
-    assert.equal(message, 'Listo: "Papa" quedó en 10 kg.');
+  });
+
+  it('refuses to take out more than there is, changing nothing', async () => {
+    const requests = pos(() => item());
+    await assert.rejects(
+      ajustarExistencias.run({ insumo_id: ITEM_ID, operacion: 'restar', cantidad: 9, motivo: 'se dañó' }, { session }),
+      (error) => error instanceof ToolRefusedError && /no se pueden restar 9 kg/.test(error.message),
+    );
+    assert.deepEqual(writes(requests), []);
+  });
+
+  it('refuses a count that changes nothing', async () => {
+    pos(() => item());
+    await assert.rejects(
+      ajustarExistencias.run({ insumo_id: ITEM_ID, operacion: 'fijar', cantidad: 8, motivo: 'conteo' }, { session }),
+      ToolRefusedError,
+    );
+  });
+
+  it("lets whoever may see every branch change another branch's item", async () => {
+    const requests = pos(() => item({ branchId: 'branch-2' }));
+
+    const { branchId } = await ajustarExistencias.run(
+      { insumo_id: ITEM_ID, operacion: 'sumar', cantidad: 1, motivo: 'compra' },
+      { session: owner },
+    );
+
+    assert.equal(writes(requests).length, 1);
+    assert.equal(branchId, 'branch-2');
+  });
+
+  it("refuses another branch's item to someone kept to their branch", async () => {
+    const requests = pos(() => item({ branchId: 'branch-2' }));
+    await assert.rejects(
+      ajustarExistencias.run({ insumo_id: ITEM_ID, operacion: 'sumar', cantidad: 1, motivo: 'compra' }, { session }),
+      (error) => error instanceof ToolRefusedError && /otra sede/.test(error.message),
+    );
+    assert.deepEqual(writes(requests), []);
   });
 });
 
 describe('modificar_insumo', () => {
-  it('deactivates an item when confirmed', async () => {
+  it('deactivates an item', async () => {
     const requests = pos(() => item());
-    const args = { insumo_id: ITEM_ID, accion: 'desactivar' as const };
 
-    const { summary } = await modificarInsumo.prepare(args, { session });
-    assert.match(summary, /Desactivar el insumo "Papa"/);
-    assert.deepEqual(writes(requests), []);
+    const { message } = await modificarInsumo.run({ insumo_id: ITEM_ID, accion: 'desactivar' }, { session });
 
-    await modificarInsumo.commit(args, { session });
     const [change] = writes(requests);
     assert.equal(change.method, 'PATCH');
     assert.equal(change.url.pathname.endsWith(`/inventory-items/${ITEM_ID}/status`), true);
     assert.deepEqual(change.body, { isActive: false });
+    assert.equal(message, 'Listo: "Papa" quedó desactivado.');
   });
 
   it('changes the minimum', async () => {
     const requests = pos(() => item());
-    await modificarInsumo.commit({ insumo_id: ITEM_ID, accion: 'cambiar_minimo', minimo: 12 }, { session });
+    await modificarInsumo.run({ insumo_id: ITEM_ID, accion: 'cambiar_minimo', minimo: 12 }, { session });
     assert.deepEqual(writes(requests)[0].body, { minimumStock: 12 });
   });
 
   it('asks for what is missing, and refuses what is already so', async () => {
-    pos(() => item({ isActive: false }));
-    await assert.rejects(modificarInsumo.prepare({ insumo_id: ITEM_ID, accion: 'cambiar_minimo' }, { session }), /falta decir/);
-    await assert.rejects(modificarInsumo.prepare({ insumo_id: ITEM_ID, accion: 'desactivar' }, { session }), /ya está desactivado/);
+    const requests = pos(() => item({ isActive: false }));
+    await assert.rejects(modificarInsumo.run({ insumo_id: ITEM_ID, accion: 'cambiar_minimo' }, { session }), /falta decir/);
+    await assert.rejects(modificarInsumo.run({ insumo_id: ITEM_ID, accion: 'desactivar' }, { session }), /ya está desactivado/);
+    assert.deepEqual(writes(requests), []);
   });
 });
 
 describe('modificar_producto', () => {
-  it('hides a product from the customer menu, telling it still sells in the POS', async () => {
+  it('deactivates a product', async () => {
     const requests = pos(() => product());
-    const args = { producto_id: PRODUCT_ID, accion: 'ocultar' as const };
 
-    const { summary } = await modificarProducto.prepare(args, { session });
-    assert.equal(summary, 'Ocultar "Papas fritas" del menú de los clientes: se sigue vendiendo en el POS.');
+    const { message } = await modificarProducto.run({ producto_id: PRODUCT_ID, accion: 'desactivar' }, { session });
 
-    await modificarProducto.commit(args, { session });
+    const [change] = writes(requests);
+    assert.equal(change.url.pathname.endsWith(`/products/${PRODUCT_ID}/status`), true);
+    assert.deepEqual(change.body, { isActive: false });
+    assert.equal(message, 'Listo: "Papas fritas" quedó desactivado.');
+  });
+
+  it('hides a product from the customer menu', async () => {
+    const requests = pos(() => product());
+
+    const { message } = await modificarProducto.run({ producto_id: PRODUCT_ID, accion: 'ocultar' }, { session });
+
     const [change] = writes(requests);
     assert.equal(change.url.pathname.endsWith(`/products/${PRODUCT_ID}/visibility`), true);
     assert.deepEqual(change.body, { isVisible: false });
+    assert.match(message, /ya no aparece en el menú/);
   });
 
   it('changes the price', async () => {
     const requests = pos(() => product());
-    const args = { producto_id: PRODUCT_ID, accion: 'cambiar_precio' as const, precio: 9500 };
 
-    const { summary } = await modificarProducto.prepare(args, { session });
-    assert.match(summary, /de 8\.000 pesos a 9\.500 pesos/);
+    const { message } = await modificarProducto.run(
+      { producto_id: PRODUCT_ID, accion: 'cambiar_precio', precio: 9500 },
+      { session },
+    );
 
-    const { message } = await modificarProducto.commit(args, { session });
     assert.deepEqual(writes(requests)[0].body, { salePrice: 9500 });
     assert.match(message, /ahora cuesta 9\.500 pesos/);
   });
 
   it('refuses what is already so', async () => {
-    pos(() => product({ isActive: false }));
+    const requests = pos(() => product({ isActive: false }));
     await assert.rejects(
-      modificarProducto.prepare({ producto_id: PRODUCT_ID, accion: 'desactivar' }, { session }),
+      modificarProducto.run({ producto_id: PRODUCT_ID, accion: 'desactivar' }, { session }),
       /ya está desactivado/,
     );
+    assert.deepEqual(writes(requests), []);
   });
 });
 

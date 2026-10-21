@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import type { Session } from '../auth.js';
-import { assertOwnBranch, atBranch, pesos, readProduct } from './inventory-shared.js';
+import { assertOwnBranch, pesos, readProduct } from './inventory-shared.js';
 import { defineWriteTool, ToolRefusedError } from './types.js';
 
 const input = z.object({
@@ -51,33 +51,21 @@ export const modificarProducto = defineWriteTool({
   description:
     'Activa, desactiva, oculta o muestra un producto del menú, o cambia su precio. Primero búscalo con ' +
     'consultar_productos para tener su "id". Ocultar no es lo mismo que desactivar: un producto oculto se ' +
-    'sigue vendiendo en el POS, solo no lo ven los clientes en su menú. Esta herramienta NO hace el cambio: ' +
-    'lo deja listo y el usuario lo confirma con un botón en su pantalla. Después de llamarla di qué va a ' +
-    'pasar y pídele que lo confirme; nunca digas que ya quedó hecho.',
+    'sigue vendiendo en el POS, solo no lo ven los clientes en su menú. Hace el cambio de inmediato; después di en una frase cómo quedó.',
   permission: 'products.update',
   input,
-  async prepare(args, { session }) {
-    const product = await checked(session, args);
-    const summaries: Record<Input['accion'], string> = {
-      activar: `Activar "${product.name}": vuelve a venderse en el POS y en el menú.`,
-      desactivar: `Desactivar "${product.name}": deja de venderse en el POS y en el menú.`,
-      ocultar: `Ocultar "${product.name}" del menú de los clientes: se sigue vendiendo en el POS.`,
-      mostrar: `Mostrar "${product.name}" otra vez en el menú de los clientes.`,
-      cambiar_precio: `Cambiar el precio de "${product.name}" de ${pesos(product.salePrice)} a ${pesos(args.precio ?? 0)}.`,
-    };
-    return { summary: atBranch(session, summaries[args.accion], product.branchId) };
-  },
-  async commit(args, { session }) {
+  async run(args, { session }) {
     const product = await checked(session, args);
     switch (args.accion) {
       case 'activar':
       case 'desactivar':
         await session.pos.patch(`/products/${product.id}/status`, { isActive: args.accion === 'activar' });
-        return { message: `Listo: "${product.name}" quedó ${args.accion === 'activar' ? 'activo' : 'desactivado'}.` };
+        return { branchId: product.branchId, message: `Listo: "${product.name}" quedó ${args.accion === 'activar' ? 'activo' : 'desactivado'}.` };
       case 'ocultar':
       case 'mostrar':
         await session.pos.patch(`/products/${product.id}/visibility`, { isVisible: args.accion === 'mostrar' });
         return {
+          branchId: product.branchId,
           message:
             args.accion === 'ocultar'
               ? `Listo: "${product.name}" ya no aparece en el menú de los clientes.`
@@ -85,7 +73,7 @@ export const modificarProducto = defineWriteTool({
         };
       case 'cambiar_precio':
         await session.pos.patch(`/products/${product.id}`, { salePrice: args.precio });
-        return { message: `Listo: "${product.name}" ahora cuesta ${pesos(args.precio!)}.` };
+        return { branchId: product.branchId, message: `Listo: "${product.name}" ahora cuesta ${pesos(args.precio!)}.` };
     }
   },
 });

@@ -56,7 +56,13 @@ export default function AdminLayout() {
           </Box>
           <EnvironmentChip />
           {!user.mustChangePassword && (
-            <Tabs value={current ?? false} onChange={(_e, path: string) => navigate(path)} sx={{ flex: 1, minHeight: 56 }}>
+            <Tabs
+              value={current ?? false}
+              onChange={(_e, path: string) => navigate(path)}
+              variant="scrollable"
+              scrollButtons="auto"
+              sx={{ flex: 1, minHeight: 56, minWidth: 0 }}
+            >
               {ADMIN_SECTIONS.map((section) => (
                 <Tab key={section.path} value={section.path} label={section.label} sx={{ minHeight: 56 }} />
               ))}
