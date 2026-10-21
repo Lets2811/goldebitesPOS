@@ -6,9 +6,9 @@ const TIMEOUT_MS = 15_000;
 
 /**
  * What TURA (the assistant) costs to run and which tools it has, for the
- * Golden Bites team. TURA keeps both behind its own admin key; this service
- * holds that key and asks for them, so the team sees them from their Admin
- * session and the key never reaches a browser.
+ * Golden Bites team. The costs are behind TURA's admin key: this service
+ * holds it and asks for them, so the team sees them from their Admin session
+ * and the key never reaches a browser. The tools need only TURA's address.
  */
 @Controller('tura')
 export class TuraController {
@@ -19,26 +19,35 @@ export class TuraController {
   @Get('usage')
   usage(@Query('days') days?: string) {
     const period = Math.min(365, Math.max(1, parseInt(days ?? '30', 10) || 30));
-    return this.fromTura(`/tura/admin/usage?days=${period}`);
+    return this.fromTura(`/tura/admin/usage?days=${period}`, true);
   }
 
   @Get('tools')
   tools() {
-    return this.fromTura('/tura/admin/tools');
+    return this.fromTura('/tura/admin/tools', false);
   }
 
-  private async fromTura(path: string): Promise<unknown> {
+  private async fromTura(path: string, needsKey: boolean): Promise<unknown> {
     const { url, adminKey } = this.configService.getOrThrow<AdminConfig>('admin').tura;
-    if (!url || !adminKey) {
+    if (!url) {
       throw new HttpException(
-        { code: 'TURA_NOT_CONNECTED', message: 'TURA no está conectado a este Admin (TURA_API_URL y TURA_ADMIN_KEY).' },
+        { code: 'TURA_NOT_CONNECTED', message: 'Falta la dirección de TURA en el servidor del Admin (TURA_API_URL).' },
+        HttpStatus.SERVICE_UNAVAILABLE,
+      );
+    }
+    if (needsKey && !adminKey) {
+      throw new HttpException(
+        {
+          code: 'TURA_KEY_MISSING',
+          message: 'Para ver los costos falta la clave de TURA en el servidor del Admin (TURA_ADMIN_KEY).',
+        },
         HttpStatus.SERVICE_UNAVAILABLE,
       );
     }
     let response: globalThis.Response;
     try {
       response = await fetch(`${url}${path}`, {
-        headers: { Authorization: `Bearer ${adminKey}` },
+        headers: needsKey ? { Authorization: `Bearer ${adminKey}` } : {},
         signal: AbortSignal.timeout(TIMEOUT_MS),
       });
     } catch (error) {

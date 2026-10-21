@@ -196,10 +196,9 @@ function isAdmin(header: string | undefined): boolean {
 }
 
 /**
- * Whether a request may read the developer's endpoints below: what TURA
- * costs and which tools it has. They are not part of the product, so they
- * take their own key (TURA_ADMIN_KEY) instead of a POS role; the Golden
- * Bites Admin holds it on its server and shows them to its team.
+ * Whether a request may read what TURA costs. It is not part of the product,
+ * so it takes its own key (TURA_ADMIN_KEY) instead of a POS role; the Golden
+ * Bites Admin holds it on its server and shows it to its team.
  */
 function allowAdmin(req: Request, res: Response): boolean {
   if (!config.adminKey) {
@@ -227,11 +226,13 @@ app.get('/tura/admin/usage', async (req, res) => {
   }
 });
 
-/** Every tool TURA has: what it does, as the model is told, and the POS permission it needs. */
-app.get('/tura/admin/tools', (req, res) => {
-  if (!allowAdmin(req, res)) {
-    return;
-  }
+/**
+ * Every tool TURA has: what it does, as the model is told, and the POS
+ * permission it needs. Nothing secret, so no key: the Admin lists them even
+ * without TURA_ADMIN_KEY. The public nginx does not forward /tura/admin/, so
+ * only the private network (the Admin's server) reaches it.
+ */
+app.get('/tura/admin/tools', (_req, res) => {
   res.json({
     model: config.model,
     tools: allTools().map((tool) => ({
