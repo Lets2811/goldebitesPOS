@@ -30,6 +30,22 @@ export async function forceMustChangePassword(page: Page) {
 }
 
 /**
+ * Simula un negocio con varias sedes: la base local tiene una sola, así que
+ * el backend nunca pide elegir sede. Solo se marca la respuesta del login;
+ * al elegir sede, /auth/switch-branch (real) entrega la sesión ya resuelta.
+ */
+export async function forceBranchSelection(page: Page) {
+  await page.route(API.login, async (route) => {
+    const response = await route.fetch();
+    const body = await response.json();
+    if (body?.data?.user) {
+      body.data.user.branchSelectionRequired = true;
+    }
+    await route.fulfill({ response, json: body });
+  });
+}
+
+/**
  * Retiene la petición hasta llamar a `release()`, para poder inspeccionar
  * la UI mientras la petición está en curso.
  */

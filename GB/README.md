@@ -100,6 +100,7 @@ tests/
     login-errors.spec.ts           # estado de carga y errores del servidor (mocks)
     force-password-change.spec.ts  # cambio de contraseña obligatorio
     permissions.spec.ts            # menú, rutas y API según el rol
+    branch-selection.spec.ts       # elegir sede después del login (simulado: la base local tiene una sede)
 ```
 
 El seed solo trae usuarios administradores. Para probar permisos, la suite crea por API (con el admin) un cajero (`CASHIER`) y un cocinero (`KITCHEN`) de prueba la primera vez que corre; si ya existen, los reutiliza. Sus credenciales están en `.env.e2e`.

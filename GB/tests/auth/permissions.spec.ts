@@ -89,24 +89,26 @@ test.describe('AUTH - Permisos por rol', () => {
   test.describe('Cocina (KITCHEN)', () => {
     test.use({ storageState: NO_SESSION });
 
-    test(
-      'TC-AUTH-037 - Destino después del login sin permiso de Centro de operaciones',
-      {
-        annotation: {
-          type: 'comportamiento-actual',
-          description:
-            'KITCHEN no tiene dashboard.read y el login siempre envía a "/": aterriza en "No tienes acceso". Confirmar si es lo esperado.',
-        },
-      },
-      async ({ request, loginPage, appShell }) => {
-        await ensureTestUser(request, kitchenUser);
-        await loginPage.goto();
+    // Comportamiento confirmado: KITCHEN no tiene dashboard.read, así que
+    // después del login ve "No tienes acceso" y entra a sus módulos desde el menú.
+    test('TC-AUTH-037 - Cocinero sin Centro de operaciones entra a sus módulos desde el menú', async ({
+      page,
+      request,
+      loginPage,
+      appShell,
+    }) => {
+      await ensureTestUser(request, kitchenUser);
+      await loginPage.goto();
 
-        await loginPage.login(kitchenUser.email, kitchenUser.password);
+      await loginPage.login(kitchenUser.email, kitchenUser.password);
 
-        await appShell.expectForbidden();
-        await expect(appShell.sidebarLinks).toHaveText(['Pedidos', 'Cocina', 'Checklists']);
-      },
-    );
+      await appShell.expectForbidden();
+      await expect(appShell.sidebarLinks).toHaveText(['Pedidos', 'Cocina', 'Checklists']);
+
+      await appShell.sidebarLinks.filter({ hasText: 'Cocina' }).click();
+
+      await expect(page).toHaveURL('/cocina');
+      await expect(page.getByRole('heading', { name: 'Cocina', exact: true })).toBeVisible();
+    });
   });
 });
