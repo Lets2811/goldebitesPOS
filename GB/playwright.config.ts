@@ -1,12 +1,20 @@
+import { existsSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { defineConfig, devices } from '@playwright/test';
+import { ADMIN_STORAGE_STATE } from './tests/support/storage-state';
 
 /**
- * Read environment variables from file.
- * https://github.com/motdotla/dotenv
+ * Variables de las pruebas E2E (ver .env.e2e.example). Las que ya existan
+ * en el entorno, p. ej. en CI, tienen prioridad.
  */
-// import dotenv from 'dotenv';
-// import path from 'path';
-// dotenv.config({ path: path.resolve(__dirname, '.env') });
+const envFile = fileURLToPath(new URL('.env.e2e', import.meta.url));
+if (existsSync(envFile)) {
+  process.loadEnvFile(envFile);
+}
+
+const isCI = !!process.env.CI;
+const externalBaseURL = process.env.BASE_URL;
+const baseURL = externalBaseURL ?? 'http://localhost:5173';
 
 /**
  * See https://playwright.dev/docs/test-configuration.
@@ -16,64 +24,59 @@ export default defineConfig({
   /* Run tests in files in parallel */
   fullyParallel: true,
   /* Fail the build on CI if you accidentally left test.only in the source code. */
-  forbidOnly: !!process.env.CI,
+  forbidOnly: isCI,
   /* Retry on CI only */
-  retries: process.env.CI ? 2 : 0,
+  retries: isCI ? 2 : 0,
   /* Opt out of parallel tests on CI. */
-  workers: process.env.CI ? 1 : undefined,
+  workers: isCI ? 1 : undefined,
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
-  reporter: 'html',
+  reporter: isCI ? [['html', { open: 'never' }], ['list']] : 'html',
+  /* El dev server de Vite compila bajo demanda: la primera carga puede pasar de 5s */
+  expect: { timeout: 10_000 },
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {
-    /* Base URL to use in actions like `await page.goto('')`. */
-     baseURL: 'http://localhost:5173',
-
-    /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
-    trace: 'on-first-retry',
+    baseURL,
+    /* Evidencia de fallos también en local, donde no hay reintentos */
+    trace: 'retain-on-failure',
+    screenshot: 'only-on-failure',
+    video: 'retain-on-failure',
   },
 
-  /* Configure projects for major browsers */
   projects: [
+    /* Inicia sesión una vez y guarda la sesión para los demás proyectos */
+    {
+      name: 'setup',
+      testMatch: /.*\.setup\.ts/,
+    },
+
     {
       name: 'chromium',
-      use: { ...devices['Desktop Chrome'] },
+      use: { ...devices['Desktop Chrome'], storageState: ADMIN_STORAGE_STATE },
+      dependencies: ['setup'],
     },
 
     {
       name: 'firefox',
-      use: { ...devices['Desktop Firefox'] },
+      use: { ...devices['Desktop Firefox'], storageState: ADMIN_STORAGE_STATE },
+      dependencies: ['setup'],
     },
 
     {
       name: 'webkit',
-      use: { ...devices['Desktop Safari'] },
+      use: { ...devices['Desktop Safari'], storageState: ADMIN_STORAGE_STATE },
+      dependencies: ['setup'],
     },
-
-    /* Test against mobile viewports. */
-    // {
-    //   name: 'Mobile Chrome',
-    //   use: { ...devices['Pixel 5'] },
-    // },
-    // {
-    //   name: 'Mobile Safari',
-    //   use: { ...devices['iPhone 12'] },
-    // },
-
-    /* Test against branded browsers. */
-    // {
-    //   name: 'Microsoft Edge',
-    //   use: { ...devices['Desktop Edge'], channel: 'msedge' },
-    // },
-    // {
-    //   name: 'Google Chrome',
-    //   use: { ...devices['Desktop Chrome'], channel: 'chrome' },
-    // },
   ],
 
-  /* Run your local dev server before starting the tests */
-  // webServer: {
-  //   command: 'npm run start',
-  //   url: 'http://localhost:3000',
-  //   reuseExistingServer: !process.env.CI,
-  // },
+  /*
+   * Levanta el frontend si no está corriendo. El backend (GB-BE) debe
+   * estar activo aparte. Con BASE_URL se prueba contra un ambiente externo.
+   */
+  webServer: externalBaseURL
+    ? undefined
+    : {
+        command: 'npm run dev',
+        url: baseURL,
+        reuseExistingServer: !isCI,
+      },
 });
