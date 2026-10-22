@@ -33,7 +33,7 @@ export class InventoryItemsService {
     actorUserId?: string,
   ): Promise<InventoryItem> {
     if (data.sku) {
-      await this.assertSkuFree(data.businessId, data.sku);
+      await this.assertSkuFree(data.branchId, data.sku);
     }
 
     const row = await this.inventoryItemsRepository.create(data);
@@ -69,10 +69,10 @@ export class InventoryItemsService {
     data: UpdateInventoryItemData,
     actorUserId?: string,
   ): Promise<InventoryItem> {
-    await this.getOwnedOrFail(businessId, id);
+    const current = await this.getOwnedOrFail(businessId, id);
 
     if (data.sku) {
-      await this.assertSkuFree(businessId, data.sku, id);
+      await this.assertSkuFree(current.branch_id, data.sku, id);
     }
 
     const row = await this.inventoryItemsRepository.update(
@@ -165,12 +165,12 @@ export class InventoryItemsService {
   }
 
   private async assertSkuFree(
-    businessId: string,
+    branchId: string,
     sku: string,
     excludeId?: string,
   ): Promise<void> {
     const taken = await this.inventoryItemsRepository.existsBySku(
-      businessId,
+      branchId,
       sku,
       excludeId,
     );

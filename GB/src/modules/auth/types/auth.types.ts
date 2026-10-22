@@ -9,6 +9,11 @@ export interface AuthenticatedProfile {
   lastName: string;
   email: string;
   mustChangePassword: boolean;
+  /**
+   * Signed in without a branch yet (someone who may work at every branch, at
+   * a business with several): the app shows the branch picker and nothing else.
+   */
+  branchSelectionRequired?: boolean;
 }
 
 /** Full profile returned by GET /users/me. No roleName — fetch the role separately if needed. */

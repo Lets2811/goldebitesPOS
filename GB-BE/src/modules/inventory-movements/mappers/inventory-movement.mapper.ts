@@ -43,6 +43,8 @@ export class InventoryMovementMapper {
       unit: row.unit,
       minimumStock: parseFloat(row.minimum_stock),
       currentStock: parseFloat(row.current_stock),
+      branchId: row.branch_id,
+      branchName: row.branch_name,
     };
   }
 }

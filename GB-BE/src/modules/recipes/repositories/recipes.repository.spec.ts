@@ -28,9 +28,14 @@ describe('RecipesRepository (integration)', () => {
       [`Test Business ${randomUUID()}`],
     );
     businessId = business.rows[0].id;
+    // Products and items belong to a branch.
+    await pool.query(
+      `INSERT INTO branches (business_id, name) VALUES ($1, 'Catálogo')`,
+      [businessId],
+    );
 
     const item = await pool.query<{ id: string }>(
-      `INSERT INTO inventory_items (business_id, name, unit, current_cost) VALUES ($1, $2, 'kg', 18.5) RETURNING id`,
+      `INSERT INTO inventory_items (branch_id, business_id, name, unit, current_cost) VALUES ((SELECT id FROM branches WHERE business_id = $1 ORDER BY created_at, id LIMIT 1), $1, $2, 'kg', 18.5) RETURNING id`,
       [businessId, 'Beef'],
     );
     inventoryItemId = item.rows[0].id;
@@ -46,6 +51,7 @@ describe('RecipesRepository (integration)', () => {
     await pool.query('DELETE FROM products WHERE business_id = $1', [
       businessId,
     ]);
+    await pool.query('DELETE FROM branches WHERE business_id = $1', [businessId]);
     await pool.query('DELETE FROM businesses WHERE id = $1', [businessId]);
     await pool.end();
   });
@@ -53,7 +59,7 @@ describe('RecipesRepository (integration)', () => {
   /** Each recipe needs its own product (UNIQUE(product_id) in the schema). */
   async function createProduct(): Promise<string> {
     const result = await pool.query<{ id: string }>(
-      `INSERT INTO products (business_id, name, sale_price) VALUES ($1, $2, 10) RETURNING id`,
+      `INSERT INTO products (branch_id, business_id, name, sale_price) VALUES ((SELECT id FROM branches WHERE business_id = $1 ORDER BY created_at, id LIMIT 1), $1, $2, 10) RETURNING id`,
       [businessId, `Product ${randomUUID()}`],
     );
     return result.rows[0].id;
@@ -188,7 +194,7 @@ describe('RecipesRepository (integration)', () => {
 
     it('flags a link whose inventory item was deleted', async () => {
       const deleted = await pool.query<{ id: string }>(
-        `INSERT INTO inventory_items (business_id, name, unit, deleted_at) VALUES ($1, 'Gone', 'kg', now()) RETURNING id`,
+        `INSERT INTO inventory_items (branch_id, business_id, name, unit, deleted_at) VALUES ((SELECT id FROM branches WHERE business_id = $1 ORDER BY created_at, id LIMIT 1), $1, 'Gone', 'kg', now()) RETURNING id`,
         [businessId],
       );
       const productId = await createProduct();

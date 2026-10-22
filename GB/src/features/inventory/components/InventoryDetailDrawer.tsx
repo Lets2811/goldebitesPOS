@@ -10,7 +10,12 @@ import DateDisplay from '../../../components/common/DateDisplay';
 import { Can } from '../../../modules/auth/components/can';
 import { useMovements } from '../../../modules/inventory/hooks/use-movements';
 import { formatCOP } from '../../../utils/format';
-import type { InventoryItem, InventoryMovementType } from '../../../modules/inventory/types/inventory.types';
+import type {
+  InventoryItem,
+  InventoryMovementType,
+} from '../../../modules/inventory/types/inventory.types';
+import { useAuthStore } from '../../../modules/auth/store/auth.store';
+import { useAllBranchesReview } from '../../../modules/auth/hooks/use-branch-mode';
 
 interface InventoryDetailDrawerProps {
   item: InventoryItem | null;
@@ -34,7 +39,12 @@ const MOVEMENT_TYPE_LABELS: Record<InventoryMovementType, string> = {
   INITIAL_STOCK: 'Stock inicial',
 };
 
-const OUTBOUND_TYPES: InventoryMovementType[] = ['SALE_CONSUMPTION', 'WASTE', 'ADJUSTMENT_OUT', 'TRANSFER_OUT'];
+const OUTBOUND_TYPES: InventoryMovementType[] = [
+  'SALE_CONSUMPTION',
+  'WASTE',
+  'ADJUSTMENT_OUT',
+  'TRANSFER_OUT',
+];
 
 export default function InventoryDetailDrawer({
   item,
@@ -45,21 +55,31 @@ export default function InventoryDetailDrawer({
   onEdit,
   onToggleStatus,
 }: InventoryDetailDrawerProps) {
-  const { data: movementsData } = useMovements({ inventoryItemId: item?.id, limit: 15 });
+  const branchId = useAuthStore((s) => s.user?.branchId ?? undefined);
+  const reviewOnly = useAllBranchesReview();
+  // The branch's own movements (all of them in "Todas las sedes").
+  const { data: movementsData } = useMovements({ inventoryItemId: item?.id, branchId, limit: 15 });
   const movements = movementsData?.data ?? [];
 
   if (!item) return null;
 
-  const isLow = currentStock <= item.minimumStock;
+  const minimum = item.minimumStock;
+  const isLow = currentStock <= minimum;
 
   return (
     <DetailDrawer
       open={Boolean(item)}
       onClose={onClose}
       title={item.name}
-      subtitle={[item.sku ? `Referencia: ${item.sku}` : null, categoryName].filter(Boolean).join(' · ') || undefined}
+      subtitle={
+        [item.sku ? `Referencia: ${item.sku}` : null, categoryName].filter(Boolean).join(' · ') ||
+        undefined
+      }
       headerExtra={
-        <StatusChip label={item.isActive ? 'Activo' : 'Inactivo'} tone={item.isActive ? 'success' : 'neutral'} />
+        <StatusChip
+          label={item.isActive ? 'Activo' : 'Inactivo'}
+          tone={item.isActive ? 'success' : 'neutral'}
+        />
       }
       footer={
         <Can permission="inventory.manage">
@@ -70,9 +90,16 @@ export default function InventoryDetailDrawer({
             <Button startIcon={<Pencil size={16} />} onClick={() => onEdit(item)}>
               Editar
             </Button>
-            <Button variant="contained" startIcon={<PackagePlus size={16} />} onClick={() => onRegisterMovement(item)}>
-              Ajustar stock
-            </Button>
+            {/* Stock moves at a branch: not from "Todas las sedes". */}
+            {!reviewOnly && (
+              <Button
+                variant="contained"
+                startIcon={<PackagePlus size={16} />}
+                onClick={() => onRegisterMovement(item)}
+              >
+                Ajustar stock
+              </Button>
+            )}
           </Stack>
         </Can>
       }
@@ -83,13 +110,17 @@ export default function InventoryDetailDrawer({
             <Typography variant="body2" color="text.secondary">
               Stock actual
             </Typography>
-            <Typography variant="body2" color={isLow ? 'error.main' : 'text.primary'} sx={{ fontWeight: 700 }}>
+            <Typography
+              variant="body2"
+              color={isLow ? 'error.main' : 'text.primary'}
+              sx={{ fontWeight: 700 }}
+            >
               {currentStock} {item.unit}
             </Typography>
           </Stack>
           {isLow && <StatusChip label="Stock bajo el mínimo" tone="warning" />}
           <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
-            Mínimo: {item.minimumStock} {item.unit}
+            Mínimo: {minimum} {item.unit}
           </Typography>
         </Box>
 
@@ -163,7 +194,11 @@ export default function InventoryDetailDrawer({
               {movements.map((m) => {
                 const isOutbound = OUTBOUND_TYPES.includes(m.movementType);
                 return (
-                  <Stack key={m.id} direction="row" sx={{ alignItems: 'flex-start', justifyContent: 'space-between' }}>
+                  <Stack
+                    key={m.id}
+                    direction="row"
+                    sx={{ alignItems: 'flex-start', justifyContent: 'space-between' }}
+                  >
                     <Box>
                       <Typography variant="body2" sx={{ fontWeight: 600 }}>
                         {MOVEMENT_TYPE_LABELS[m.movementType]}
@@ -175,11 +210,20 @@ export default function InventoryDetailDrawer({
                       )}
                     </Box>
                     <Box sx={{ textAlign: 'right' }}>
-                      <Typography variant="body2" color={isOutbound ? 'error.main' : 'success.main'} sx={{ fontWeight: 700 }}>
+                      <Typography
+                        variant="body2"
+                        color={isOutbound ? 'error.main' : 'success.main'}
+                        sx={{ fontWeight: 700 }}
+                      >
                         {isOutbound ? '-' : '+'}
                         {m.quantity} {item.unit}
                       </Typography>
-                      <DateDisplay value={m.createdAt} mode="datetime" variant="caption" color="text.secondary" />
+                      <DateDisplay
+                        value={m.createdAt}
+                        mode="datetime"
+                        variant="caption"
+                        color="text.secondary"
+                      />
                     </Box>
                   </Stack>
                 );

@@ -3,12 +3,7 @@ import type { OptionSelection } from '../../option-groups/types/option-group.typ
 export type OrderType = 'DINE_IN' | 'TAKEAWAY' | 'DELIVERY' | 'CAR_SERVICE';
 
 export type OrderStatus =
-  | 'PENDING'
-  | 'CONFIRMED'
-  | 'PREPARING'
-  | 'READY'
-  | 'DELIVERED'
-  | 'CANCELLED';
+  'PENDING' | 'CONFIRMED' | 'PREPARING' | 'READY' | 'DELIVERED' | 'CANCELLED';
 
 export type OrderPaymentStatus = 'PENDING' | 'PAID' | 'PARTIALLY_PAID' | 'REFUNDED' | 'CANCELLED';
 
@@ -45,6 +40,12 @@ export interface Order {
   deliveryInstructions: string | null;
   subtotal: number;
   discountAmount: number;
+  /** El porcentaje del descuento (null: monto fijo, o sin descuento). */
+  discountPercent: number | null;
+  /** De dónde salió: MANUAL, PROMOTION o COUPON. */
+  discountSource: 'MANUAL' | 'PROMOTION' | 'COUPON' | null;
+  /** Cómo se lee en el pedido y la factura, p. ej. "Cupón VERANO10 (10%)". */
+  discountLabel: string | null;
   taxAmount: number;
   deliveryFee: number;
   totalAmount: number;

@@ -72,3 +72,59 @@ export function playTableHelpAlertSound(): void {
     // Una alerta sonora nunca debe romper la pantalla de pedidos.
   }
 }
+
+/**
+ * Un mensaje nuevo en el chat de un domicilio: un "pop" corto y suave, para
+ * no confundirlo con un pedido ni con una llamada.
+ */
+export function playChatMessageSound(): void {
+  try {
+    const ctx = getAudioContext();
+    if (!ctx) return;
+    if (ctx.state === 'suspended') ctx.resume().catch(() => {});
+
+    const now = ctx.currentTime;
+    const oscillator = ctx.createOscillator();
+    const gain = ctx.createGain();
+    oscillator.type = 'sine';
+    oscillator.frequency.setValueAtTime(520, now);
+    oscillator.frequency.exponentialRampToValueAtTime(980, now + 0.12);
+    gain.gain.setValueAtTime(0, now);
+    gain.gain.linearRampToValueAtTime(0.22, now + 0.02);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
+    oscillator.connect(gain).connect(ctx.destination);
+    oscillator.start(now);
+    oscillator.stop(now + 0.27);
+  } catch {
+    // Un sonido nunca debe romper el chat.
+  }
+}
+
+/**
+ * Un cambio en el domicilio (asignado, en camino, entregado) o uno nuevo para
+ * el domiciliario: tres notas ascendentes, alegres.
+ */
+export function playDeliveryUpdateSound(): void {
+  try {
+    const ctx = getAudioContext();
+    if (!ctx) return;
+    if (ctx.state === 'suspended') ctx.resume().catch(() => {});
+
+    const now = ctx.currentTime;
+    [660, 880, 1175].forEach((frequency, i) => {
+      const oscillator = ctx.createOscillator();
+      const gain = ctx.createGain();
+      oscillator.type = 'triangle';
+      oscillator.frequency.value = frequency;
+      const start = now + i * 0.12;
+      gain.gain.setValueAtTime(0, start);
+      gain.gain.linearRampToValueAtTime(0.22, start + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.001, start + 0.3);
+      oscillator.connect(gain).connect(ctx.destination);
+      oscillator.start(start);
+      oscillator.stop(start + 0.32);
+    });
+  } catch {
+    // Igual de tolerante.
+  }
+}

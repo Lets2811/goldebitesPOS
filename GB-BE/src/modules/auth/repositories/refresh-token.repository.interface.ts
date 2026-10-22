@@ -9,6 +9,8 @@ export interface RefreshTokenRow {
   ip_address: string | null;
   user_agent: string | null;
   created_at: Date;
+  branch_selected: boolean;
+  selected_branch_id: string | null;
 }
 
 export interface CreateRefreshTokenData {
@@ -17,6 +19,8 @@ export interface CreateRefreshTokenData {
   expiresAt: Date;
   ipAddress?: string | null;
   userAgent?: string | null;
+  /** The branch picked for the session; absent when none was. */
+  branchSelection?: { branchId: string | null };
 }
 
 export interface IRefreshTokenRepository {

@@ -136,6 +136,126 @@ export class BusinessesService {
     return BusinessMapper.toDomain(row);
   }
 
+  /** Used by OrdersModule: whether the checkout may apply discounts. */
+  async getDiscountsAtCheckout(businessId: string): Promise<boolean> {
+    const row = await this.getOrFail(businessId);
+    return row.discounts_at_checkout;
+  }
+
+  async updateDiscountsAtCheckout(
+    id: string,
+    enabled: boolean,
+    actorUserId?: string,
+  ): Promise<Business> {
+    await this.getOrFail(id);
+    const row = await this.businessesRepository.updateDiscountsAtCheckout(
+      id,
+      enabled,
+    );
+    if (!row) {
+      throw new EntityNotFoundException('Business', id);
+    }
+    await this.auditService.record({
+      businessId: id,
+      userId: actorUserId,
+      entityType: 'business',
+      entityId: id,
+      action: 'UPDATE_DISCOUNTS_AT_CHECKOUT',
+      newValues: { discountsAtCheckout: enabled },
+    });
+    return BusinessMapper.toDomain(row);
+  }
+
+  /** Turns "Lo más pedido hoy" on the customer's menu on or off. */
+  async updateMenuTopSellers(
+    id: string,
+    enabled: boolean,
+    actorUserId?: string,
+  ): Promise<Business> {
+    await this.getOrFail(id);
+    const row = await this.businessesRepository.updateMenuTopSellers(
+      id,
+      enabled,
+    );
+    if (!row) {
+      throw new EntityNotFoundException('Business', id);
+    }
+    await this.auditService.record({
+      businessId: id,
+      userId: actorUserId,
+      entityType: 'business',
+      entityId: id,
+      action: 'UPDATE_MENU_TOP_SELLERS',
+      newValues: { menuTopSellers: enabled },
+    });
+    return BusinessMapper.toDomain(row);
+  }
+
+  /** Names "Arma tu combo" (and its line) the business's own way; empty goes back to the default. */
+  async updateComboBuilder(
+    id: string,
+    name: string | null,
+    description: string | null,
+    actorUserId?: string,
+  ): Promise<Business> {
+    await this.getOrFail(id);
+    const clean = (value: string | null) => value?.trim() || null;
+    const row = await this.businessesRepository.updateComboBuilder(
+      id,
+      clean(name),
+      clean(description),
+    );
+    if (!row) {
+      throw new EntityNotFoundException('Business', id);
+    }
+    await this.auditService.record({
+      businessId: id,
+      userId: actorUserId,
+      entityType: 'business',
+      entityId: id,
+      action: 'UPDATE_COMBO_BUILDER',
+      newValues: {
+        name: row.combo_builder_name,
+        description: row.combo_builder_description,
+      },
+    });
+    return BusinessMapper.toDomain(row);
+  }
+
+  /** The business's own HTML template for "Arma tu combo", or null (the default view). */
+  async getComboBuilderTemplate(id: string): Promise<string | null> {
+    await this.getOrFail(id);
+    return this.businessesRepository.getComboBuilderTemplate(id);
+  }
+
+  /** Sets (or, with null or blank, removes) the business's template for "Arma tu combo". */
+  async setComboBuilderTemplate(
+    id: string,
+    html: string | null,
+    actorUserId?: string,
+  ): Promise<Business> {
+    await this.getOrFail(id);
+    const template = html?.trim() ? html : null;
+    const row = await this.businessesRepository.setComboBuilderTemplate(
+      id,
+      template,
+    );
+    if (!row) {
+      throw new EntityNotFoundException('Business', id);
+    }
+    await this.auditService.record({
+      businessId: id,
+      userId: actorUserId,
+      entityType: 'business',
+      entityId: id,
+      action: template
+        ? 'SET_COMBO_BUILDER_TEMPLATE'
+        : 'REMOVE_COMBO_BUILDER_TEMPLATE',
+      newValues: { size: template?.length ?? 0 },
+    });
+    return BusinessMapper.toDomain(row);
+  }
+
   /** Used by LoyaltyModule to compute earned points and read program settings. */
   async getLoyaltyConfig(businessId: string): Promise<{
     pointsPerThousand: number;

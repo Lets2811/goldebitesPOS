@@ -63,7 +63,9 @@ export class EInvoicingRepository {
     await this.db.query(
       `INSERT INTO e_invoicing_settings
          (business_id, environment, client_id, client_secret_encrypted, username, password_encrypted, numbering_range_id, tax_code, updated_by)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+       -- updated_by keeps POS users only; the Golden Bites team (who sets this
+       -- up from the Admin app) is recorded in the audit log instead.
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, (SELECT id FROM users WHERE id = $9::uuid))
        ON CONFLICT (business_id) DO UPDATE SET
          environment = EXCLUDED.environment, client_id = EXCLUDED.client_id,
          client_secret_encrypted = EXCLUDED.client_secret_encrypted, username = EXCLUDED.username,

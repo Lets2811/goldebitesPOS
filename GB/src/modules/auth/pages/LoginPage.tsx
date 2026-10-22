@@ -1,3 +1,4 @@
+import { useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useLocation, useNavigate } from 'react-router-dom';
@@ -15,11 +16,27 @@ import { decodeAccessToken } from '../utils/decode-access-token';
 import { brand } from '../../../theme/palette';
 import { FORCE_PASSWORD_CHANGE_PATH } from '../components/protected-route';
 import EnvironmentChip from '../../../components/common/EnvironmentChip';
+import { KIOSK_PATHS } from '../../../routes/kioskConfig';
+import MidasCredit from '../../../components/common/MidasCredit';
+import ServerPickerDialog from '../components/ServerPickerDialog';
+import { env } from '../../../config/env';
 
 export default function LoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const login = useLogin();
+
+  // Phone apps: three quick taps on the Midas Tech logo pick the server (for testing).
+  const [serverPickerOpen, setServerPickerOpen] = useState(false);
+  const markTaps = useRef<number[]>([]);
+  const onMarkTap = () => {
+    const now = Date.now();
+    markTaps.current = [...markTaps.current.filter((at) => now - at < 1_500), now];
+    if (markTaps.current.length >= 3) {
+      markTaps.current = [];
+      setServerPickerOpen(true);
+    }
+  };
 
   const {
     register,
@@ -37,11 +54,14 @@ export default function LoginPage() {
   const onSubmit = (values: LoginFormValues) => {
     login.mutate(values, {
       onSuccess: (data) => {
-        // Un admin de plataforma no tiene "operación diaria" que ver — su
-        // destino es siempre el panel de plataforma, sin importar de dónde
-        // vino el redirect.
-        const isPlatformAdmin = decodeAccessToken(data.accessToken)?.isPlatformAdmin ?? false;
-        navigate(isPlatformAdmin ? '/plataforma' : redirectTo, { replace: true });
+        const decoded = decodeAccessToken(data.accessToken);
+        // A courier has no back office: their place is the courier app.
+        const permissions = decoded?.permissions ?? [];
+        const isCourierOnly =
+          permissions.includes('deliveries.deliver') &&
+          !permissions.includes('dashboard.read') &&
+          redirectTo === '/';
+        navigate(isCourierOnly ? KIOSK_PATHS.courier : redirectTo, { replace: true });
       },
     });
   };
@@ -55,6 +75,8 @@ export default function LoginPage() {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
+        flexDirection: 'column',
+        gap: 2,
         bgcolor: brand.black,
         px: 2,
       }}
@@ -105,6 +127,10 @@ export default function LoginPage() {
           </Button>
         </Stack>
       </Paper>
+      <MidasCredit onMarkTap={env.phoneApp ? onMarkTap : undefined} />
+      {env.phoneApp && (
+        <ServerPickerDialog open={serverPickerOpen} onClose={() => setServerPickerOpen(false)} />
+      )}
     </Box>
   );
 }

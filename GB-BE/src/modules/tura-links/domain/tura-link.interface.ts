@@ -22,3 +22,10 @@ export interface TuraLinkWithUserRow extends TuraLinkRow {
   first_name: string;
   last_name: string;
 }
+
+/** A business's TURA as the platform admin sees it. */
+export interface PlatformTuraStatus {
+  /** Whether the business has the module (and it is on platform-wide). */
+  enabled: boolean;
+  links: TuraLink[];
+}

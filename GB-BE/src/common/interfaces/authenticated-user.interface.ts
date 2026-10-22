@@ -9,9 +9,10 @@ export interface AuthenticatedUser {
   roleId: string;
   roleName: string;
   permissions: string[];
-  isPlatformAdmin: boolean;
   enabledFeatures: string[];
   mustChangePassword: boolean;
+  /** Signed in without a branch yet; see JwtPayload.branchSelectionRequired. */
+  branchSelectionRequired?: boolean;
   /** Present when the caller is TURA acting for this user, not the user signed in. */
   turaLinkId?: string;
 }

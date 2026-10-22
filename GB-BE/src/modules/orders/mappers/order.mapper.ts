@@ -26,6 +26,10 @@ export class OrderMapper {
       deliveryInstructions: row.delivery_instructions,
       subtotal: parseFloat(row.subtotal),
       discountAmount: parseFloat(row.discount_amount),
+      discountPercent:
+        row.discount_percent != null ? parseFloat(row.discount_percent) : null,
+      discountSource: row.discount_source ?? null,
+      discountLabel: row.discount_label ?? null,
       taxAmount: parseFloat(row.tax_amount),
       deliveryFee: parseFloat(row.delivery_fee),
       totalAmount: parseFloat(row.total_amount),

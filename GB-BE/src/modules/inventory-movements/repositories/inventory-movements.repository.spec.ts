@@ -20,8 +20,8 @@ describe('InventoryMovementsRepository (integration)', () => {
 
   async function createItem(minimumStock = 0): Promise<string> {
     const result = await pool.query<{ id: string }>(
-      `INSERT INTO inventory_items (business_id, name, unit, minimum_stock)
-       VALUES ($1, $2, 'kg', $3) RETURNING id`,
+      `INSERT INTO inventory_items (branch_id, business_id, name, unit, minimum_stock)
+       VALUES ((SELECT id FROM branches WHERE business_id = $1 ORDER BY created_at, id LIMIT 1), $1, $2, 'kg', $3) RETURNING id`,
       [businessId, `Item ${randomUUID()}`, minimumStock],
     );
     return result.rows[0].id;

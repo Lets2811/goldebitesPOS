@@ -226,6 +226,74 @@ button {
   border: none;
 }
 
+.businesses {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.businesses__list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.businesses__chip {
+  min-height: 40px;
+  padding: 8px 16px;
+  color: var(--white);
+  background: var(--graphite);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+}
+
+.businesses__chip--active {
+  color: var(--black);
+  font-weight: 600;
+  background: var(--gold);
+  border-color: var(--gold);
+}
+
+.businesses__add {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  width: 100%;
+  color: var(--gray);
+}
+
+.businesses__add-row {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+}
+
+.businesses__add-row input {
+  flex: 1;
+  min-width: 0;
+  letter-spacing: 4px;
+}
+
+.businesses__submit {
+  flex: none;
+  padding: 0 18px;
+  font-weight: 600;
+  color: var(--black);
+  background: var(--gold);
+  border: none;
+  border-radius: 12px;
+}
+
+.businesses__submit:disabled {
+  opacity: 0.6;
+}
+
+.businesses__error {
+  color: var(--error);
+}
+
 .home__options {
   display: flex;
   flex-direction: column;
@@ -293,6 +361,7 @@ button {
 /* The accent follows the hologram's glow in each state (see HologramAssistant). */
 .voice {
   --halo: 56 169 255;
+  position: relative;
   display: flex;
   /* The hologram's mist is wider than the stage and must not widen the page. */
   overflow-x: clip;
@@ -372,6 +441,23 @@ button {
 
 .voice__mic--off:active {
   background: var(--border);
+}
+
+/* Changes TURA made: over the hologram, just above the microphone, so they are always in view. */
+.voice__actions {
+  position: absolute;
+  z-index: 2;
+  right: 16px;
+  bottom: calc(112px + env(safe-area-inset-bottom));
+  left: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: min(calc(100% - 32px), 420px);
+  max-height: 45dvh;
+  margin-inline: auto;
+  overflow-y: auto;
+  text-align: left;
 }
 
 .voice__note {
@@ -476,152 +562,116 @@ button {
   border-top: 1px solid var(--border);
 }
 
-/* ---- Admin (usage and cost, for the developer) ---- */
-
-.admin {
-  display: flex;
-  flex: 1;
-  flex-direction: column;
-  gap: 24px;
-  padding: 16px 16px calc(24px + env(safe-area-inset-bottom));
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
-}
-
-.admin__unlock {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  margin: auto 0;
-}
-
-.admin__unlock label {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  font-size: 0.875rem;
-  color: var(--gray);
-}
-
-.admin__note {
-  font-size: 0.8125rem;
-  color: var(--gray);
-}
-
-.admin__error {
-  font-size: 0.875rem;
-  color: var(--error);
-}
-
-.admin__periods {
-  display: grid;
-  flex: none;
-  grid-template-columns: repeat(3, 1fr);
-  padding: 3px;
+/* A change TURA made, as it was left. */
+.action-card {
+  align-self: stretch;
+  padding: 14px;
+  border: 1px solid var(--gold);
+  border-radius: 16px;
   background: var(--graphite);
-  border: 1px solid var(--border);
-  border-radius: 12px;
 }
 
-.admin__periods button {
-  min-height: 40px;
-  padding: 0;
-  font-size: 0.875rem;
-  color: var(--gray);
-  background: none;
-  border: none;
-  border-radius: 9px;
-}
-
-.admin__periods button[aria-pressed='true'] {
-  font-weight: 600;
-  color: var(--white);
-  background: var(--border);
-}
-
-.admin__section {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.admin__section h2 {
-  font-size: 1rem;
-  font-weight: 600;
+.action-card__label {
+  margin: 0 0 6px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
   color: var(--gold);
 }
 
-.admin__facts {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-  gap: 10px;
+.action-card__summary {
   margin: 0;
 }
 
-.admin__facts div {
-  padding: 12px;
+.action-card--done {
+  border-color: #4caf7a;
+}
+
+.action-card--done .action-card__label {
+  color: #4caf7a;
+}
+
+/* What happened to the connection: linked from a QR, signed out, access cut. */
+.notice {
+  position: fixed;
+  top: max(12px, env(safe-area-inset-top));
+  left: 50%;
+  z-index: 50;
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  width: min(calc(100% - 24px), 480px);
+  padding: 12px 14px;
+  border-radius: 14px;
   background: var(--graphite);
   border: 1px solid var(--border);
-  border-radius: 12px;
+  box-shadow: 0 8px 24px rgb(0 0 0 / 40%);
+  transform: translateX(-50%);
 }
 
-.admin__facts dt {
-  font-size: 0.8125rem;
-  color: var(--gray);
+.notice p {
+  flex: 1;
+  margin: 0;
 }
 
-.admin__facts dd {
-  margin: 2px 0 0;
+.notice--success {
+  border-color: #4caf7a;
+}
+
+.notice--error {
+  border-color: var(--error);
+}
+
+.notice__close {
+  padding: 0 4px;
   font-size: 1.25rem;
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-}
-
-.admin__table {
-  width: 100%;
-  font-size: 0.8125rem;
-  font-variant-numeric: tabular-nums;
-  border-collapse: collapse;
-}
-
-.admin__table th,
-.admin__table td {
-  padding: 8px 4px;
-  text-align: right;
-  border-bottom: 1px solid var(--border);
-}
-
-.admin__table thead th {
-  font-weight: 400;
+  line-height: 1;
   color: var(--gray);
+  background: none;
+  border: none;
 }
 
-.admin__table th:first-child {
-  font-weight: 600;
-  text-align: left;
+.install-hint {
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--graphite);
 }
 
-.admin__turns {
+.install-hint p {
+  margin: 0;
+}
+
+.install-hint__buttons {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  margin-top: 12px;
+}
+
+/* Who builds TURA: one discreet line at the foot of the menu. */
+.credit {
   display: flex;
   flex-direction: column;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.admin__turns li {
-  padding: 10px 0;
-  border-bottom: 1px solid var(--border);
-}
-
-.admin__turns div {
-  display: flex;
-  justify-content: space-between;
-  font-variant-numeric: tabular-nums;
-}
-
-.admin__turns span,
-.admin__turns p {
-  font-size: 0.8125rem;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.75rem;
+  line-height: 1.4;
+  letter-spacing: 0.02em;
+  text-align: center;
   color: var(--gray);
+}
+
+.credit p {
+  margin: 0;
+}
+
+.credit__mark {
+  height: 28px;
+  width: auto;
+}
+
+.credit strong {
+  color: var(--gold);
 }

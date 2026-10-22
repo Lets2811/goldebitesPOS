@@ -8,7 +8,7 @@ import { decodeAccessToken } from '../utils/decode-access-token';
  * NOT core: it's a sellable module like any other, see FEATURE_MODULES on
  * the backend.
  */
-const CORE_MODULES = new Set(['dashboard', 'settings']);
+const CORE_MODULES = new Set(['dashboard', 'settings', 'branchComparison']);
 
 /**
  * Real, backend-driven permission checks (codes from the JWT, e.g.
@@ -26,7 +26,6 @@ export function usePermissions() {
 
   const permissions = decoded?.permissions ?? [];
   const enabledFeatures = decoded?.enabledFeatures ?? [];
-  const isPlatformAdmin = decoded?.isPlatformAdmin ?? false;
 
   return {
     permissions,
@@ -36,6 +35,5 @@ export function usePermissions() {
     enabledFeatures,
     /** True for core modules (always on) or when the business has this feature module enabled. */
     hasFeature: (module: string) => CORE_MODULES.has(module) || enabledFeatures.includes(module),
-    isPlatformAdmin,
   };
 }

@@ -8,10 +8,12 @@ import { RecordCountDto } from '../dto/record-count.dto';
 import { StartCountDto } from '../dto/start-count.dto';
 import { InventoryCountsService } from '../services/inventory-counts.service';
 import { RequiresFeature } from '../../../common/decorators/requires-feature.decorator';
+import { BranchOperation } from '../../../common/decorators/branch-operation.decorator';
 
 @ApiTags('Inventory Counts')
 @ApiBearerAuth()
 @RequiresFeature('inventory')
+@BranchOperation()
 @Controller('inventory/counts')
 export class InventoryCountsController {
   constructor(private readonly countsService: InventoryCountsService) {}

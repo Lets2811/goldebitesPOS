@@ -2,18 +2,23 @@ import { Module } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
 import { AppConfig } from '../../config/app.config';
+import { AuditModule } from '../audit/audit.module';
 import { BusinessFeaturesModule } from '../business-features/business-features.module';
 import { BusinessesModule } from '../businesses/businesses.module';
 import { PlatformFeatureFlagsModule } from '../platform-feature-flags/platform-feature-flags.module';
 import { RolesModule } from '../roles/roles.module';
 import { UsersModule } from '../users/users.module';
-import { TuraLinksController } from './controllers/tura-links.controller';
+import {
+  PlatformTuraLinksController,
+  TuraLinksController,
+} from './controllers/tura-links.controller';
 import { TuraLinksRepository } from './repositories/tura-links.repository';
 import { TURA_LINKS_REPOSITORY } from './repositories/tura-links.repository.interface';
 import { TuraLinksService } from './services/tura-links.service';
 
 @Module({
   imports: [
+    AuditModule,
     BusinessesModule,
     BusinessFeaturesModule,
     PlatformFeatureFlagsModule,
@@ -35,7 +40,7 @@ import { TuraLinksService } from './services/tura-links.service';
       },
     }),
   ],
-  controllers: [TuraLinksController],
+  controllers: [TuraLinksController, PlatformTuraLinksController],
   providers: [
     TuraLinksService,
     { provide: TURA_LINKS_REPOSITORY, useClass: TuraLinksRepository },

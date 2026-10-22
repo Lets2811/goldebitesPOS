@@ -23,8 +23,10 @@ import { UsersService } from '../../users/services/users.service';
 import {
   AuthTokens,
   AuthenticatedProfile,
+  BranchSelection,
   JwtPayload,
 } from '../domain/auth.types';
+import { BRANCH_SWITCH_PERMISSION } from '../../../common/guards/branch-scope.guard';
 import { ChangePasswordDto } from '../dto/change-password.dto';
 import { ForgotPasswordDto } from '../dto/forgot-password.dto';
 import { LoginDto } from '../dto/login.dto';
@@ -42,6 +44,14 @@ export interface RequestMetadata {
 }
 
 const PASSWORD_RESET_TOKEN_TTL_MS = 60 * 60 * 1000; // 1 hour
+
+/** Where a session works: its branch, and whether it still has to pick one. */
+interface SessionBranch {
+  branchId: string | null;
+  branchSelectionRequired: boolean;
+  /** Kept on the refresh token; absent when nothing was picked. */
+  selection?: BranchSelection;
+}
 const INVALID_CREDENTIALS_MESSAGE = 'Invalid email or password';
 
 @Injectable()
@@ -116,7 +126,8 @@ export class AuthService {
       throw new UnauthorizedException(INVALID_CREDENTIALS_MESSAGE);
     }
 
-    const tokens = await this.issueTokens(user, meta);
+    const branch = await this.sessionBranch(user);
+    const tokens = await this.issueTokens(user, branch, meta);
 
     await this.usersService.touchLastLogin(user.id);
     await this.loginAttemptRepository.record({
@@ -136,7 +147,7 @@ export class AuthService {
       userAgent: meta.userAgent,
     });
 
-    return { ...tokens, user: await this.buildProfile(user) };
+    return { ...tokens, user: await this.buildProfile(user, branch) };
   }
 
   async refresh(
@@ -161,7 +172,13 @@ export class AuthService {
     }
 
     await this.refreshTokenRepository.revoke(record.id);
-    const tokens = await this.issueTokens(user, meta);
+    const branch = await this.sessionBranch(
+      user,
+      record.branch_selected
+        ? { branchId: record.selected_branch_id }
+        : undefined,
+    );
+    const tokens = await this.issueTokens(user, branch, meta);
 
     await this.auditService.record({
       businessId: user.business_id,
@@ -174,7 +191,59 @@ export class AuthService {
       userAgent: meta.userAgent,
     });
 
-    return { ...tokens, user: await this.buildProfile(user) };
+    return { ...tokens, user: await this.buildProfile(user, branch) };
+  }
+
+  /**
+   * Takes the session to one branch, or to all of them (branchId null), for a
+   * user who may work at every branch: a new token pair whose data is that
+   * branch's. The refresh token it replaces is revoked.
+   */
+  async switchBranch(
+    userId: string,
+    businessId: string,
+    branchId: string | null,
+    currentRefreshToken: string | undefined,
+    meta: RequestMetadata,
+  ): Promise<AuthTokens & { user: AuthenticatedProfile }> {
+    const user = await this.usersService.findRawById(userId, businessId);
+    if (!user || user.status !== UserStatus.ACTIVE) {
+      throw new UnauthorizedException();
+    }
+    if (
+      branchId !== null &&
+      !(await this.branchesService.isActiveBranch(businessId, branchId))
+    ) {
+      throw new DomainException({
+        code: 'BRANCH_NOT_FOUND',
+        message: 'Esa sede no existe o está inactiva',
+        status: HttpStatus.UNPROCESSABLE_ENTITY,
+      });
+    }
+
+    if (currentRefreshToken) {
+      const record = await this.refreshTokenRepository.findByTokenHash(
+        this.hashToken(currentRefreshToken),
+      );
+      if (record && record.user_id === userId && !record.revoked_at) {
+        await this.refreshTokenRepository.revoke(record.id);
+      }
+    }
+
+    const branch = await this.sessionBranch(user, { branchId });
+    const tokens = await this.issueTokens(user, branch, meta);
+    await this.auditService.record({
+      businessId,
+      branchId,
+      userId,
+      entityType: 'auth',
+      entityId: userId,
+      action: 'SWITCH_BRANCH',
+      newValues: { branchId: branchId ?? 'ALL' },
+      ipAddress: meta.ipAddress,
+      userAgent: meta.userAgent,
+    });
+    return { ...tokens, user: await this.buildProfile(user, branch) };
   }
 
   async logout(refreshToken: string): Promise<void> {
@@ -281,6 +350,7 @@ export class AuthService {
 
   private async issueTokens(
     user: UserRow,
+    branch: SessionBranch,
     meta: RequestMetadata,
   ): Promise<AuthTokens> {
     const role = await this.rolesService.findOne(
@@ -302,13 +372,13 @@ export class AuthService {
     const payload: JwtPayload = {
       sub: user.id,
       businessId: user.business_id,
-      branchId: await this.resolveBranchId(user),
+      branchId: branch.branchId,
       roleId: user.role_id,
       roleName: role.name,
       permissions: role.permissions,
-      isPlatformAdmin: user.is_platform_admin,
       enabledFeatures,
       mustChangePassword: user.must_change_password,
+      branchSelectionRequired: branch.branchSelectionRequired,
     };
 
     const appConfig = this.configService.getOrThrow<AppConfig>('app');
@@ -329,6 +399,7 @@ export class AuthService {
       expiresAt: refreshExpiresAt,
       ipAddress: meta.ipAddress,
       userAgent: meta.userAgent,
+      branchSelection: branch.selection,
     });
 
     return {
@@ -340,7 +411,10 @@ export class AuthService {
     };
   }
 
-  private async buildProfile(user: UserRow): Promise<AuthenticatedProfile> {
+  private async buildProfile(
+    user: UserRow,
+    branch: SessionBranch,
+  ): Promise<AuthenticatedProfile> {
     const role = await this.rolesService.findOne(
       user.business_id,
       user.role_id,
@@ -348,13 +422,55 @@ export class AuthService {
     return {
       id: user.id,
       businessId: user.business_id,
-      branchId: await this.resolveBranchId(user),
+      branchId: branch.branchId,
       roleId: user.role_id,
       roleName: role.name,
       firstName: user.first_name,
       lastName: user.last_name,
       email: user.email,
       mustChangePassword: user.must_change_password,
+      branchSelectionRequired: branch.branchSelectionRequired,
+    };
+  }
+
+  /**
+   * Where a session works. Someone who may work at every branch, at a
+   * business with several, works where they picked (switch-branch, kept
+   * across refreshes while that branch stays active), or has to pick first.
+   * Everyone else works at their own branch, as always.
+   */
+  private async sessionBranch(
+    user: UserRow,
+    picked?: BranchSelection,
+  ): Promise<SessionBranch> {
+    const role = await this.rolesService.findOne(
+      user.business_id,
+      user.role_id,
+    );
+    const canSwitch = role.permissions.includes(BRANCH_SWITCH_PERMISSION);
+    if (
+      !canSwitch ||
+      !(await this.branchesService.hasSeveralActive(user.business_id))
+    ) {
+      return {
+        branchId: await this.resolveBranchId(user),
+        branchSelectionRequired: false,
+      };
+    }
+    const stillValid =
+      picked !== undefined &&
+      (picked.branchId === null ||
+        (await this.branchesService.isActiveBranch(
+          user.business_id,
+          picked.branchId,
+        )));
+    if (!stillValid) {
+      return { branchId: null, branchSelectionRequired: true };
+    }
+    return {
+      branchId: picked.branchId,
+      branchSelectionRequired: false,
+      selection: picked,
     };
   }
 

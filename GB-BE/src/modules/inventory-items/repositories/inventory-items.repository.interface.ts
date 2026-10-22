@@ -37,7 +37,7 @@ export interface IInventoryItemsRepository {
   ): Promise<InventoryItemRow | null>;
   softDelete(id: string, businessId: string): Promise<InventoryItemRow | null>;
   existsBySku(
-    businessId: string,
+    branchId: string,
     sku: string,
     excludeId?: string,
   ): Promise<boolean>;

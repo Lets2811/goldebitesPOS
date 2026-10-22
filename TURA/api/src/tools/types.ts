@@ -34,42 +34,14 @@ export interface ReadToolSpec<Schema extends z.ZodType> extends ToolSpec<Schema>
 }
 
 /**
- * A tool that changes something in the POS. Not implemented yet: this is the
- * shape the agent will work with when the first one arrives.
- *
- * A write is never executed by the model's call. The call only *prepares* it:
- * `prepare` checks it can be done and returns a summary in plain words, the
- * agent stores it as a PendingAction and tells the user what is about to
- * happen. `commit` runs only once the user confirms that exact action.
+ * A tool that changes something in the POS. It runs when the model calls it,
+ * as the user who asked: `run` checks the change can be made (the item
+ * exists, is theirs, is not already so), makes it, and says how it was left.
+ * The POS still authorizes the call.
  */
 export interface WriteToolSpec<Schema extends z.ZodType> extends ToolSpec<Schema> {
-  /** Validates against the POS that the action is possible and describes it for the user. Changes nothing. */
-  prepare(input: z.infer<Schema>, context: ToolContext): Promise<{ summary: string }>;
-  /** Performs the action. Called only for a confirmed PendingAction, with the input it was prepared with. */
-  commit(input: z.infer<Schema>, context: ToolContext): Promise<unknown>;
-}
-
-/** A write the model asked for, waiting for the user to confirm it. */
-export interface PendingAction {
-  id: string;
-  tool: string;
-  /** What will happen, in the words shown to the user. */
-  summary: string;
-  /** The validated input `commit` will receive. Never re-read from the model. */
-  input: unknown;
-  /** The user who must confirm it; nobody else can. */
-  userId: string;
-  createdAt: string;
-  /** After this it can no longer be confirmed. */
-  expiresAt: string;
-}
-
-/** Where pending actions live between the model's call and the user's answer. */
-export interface PendingActionStore {
-  create(action: Omit<PendingAction, 'id' | 'createdAt'>): Promise<PendingAction>;
-  /** Hands the action over exactly once, and only to its own user while it has not expired. */
-  take(id: string, userId: string): Promise<PendingAction | null>;
-  discard(id: string, userId: string): Promise<void>;
+  /** Makes the change. `branchId` is the branch it happened at, for the answer. */
+  run(input: z.infer<Schema>, context: ToolContext): Promise<{ message: string; branchId?: string }>;
 }
 
 /**
@@ -79,16 +51,26 @@ export interface PendingActionStore {
  */
 export class ToolRefusedError extends Error {}
 
-/** A tool as the agent holds it: its definition for the model, plus how to run it. */
-export interface AssistantTool {
-  kind: 'read' | 'write';
+interface AssistantToolBase {
   permission: string;
   definition: Anthropic.Tool;
   /** Parses the model's input; the error message is safe to return to the model. */
   parse(input: unknown): { ok: true; value: unknown } | { ok: false; error: string };
-  /** Runs a read. Write tools are not runnable yet. */
-  execute(input: unknown, context: ToolContext): Promise<unknown>;
 }
+
+export type ReadAssistantTool = AssistantToolBase & {
+  kind: 'read';
+  /** Runs the read. */
+  execute(input: unknown, context: ToolContext): Promise<unknown>;
+};
+
+export type WriteAssistantTool = AssistantToolBase & {
+  kind: 'write';
+  run(input: unknown, context: ToolContext): Promise<{ message: string; branchId?: string }>;
+};
+
+/** A tool as the agent holds it: its definition for the model, plus how to run it. */
+export type AssistantTool = ReadAssistantTool | WriteAssistantTool;
 
 function describeIssues(error: z.ZodError): string {
   return error.issues
@@ -96,12 +78,9 @@ function describeIssues(error: z.ZodError): string {
     .join('; ');
 }
 
-/** Declares a read tool. The input schema the model sees is derived from the same schema that validates it. */
-export function defineReadTool<Schema extends z.ZodType>(
-  spec: ReadToolSpec<Schema>,
-): AssistantTool {
+/** What the model is told about a tool, and how its input is checked: both from the same schema. */
+function describeTool<Schema extends z.ZodType>(spec: ToolSpec<Schema>): AssistantToolBase {
   return {
-    kind: 'read',
     permission: spec.permission,
     definition: {
       name: spec.name,
@@ -116,6 +95,23 @@ export function defineReadTool<Schema extends z.ZodType>(
         ? { ok: true, value: parsed.data }
         : { ok: false, error: describeIssues(parsed.error) };
     },
+  };
+}
+
+/** Declares a read tool. The input schema the model sees is derived from the same schema that validates it. */
+export function defineReadTool<Schema extends z.ZodType>(spec: ReadToolSpec<Schema>): ReadAssistantTool {
+  return {
+    ...describeTool(spec),
+    kind: 'read',
     execute: (input, context) => spec.execute(input as z.infer<Schema>, context),
+  };
+}
+
+/** Declares a write tool: the model's call makes the change. */
+export function defineWriteTool<Schema extends z.ZodType>(spec: WriteToolSpec<Schema>): WriteAssistantTool {
+  return {
+    ...describeTool(spec),
+    kind: 'write',
+    run: (input, context) => spec.run(input as z.infer<Schema>, context),
   };
 }

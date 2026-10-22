@@ -16,7 +16,7 @@ export class SettingsController {
   @Permissions('settings.manage')
   @ApiOperation({
     summary:
-      'Get operational settings for the current business (e.g. tax rate)',
+      'Get operational settings for the current business (tax rate, discounts at checkout)',
   })
   get(@CurrentBusiness() businessId: string) {
     return this.settingsService.get(businessId);
@@ -32,6 +32,6 @@ export class SettingsController {
     @CurrentUser('userId') actorUserId: string,
     @Body() dto: UpdateSettingsDto,
   ) {
-    return this.settingsService.update(businessId, dto.taxRate, actorUserId);
+    return this.settingsService.update(businessId, dto, actorUserId);
   }
 }

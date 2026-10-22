@@ -23,6 +23,8 @@ export function newMeter(): TurnMeter {
 /** One conversational turn, as stored: one JSON object per line of the log. */
 export interface TurnRecord {
   at: string;
+  /** The business the turn was for; missing in records older than this field. */
+  businessId?: string | null;
   mode: string;
   outcome: 'ok' | 'error' | 'cancelled';
   /** Milliseconds until the answer started and until it ended. */
@@ -62,6 +64,9 @@ interface Group {
   outputTokens: number;
 }
 
+/** The key of turns with no business: recorded before it was kept, or without a session. */
+export const UNKNOWN_BUSINESS = 'unknown';
+
 function addTo(groups: Map<string, Group>, key: string, turns: number, call?: ModelCall): void {
   const group = groups.get(key) ?? { key, turns: 0, costUsd: 0, inputTokens: 0, outputTokens: 0 };
   group.turns += turns;
@@ -98,6 +103,7 @@ export async function summarizeUsage(days: number) {
   const byModel = new Map<string, Group>();
   const byMode = new Map<string, Group>();
   const byDay = new Map<string, Group>();
+  const byBusiness = new Map<string, Group>();
   const total: TokenCount = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 };
   const unpriced = new Set<string>();
   let costUsd = 0;
@@ -106,11 +112,14 @@ export async function summarizeUsage(days: number) {
     const day = dayFormat.format(new Date(turn.at));
     addTo(byMode, turn.mode, 1);
     addTo(byDay, day, 1);
+    const business = turn.businessId ?? UNKNOWN_BUSINESS;
+    addTo(byBusiness, business, 1);
     for (const call of turn.calls) {
       // By model the unit is the request, since one turn can be served by several.
       addTo(byModel, call.model, 1, call);
       addTo(byMode, turn.mode, 0, call);
       addTo(byDay, day, 0, call);
+      addTo(byBusiness, business, 0, call);
       total.input += call.input;
       total.output += call.output;
       total.cacheRead += call.cacheRead;
@@ -154,6 +163,8 @@ export async function summarizeUsage(days: number) {
     byModel: [...byModel.values()].sort((a, b) => b.costUsd - a.costUsd),
     byMode: [...byMode.values()].sort((a, b) => b.costUsd - a.costUsd),
     byDay: [...byDay.values()].sort((a, b) => b.key.localeCompare(a.key)),
+    // Keyed by business id ("unknown" for turns recorded before it was kept); the Admin names them.
+    byBusiness: [...byBusiness.values()].sort((a, b) => b.costUsd - a.costUsd),
     // The same tokens priced on each model. Other models would not use exactly
     // the same number of tokens, so this is a guide, not a quote.
     whatIf: COMPARABLE_MODELS.map((model) => ({

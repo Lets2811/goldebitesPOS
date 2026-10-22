@@ -11,10 +11,12 @@ import { OpenCashSessionDto } from '../dto/open-cash-session.dto';
 import { ReopenCashSessionDto } from '../dto/reopen-cash-session.dto';
 import { CashSessionsService } from '../services/cash-sessions.service';
 import { RequiresFeature } from '../../../common/decorators/requires-feature.decorator';
+import { BranchOperation } from '../../../common/decorators/branch-operation.decorator';
 
 @ApiTags('Cash Sessions')
 @ApiBearerAuth()
 @RequiresFeature('cash-register')
+@BranchOperation()
 @Controller('cash-sessions')
 export class CashSessionsController {
   constructor(private readonly cashSessionsService: CashSessionsService) {}
@@ -102,7 +104,8 @@ export class CashSessionsController {
   @Permissions('cash.reopen')
   @RequiresFeature('cash-register.rectification')
   @ApiOperation({
-    summary: 'Rectificar caja — reopen a closed session for correction (requires the admin master key)',
+    summary:
+      'Rectificar caja — reopen a closed session for correction (requires the admin master key)',
   })
   reopen(
     @CurrentBusiness() businessId: string,

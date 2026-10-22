@@ -10,6 +10,8 @@ describe('ProductsRepository (integration)', () => {
   let db: DatabaseService;
   let repository: ProductsRepository;
   let businessId: string;
+  /** Products and items belong to a branch. */
+  let catalogBranchId: string;
 
   beforeAll(async () => {
     pool = new Pool({
@@ -27,6 +29,11 @@ describe('ProductsRepository (integration)', () => {
       [`Test Business ${randomUUID()}`],
     );
     businessId = result.rows[0].id;
+    const branch = await pool.query<{ id: string }>(
+      `INSERT INTO branches (business_id, name) VALUES ($1, 'Catálogo') RETURNING id`,
+      [businessId],
+    );
+    catalogBranchId = branch.rows[0].id;
   });
 
   afterAll(async () => {
@@ -36,6 +43,9 @@ describe('ProductsRepository (integration)', () => {
     await pool.query('DELETE FROM product_categories WHERE business_id = $1', [
       businessId,
     ]);
+    await pool.query('DELETE FROM branches WHERE business_id = $1', [
+      businessId,
+    ]);
     await pool.query('DELETE FROM businesses WHERE id = $1', [businessId]);
     await pool.end();
   });
@@ -43,6 +53,7 @@ describe('ProductsRepository (integration)', () => {
   it('creates a product with a decimal sale price (regression: COALESCE integer inference)', async () => {
     const created = await repository.create({
       businessId,
+      branchId: catalogBranchId,
       name: 'Classic Burger',
       salePrice: 25000.5,
     });
@@ -55,6 +66,7 @@ describe('ProductsRepository (integration)', () => {
   it('defaults sale_price to 0 when omitted', async () => {
     const created = await repository.create({
       businessId,
+      branchId: catalogBranchId,
       name: 'Free Sample',
     });
 
@@ -64,19 +76,21 @@ describe('ProductsRepository (integration)', () => {
   it('existsBySku() detects duplicates and excludes the current row', async () => {
     const created = await repository.create({
       businessId,
+      branchId: catalogBranchId,
       name: 'SKU Product',
       sku: 'SKU-1',
     });
 
-    expect(await repository.existsBySku(businessId, 'SKU-1')).toBe(true);
-    expect(await repository.existsBySku(businessId, 'SKU-1', created.id)).toBe(
-      false,
-    );
+    expect(await repository.existsBySku(catalogBranchId, 'SKU-1')).toBe(true);
+    expect(
+      await repository.existsBySku(catalogBranchId, 'SKU-1', created.id),
+    ).toBe(false);
   });
 
   it('setCurrentCost() updates only the cost column (used by RecipesService sync)', async () => {
     const created = await repository.create({
       businessId,
+      branchId: catalogBranchId,
       name: 'Costed Product',
     });
 
@@ -89,10 +103,12 @@ describe('ProductsRepository (integration)', () => {
   it('findAvailableForSale() only returns active, non-deleted products', async () => {
     const active = await repository.create({
       businessId,
+      branchId: catalogBranchId,
       name: 'Available Product',
     });
     const inactive = await repository.create({
       businessId,
+      branchId: catalogBranchId,
       name: 'Inactive Product',
     });
     await repository.setActive(inactive.id, businessId, false);
@@ -105,6 +121,7 @@ describe('ProductsRepository (integration)', () => {
   it('softDelete() hides the product from findById and findAvailableForSale', async () => {
     const created = await repository.create({
       businessId,
+      branchId: catalogBranchId,
       name: 'Deletable Product',
     });
 
@@ -123,6 +140,7 @@ describe('ProductsRepository (integration)', () => {
     const categoryId = category.rows[0].id;
     const product = await repository.create({
       businessId,
+      branchId: catalogBranchId,
       name: 'Categorized Product',
       categoryId,
     });

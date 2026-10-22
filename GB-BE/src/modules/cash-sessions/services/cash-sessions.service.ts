@@ -7,7 +7,6 @@ import {
   EntityNotFoundException,
   UnauthorizedOperationException,
 } from '../../../common/exceptions';
-import { AppConfig } from '../../../config/app.config';
 import { PaginatedResult } from '../../../common/pagination/paginated-result.interface';
 import { buildPaginationMeta } from '../../../common/pagination/pagination.util';
 import { DbClient } from '../../../database/types/database.types';
@@ -33,6 +32,8 @@ import { CashSessionMapper } from '../mappers/cash-session.mapper';
 import { CASH_SESSIONS_REPOSITORY } from '../repositories/cash-sessions.repository.interface';
 import type { ICashSessionsRepository } from '../repositories/cash-sessions.repository.interface';
 
+import { MasterKeysService } from './master-keys.service';
+
 @Injectable()
 export class CashSessionsService {
   constructor(
@@ -42,6 +43,7 @@ export class CashSessionsService {
     private readonly transactionService: TransactionService,
     private readonly auditService: AuditService,
     private readonly configService: ConfigService,
+    private readonly masterKeysService: MasterKeysService,
   ) {}
 
   async open(
@@ -162,7 +164,11 @@ export class CashSessionsService {
     branchId?: string,
     client?: DbClient,
   ): Promise<CashSession[]> {
-    const rows = await this.sessionsRepository.findAllOpen(businessId, branchId, client);
+    const rows = await this.sessionsRepository.findAllOpen(
+      businessId,
+      branchId,
+      client,
+    );
     return rows.map((row) => CashSessionMapper.toDomain(row));
   }
 
@@ -337,8 +343,9 @@ export class CashSessionsService {
   /**
    * Admin-only "rectificar caja": reopens a CLOSED session as RECTIFYING so a missing
    * adjustment can be added and the session closed again — without touching whatever
-   * session is currently OPEN for the branch today. Gated by a shared master key
-   * (CASH_SESSION_MASTER_KEY) on top of the cash.reopen permission.
+   * session is currently OPEN for the branch today. Gated by the business's master
+   * key (see MasterKeysService; the platform-wide CASH_SESSION_MASTER_KEY while the
+   * business has none) on top of the cash.reopen permission.
    */
   async reopenForCorrection(
     businessId: string,
@@ -355,10 +362,10 @@ export class CashSessionsService {
       );
     }
 
-    const configuredKey = this.configService.getOrThrow<AppConfig>('app').cashSession.masterKey;
+    const configuredKey = await this.masterKeysService.keyFor(businessId);
     if (!configuredKey) {
       throw new BusinessRuleException(
-        'No master key is configured for this operation',
+        'Esta empresa no tiene clave maestra. Pídesela al equipo de Golden Bites.',
         'MASTER_KEY_NOT_CONFIGURED',
       );
     }
@@ -366,7 +373,10 @@ export class CashSessionsService {
       throw new UnauthorizedOperationException('Clave maestra incorrecta');
     }
 
-    const reopened = await this.sessionsRepository.reopenForCorrection(id, businessId);
+    const reopened = await this.sessionsRepository.reopenForCorrection(
+      id,
+      businessId,
+    );
     if (!reopened) {
       throw new EntityNotFoundException('CashSession', id);
     }

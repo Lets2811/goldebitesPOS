@@ -13,6 +13,8 @@ import {
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { CurrentBusiness } from '../../../common/decorators/current-business.decorator';
 import { CurrentUser } from '../../../common/decorators/current-user.decorator';
+import { CurrentBranch } from '../../../common/decorators/current-branch.decorator';
+import { requireBranch } from '../../../common/utils/require-branch.util';
 import { Permissions } from '../../../common/decorators/permissions.decorator';
 import { RawResponse } from '../../../common/decorators/raw-response.decorator';
 import { CreateInventoryItemDto } from '../dto/create-inventory-item.dto';
@@ -35,10 +37,15 @@ export class InventoryItemsController {
   create(
     @CurrentBusiness() businessId: string,
     @CurrentUser('userId') actorUserId: string,
+    @CurrentBranch() sessionBranchId: string | null,
     @Body() dto: CreateInventoryItemDto,
   ) {
     return this.inventoryItemsService.create(
-      { businessId, ...dto },
+      {
+        businessId,
+        ...dto,
+        branchId: requireBranch(dto.branchId ?? sessionBranchId),
+      },
       actorUserId,
     );
   }
@@ -52,6 +59,7 @@ export class InventoryItemsController {
   ) {
     return this.inventoryItemsService.findAll({
       businessId,
+      branchId: query.branchId,
       page: query.page,
       limit: query.limit,
       categoryId: query.categoryId,

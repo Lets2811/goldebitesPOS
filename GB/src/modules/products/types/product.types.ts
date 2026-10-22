@@ -13,6 +13,8 @@ export const PRODUCT_MENU_AVAILABILITY_LABELS: Record<ProductMenuAvailability, s
 export interface Product {
   id: string;
   businessId: string;
+  /** The branch it belongs to: each branch has its own catalog. */
+  branchId: string;
   categoryId: string | null;
   name: string;
   description: string | null;
@@ -47,6 +49,8 @@ export interface CreateProductPayload {
 export type UpdateProductPayload = Partial<CreateProductPayload>;
 
 export interface ProductFilters {
+  /** One branch's catalog; the hooks default it to the session's. */
+  branchId?: string;
   page?: number;
   limit?: number;
   categoryId?: string;

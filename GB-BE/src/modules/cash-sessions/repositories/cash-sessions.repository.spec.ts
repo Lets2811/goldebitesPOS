@@ -74,7 +74,9 @@ describe('CashSessionsRepository (integration)', () => {
     ]);
     await pool.query('DELETE FROM users WHERE business_id = $1', [businessId]);
     await pool.query('DELETE FROM roles WHERE business_id = $1', [businessId]);
-    await pool.query('DELETE FROM branches WHERE business_id = $1', [businessId]);
+    await pool.query('DELETE FROM branches WHERE business_id = $1', [
+      businessId,
+    ]);
     await pool.query('DELETE FROM businesses WHERE id = $1', [businessId]);
     await pool.end();
   });
@@ -249,14 +251,36 @@ describe('CashSessionsRepository (integration)', () => {
       `INSERT INTO branches (business_id, name) VALUES ($1, $2) RETURNING id`,
       [businessId, `Branch B ${randomUUID()}`],
     );
-    const openHere = await repository.create({ businessId, branchId: branchA.rows[0].id, openingAmount: 1000 }, userId);
-    const openElsewhere = await repository.create({ businessId, branchId: branchB.rows[0].id, openingAmount: 1000 }, userId);
-    const closed = await repository.create({ businessId, branchId: branchA.rows[0].id, openingAmount: 1000 }, userId);
-    await repository.close(closed.id, businessId, userId, 1000, 1000, 0, 0, null, null, undefined);
+    const openHere = await repository.create(
+      { businessId, branchId: branchA.rows[0].id, openingAmount: 1000 },
+      userId,
+    );
+    const openElsewhere = await repository.create(
+      { businessId, branchId: branchB.rows[0].id, openingAmount: 1000 },
+      userId,
+    );
+    const closed = await repository.create(
+      { businessId, branchId: branchA.rows[0].id, openingAmount: 1000 },
+      userId,
+    );
+    await repository.close(
+      closed.id,
+      businessId,
+      userId,
+      1000,
+      1000,
+      0,
+      0,
+      null,
+      null,
+      undefined,
+    );
 
     const allOpen = await repository.findAllOpen(businessId);
     const allOpenIds = allOpen.map((row) => row.id);
-    expect(allOpenIds).toEqual(expect.arrayContaining([openHere.id, openElsewhere.id]));
+    expect(allOpenIds).toEqual(
+      expect.arrayContaining([openHere.id, openElsewhere.id]),
+    );
     expect(allOpenIds).not.toContain(closed.id);
 
     const scoped = await repository.findAllOpen(businessId, branchA.rows[0].id);
@@ -303,9 +327,23 @@ describe('CashSessionsRepository (integration)', () => {
       { businessId, branchId, openingAmount: 1000 },
       userId,
     );
-    await repository.close(session.id, businessId, userId, 1000, 900, -100, 0, null, null, undefined);
+    await repository.close(
+      session.id,
+      businessId,
+      userId,
+      1000,
+      900,
+      -100,
+      0,
+      null,
+      null,
+      undefined,
+    );
 
-    const notClosedYet = await repository.reopenForCorrection(session.id, businessId);
+    const notClosedYet = await repository.reopenForCorrection(
+      session.id,
+      businessId,
+    );
     expect(notClosedYet?.status).toBe('RECTIFYING');
     expect(notClosedYet?.closed_at).toBeNull();
     expect(notClosedYet?.closed_by).toBeNull();
@@ -313,7 +351,10 @@ describe('CashSessionsRepository (integration)', () => {
     expect(notClosedYet?.difference_amount).toBeNull();
 
     // No longer CLOSED, so a second reopen attempt is rejected (race-safety guard).
-    const secondReopen = await repository.reopenForCorrection(session.id, businessId);
+    const secondReopen = await repository.reopenForCorrection(
+      session.id,
+      businessId,
+    );
     expect(secondReopen).toBeNull();
   });
 
@@ -322,7 +363,18 @@ describe('CashSessionsRepository (integration)', () => {
       { businessId, branchId, openingAmount: 1000 },
       userId,
     );
-    await repository.close(session.id, businessId, userId, 1000, 900, -100, 0, null, null, undefined);
+    await repository.close(
+      session.id,
+      businessId,
+      userId,
+      1000,
+      900,
+      -100,
+      0,
+      null,
+      null,
+      undefined,
+    );
     await repository.reopenForCorrection(session.id, businessId);
 
     const reclosed = await repository.close(

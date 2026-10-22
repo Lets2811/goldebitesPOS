@@ -15,9 +15,15 @@ import type { Product } from '../../../modules/products/types/product.types';
 export default function ProductCard({
   product,
   onClick,
+  soldOut = false,
+  branchName,
 }: {
   product: Product;
   onClick: () => void;
+  /** Ran out at the session's branch: no ingredients left for its recipe. */
+  soldOut?: boolean;
+  /** Whose it is, shown when looking across all branches. */
+  branchName?: string;
 }) {
   const margin =
     product.salePrice > 0 ? (product.salePrice - product.currentCost) / product.salePrice : 0;
@@ -58,6 +64,7 @@ export default function ProductCard({
                   tone="gold"
                 />
               )}
+              {soldOut && product.isActive && <StatusChip label="Agotado" tone="error" />}
               <StatusChip
                 label={product.isActive ? 'Activo' : 'Inactivo'}
                 tone={product.isActive ? 'success' : 'neutral'}
@@ -67,6 +74,11 @@ export default function ProductCard({
           <Typography variant="subtitle1" sx={{ fontWeight: 700, mt: 1.5 }}>
             {product.name}
           </Typography>
+          {branchName && (
+            <Typography variant="caption" color="text.secondary">
+              Sede: {branchName}
+            </Typography>
+          )}
           {product.sku && (
             <Typography variant="caption" color="text.secondary">
               Referencia: {product.sku}

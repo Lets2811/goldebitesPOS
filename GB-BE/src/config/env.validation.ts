@@ -118,6 +118,34 @@ class EnvironmentVariables {
   @IsString()
   @IsOptional()
   CREDENTIALS_ENCRYPTION_KEY: string = '';
+
+  /** Shared with POS-ADMIN (the Admin's own service): the key of the internal
+   *  API (/api/v1/internal). At least 32 characters; empty switches it off. */
+  @IsString()
+  @IsOptional()
+  INTERNAL_API_KEY: string = '';
+
+  /** Web Push (notifications to the couriers' phones). Generate the pair with
+   *  `npx web-push generate-vapid-keys`; empty disables push (the apps still
+   *  alert while open). VAPID_SUBJECT is a contact, "mailto:..." or a URL. */
+  @IsString()
+  @IsOptional()
+  VAPID_PUBLIC_KEY: string = '';
+
+  @IsString()
+  @IsOptional()
+  VAPID_PRIVATE_KEY: string = '';
+
+  @IsString()
+  @IsOptional()
+  VAPID_SUBJECT: string = 'mailto:soporte@goldenbites.net';
+
+  /** Push to the installed phone apps (the courier's app), through Firebase
+   *  Cloud Messaging: the Firebase project's service account JSON, encoded in
+   *  base64 (one line). Empty disables it (the apps still alert while open). */
+  @IsString()
+  @IsOptional()
+  FCM_SERVICE_ACCOUNT: string = '';
 }
 
 export function validate(config: Record<string, unknown>) {

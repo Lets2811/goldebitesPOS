@@ -82,7 +82,9 @@ describe('CashSessionsService', () => {
     };
     auditService = { record: jest.fn() };
     configService = {
-      getOrThrow: jest.fn().mockReturnValue({ cashSession: { masterKey: 'super-secret' } }),
+      getOrThrow: jest
+        .fn()
+        .mockReturnValue({ cashSession: { masterKey: 'super-secret' } }),
     };
     service = new CashSessionsService(
       repository,
@@ -90,6 +92,18 @@ describe('CashSessionsService', () => {
       transactionService as never,
       auditService as never,
       configService as never,
+      // The business's key, or the platform-wide one (from the config) when it has none.
+      {
+        keyFor: jest.fn(() =>
+          Promise.resolve(
+            (
+              configService.getOrThrow() as {
+                cashSession: { masterKey: string };
+              }
+            ).cashSession.masterKey || null,
+          ),
+        ),
+      } as never,
     );
   });
 
@@ -143,11 +157,18 @@ describe('CashSessionsService', () => {
 
   describe('findAllOpen', () => {
     it('delegates to the repository and maps every row', async () => {
-      repository.findAllOpen.mockResolvedValue([makeRow(), makeRow({ id: 'session-2', branch_id: 'branch-2' })]);
+      repository.findAllOpen.mockResolvedValue([
+        makeRow(),
+        makeRow({ id: 'session-2', branch_id: 'branch-2' }),
+      ]);
 
       const sessions = await service.findAllOpen(businessId, undefined);
 
-      expect(repository.findAllOpen).toHaveBeenCalledWith(businessId, undefined, undefined);
+      expect(repository.findAllOpen).toHaveBeenCalledWith(
+        businessId,
+        undefined,
+        undefined,
+      );
       expect(sessions).toHaveLength(2);
       expect(sessions[1].id).toBe('session-2');
     });
@@ -223,8 +244,12 @@ describe('CashSessionsService', () => {
     });
 
     it('allows closing a RECTIFYING session (re-closing after an admin correction)', async () => {
-      repository.findById.mockResolvedValue(makeRow({ status: CashSessionStatus.RECTIFYING }));
-      repository.close.mockResolvedValue(makeRow({ status: CashSessionStatus.CLOSED }));
+      repository.findById.mockResolvedValue(
+        makeRow({ status: CashSessionStatus.RECTIFYING }),
+      );
+      repository.close.mockResolvedValue(
+        makeRow({ status: CashSessionStatus.CLOSED }),
+      );
 
       await expect(
         service.close(businessId, 'session-1', { actualClosingAmount: 50000 }),
@@ -266,7 +291,9 @@ describe('CashSessionsService', () => {
     it('computes the transfer difference only when an actual transfer amount is given', async () => {
       repository.findById.mockResolvedValue(makeRow());
       repository.getExpectedTransferAmount.mockResolvedValue(20000);
-      repository.close.mockResolvedValue(makeRow({ status: CashSessionStatus.CLOSED }));
+      repository.close.mockResolvedValue(
+        makeRow({ status: CashSessionStatus.CLOSED }),
+      );
 
       await service.close(businessId, 'session-1', {
         actualClosingAmount: 50000,
@@ -291,9 +318,13 @@ describe('CashSessionsService', () => {
     it('leaves actual/difference transfer amounts null when none is provided', async () => {
       repository.findById.mockResolvedValue(makeRow());
       repository.getExpectedTransferAmount.mockResolvedValue(20000);
-      repository.close.mockResolvedValue(makeRow({ status: CashSessionStatus.CLOSED }));
+      repository.close.mockResolvedValue(
+        makeRow({ status: CashSessionStatus.CLOSED }),
+      );
 
-      await service.close(businessId, 'session-1', { actualClosingAmount: 50000 });
+      await service.close(businessId, 'session-1', {
+        actualClosingAmount: 50000,
+      });
 
       expect(repository.close).toHaveBeenCalledWith(
         'session-1',
@@ -323,38 +354,72 @@ describe('CashSessionsService', () => {
 
   describe('reopenForCorrection', () => {
     it('rejects when the session is not closed', async () => {
-      repository.findById.mockResolvedValue(makeRow({ status: CashSessionStatus.OPEN }));
+      repository.findById.mockResolvedValue(
+        makeRow({ status: CashSessionStatus.OPEN }),
+      );
 
       await expect(
-        service.reopenForCorrection(businessId, 'session-1', 'super-secret', 'Faltó un ingreso', 'admin-1'),
+        service.reopenForCorrection(
+          businessId,
+          'session-1',
+          'super-secret',
+          'Faltó un ingreso',
+          'admin-1',
+        ),
       ).rejects.toThrow(BusinessRuleException);
       expect(repository.reopenForCorrection).not.toHaveBeenCalled();
     });
 
     it('rejects when no master key is configured', async () => {
-      configService.getOrThrow.mockReturnValue({ cashSession: { masterKey: '' } });
-      repository.findById.mockResolvedValue(makeRow({ status: CashSessionStatus.CLOSED }));
+      configService.getOrThrow.mockReturnValue({
+        cashSession: { masterKey: '' },
+      });
+      repository.findById.mockResolvedValue(
+        makeRow({ status: CashSessionStatus.CLOSED }),
+      );
 
       await expect(
-        service.reopenForCorrection(businessId, 'session-1', 'anything', 'Faltó un ingreso', 'admin-1'),
+        service.reopenForCorrection(
+          businessId,
+          'session-1',
+          'anything',
+          'Faltó un ingreso',
+          'admin-1',
+        ),
       ).rejects.toThrow(BusinessRuleException);
       expect(repository.reopenForCorrection).not.toHaveBeenCalled();
     });
 
     it('rejects an incorrect master key without reopening', async () => {
-      repository.findById.mockResolvedValue(makeRow({ status: CashSessionStatus.CLOSED }));
+      repository.findById.mockResolvedValue(
+        makeRow({ status: CashSessionStatus.CLOSED }),
+      );
 
       await expect(
-        service.reopenForCorrection(businessId, 'session-1', 'wrong-key', 'Faltó un ingreso', 'admin-1'),
+        service.reopenForCorrection(
+          businessId,
+          'session-1',
+          'wrong-key',
+          'Faltó un ingreso',
+          'admin-1',
+        ),
       ).rejects.toThrow(UnauthorizedOperationException);
       expect(repository.reopenForCorrection).not.toHaveBeenCalled();
     });
 
     it('rejects a master key of a different length than the configured one', async () => {
-      repository.findById.mockResolvedValue(makeRow({ status: CashSessionStatus.CLOSED }));
+      repository.findById.mockResolvedValue(
+        makeRow({ status: CashSessionStatus.CLOSED }),
+      );
 
       await expect(
-        service.reopenForCorrection(businessId, 'session-1', 'short', 'Faltó un ingreso', 'admin-1'),
+        service.reopenForCorrection(
+          businessId,
+          'session-1',
+          'short',
+          'Faltó un ingreso',
+          'admin-1',
+        ),
       ).rejects.toThrow(UnauthorizedOperationException);
     });
 
@@ -379,7 +444,10 @@ describe('CashSessionsService', () => {
         'admin-1',
       );
 
-      expect(repository.reopenForCorrection).toHaveBeenCalledWith('session-1', businessId);
+      expect(repository.reopenForCorrection).toHaveBeenCalledWith(
+        'session-1',
+        businessId,
+      );
       expect(result.status).toBe(CashSessionStatus.RECTIFYING);
       expect(auditService.record).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -399,11 +467,19 @@ describe('CashSessionsService', () => {
     });
 
     it('throws EntityNotFoundException if the session was no longer CLOSED by the time it tried to claim it', async () => {
-      repository.findById.mockResolvedValue(makeRow({ status: CashSessionStatus.CLOSED }));
+      repository.findById.mockResolvedValue(
+        makeRow({ status: CashSessionStatus.CLOSED }),
+      );
       repository.reopenForCorrection.mockResolvedValue(null);
 
       await expect(
-        service.reopenForCorrection(businessId, 'session-1', 'super-secret', 'Faltó un ingreso', 'admin-1'),
+        service.reopenForCorrection(
+          businessId,
+          'session-1',
+          'super-secret',
+          'Faltó un ingreso',
+          'admin-1',
+        ),
       ).rejects.toThrow(EntityNotFoundException);
     });
   });

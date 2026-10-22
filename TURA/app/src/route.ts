@@ -1,8 +1,8 @@
 import { useSyncExternalStore } from 'react';
 
-export type Route = 'home' | 'chat' | 'voice' | 'admin';
+export type Route = 'home' | 'chat' | 'voice';
 
-const ROUTES: Route[] = ['home', 'chat', 'voice', 'admin'];
+const ROUTES: Route[] = ['home', 'chat', 'voice'];
 
 function currentRoute(): Route {
   const hash = window.location.hash.slice(1) as Route;

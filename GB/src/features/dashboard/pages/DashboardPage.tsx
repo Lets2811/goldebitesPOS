@@ -19,6 +19,8 @@ import { useNavigate } from 'react-router-dom';
 import Sales7DaysChart from '../components/Sales7DaysChart';
 import TopProductsChart from '../components/TopProductsChart';
 import KitchenSnapshot from '../components/KitchenSnapshot';
+import BranchTodayStrip from '../components/BranchTodayStrip';
+import { usePermissions } from '../../../modules/auth/hooks/use-permissions';
 
 function last7DaysRange(): { dateFrom: string; dateTo: string } {
   const now = new Date();
@@ -28,12 +30,20 @@ function last7DaysRange(): { dateFrom: string; dateTo: string } {
   return { dateFrom: from.toISOString(), dateTo: now.toISOString() };
 }
 
-const WEEKDAY_FORMATTER = new Intl.DateTimeFormat('es-CO', { weekday: 'short', timeZone: 'America/Bogota' });
+const WEEKDAY_FORMATTER = new Intl.DateTimeFormat('es-CO', {
+  weekday: 'short',
+  timeZone: 'America/Bogota',
+});
 
 export default function DashboardPage() {
   const { data: business } = useCurrentBusiness();
   const navigate = useNavigate();
   const branchId = useAuthStore((s) => s.user?.branchId ?? undefined);
+  const { hasPermission } = usePermissions();
+  // Working across all branches: each one's day, side by side.
+  const showBranchStrip = !branchId && hasPermission('branches.switch');
+  // Orders and cash are worked at a branch: in "Todas las sedes" the cards don't lead there.
+  const reviewOnly = showBranchStrip;
   const { dateFrom, dateTo } = useMemo(() => last7DaysRange(), []);
 
   const { data: summary, isLoading, isError, refetch } = useDashboardSummary(branchId);
@@ -62,8 +72,11 @@ export default function DashboardPage() {
     const list: AlertItem[] = [];
     for (const item of (lowStock ?? []).slice(0, 3)) {
       list.push({
-        id: `inv-${item.inventoryItemId}`,
-        title: `Inventario: ${item.name}`,
+        id: `inv-${item.inventoryItemId}-${item.branchId}`,
+        // Across all branches, say which one.
+        title: branchId
+          ? `Inventario: ${item.name}`
+          : `Inventario: ${item.name} · ${item.branchName}`,
         message: `${item.currentStock} ${item.unit} disponibles (mínimo ${item.minimumStock} ${item.unit})`,
         level: 'warning',
       });
@@ -77,12 +90,15 @@ export default function DashboardPage() {
       });
     }
     return list;
-  }, [lowStock, summary]);
+  }, [lowStock, summary, branchId]);
 
   if (isLoading) {
     return (
       <>
-        <PageHeader title="Centro de operaciones" breadcrumbs={[{ label: 'Centro de operaciones' }]} />
+        <PageHeader
+          title="Centro de operaciones"
+          breadcrumbs={[{ label: 'Centro de operaciones' }]}
+        />
         <LoadingSkeleton variant="page" />
       </>
     );
@@ -91,7 +107,10 @@ export default function DashboardPage() {
   if (isError || !summary) {
     return (
       <>
-        <PageHeader title="Centro de operaciones" breadcrumbs={[{ label: 'Centro de operaciones' }]} />
+        <PageHeader
+          title="Centro de operaciones"
+          breadcrumbs={[{ label: 'Centro de operaciones' }]}
+        />
         <ErrorState onRetry={() => refetch()} />
       </>
     );
@@ -101,9 +120,15 @@ export default function DashboardPage() {
     <>
       <PageHeader
         title="Centro de operaciones"
-        subtitle={business?.name ? `Resumen en vivo de la operación de ${business.name}.` : 'Resumen en vivo de la operación.'}
+        subtitle={
+          business?.name
+            ? `Resumen en vivo de la operación de ${business.name}.`
+            : 'Resumen en vivo de la operación.'
+        }
         breadcrumbs={[{ label: 'Centro de operaciones' }]}
       />
+
+      {showBranchStrip && <BranchTodayStrip />}
 
       <Grid container spacing={2} sx={{ mb: 3 }}>
         <Grid size={{ xs: 12, sm: 6, md: 4, lg: 3 }}>
@@ -111,7 +136,7 @@ export default function DashboardPage() {
             label="Ventas del día"
             value={formatCOP(summary.todaySales.totalAmount)}
             icon={DollarSign}
-            to="/pedidos"
+            to={reviewOnly ? undefined : '/pedidos'}
           />
         </Grid>
         <Grid size={{ xs: 12, sm: 6, md: 4, lg: 3 }}>
@@ -119,14 +144,23 @@ export default function DashboardPage() {
             label="Pedidos realizados hoy"
             value={String(summary.todaySales.orderCount)}
             icon={ClipboardList}
-            to="/pedidos"
+            to={reviewOnly ? undefined : '/pedidos'}
           />
         </Grid>
         <Grid size={{ xs: 12, sm: 6, md: 4, lg: 3 }}>
-          <MetricCard label="Pedidos activos" value={String(summary.activeOrders)} icon={Activity} to="/pedidos" />
+          <MetricCard
+            label="Pedidos activos"
+            value={String(summary.activeOrders)}
+            icon={Activity}
+            to={reviewOnly ? undefined : '/pedidos'}
+          />
         </Grid>
         <Grid size={{ xs: 12, sm: 6, md: 4, lg: 3 }}>
-          <StatCard label="Ticket promedio" value={formatCOP(summary.todaySales.averageTicket)} icon={Receipt} />
+          <StatCard
+            label="Ticket promedio"
+            value={formatCOP(summary.todaySales.averageTicket)}
+            icon={Receipt}
+          />
         </Grid>
         <Grid size={{ xs: 12, sm: 6, md: 4, lg: 3 }}>
           <MetricCard
@@ -139,7 +173,7 @@ export default function DashboardPage() {
                   : 'Cerrada'
             }
             icon={Wallet}
-            to="/caja"
+            to={reviewOnly ? undefined : '/caja'}
           />
         </Grid>
         <Grid size={{ xs: 12, sm: 6, md: 4, lg: 3 }}>

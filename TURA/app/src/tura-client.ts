@@ -10,6 +10,8 @@ export interface ChatTurn {
 export type TuraEvent =
   | { type: 'text'; delta: string }
   | { type: 'tool'; name: string }
+  /** A change TURA made in the POS, as it was left. */
+  | { type: 'change'; message: string }
   | { type: 'done' }
   | { type: 'error'; message: string };
 

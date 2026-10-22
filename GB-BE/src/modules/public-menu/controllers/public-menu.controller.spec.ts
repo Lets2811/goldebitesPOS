@@ -7,12 +7,23 @@ describe('PublicMenuController', () => {
 
   beforeEach(() => {
     service = { getMenu: jest.fn() };
-    controller = new PublicMenuController(service as unknown as PublicMenuService);
+    controller = new PublicMenuController(
+      service as unknown as PublicMenuService,
+    );
   });
 
   it('getMenu() forwards the businessId path param', async () => {
-    service.getMenu.mockResolvedValue({ businessName: 'Golden Bites', categories: [], builderCategories: [], optionGroups: [] });
+    service.getMenu.mockResolvedValue({
+      businessName: 'Golden Bites',
+      categories: [],
+      builderCategories: [],
+      builderName: 'Arma tu combo',
+      builderDescription: 'Escoge lo que quieras, a tu gusto y a tu estilo.',
+      hasBuilderTemplate: false,
+      optionGroups: [],
+      topSellers: null,
+    });
     await controller.getMenu('business-1');
-    expect(service.getMenu).toHaveBeenCalledWith('business-1');
+    expect(service.getMenu).toHaveBeenCalledWith('business-1', undefined);
   });
 });

@@ -16,6 +16,7 @@ import { OrdersService } from '../../orders/services/orders.service';
 import { PaymentsService } from '../../payments/services/payments.service';
 import { ProductCategoriesService } from '../../product-categories/services/product-categories.service';
 import { ProductsService } from '../../products/services/products.service';
+import { BranchMenuService } from '../../products/services/branch-menu.service';
 import { CreateCarServiceOrderDto } from '../dto/create-car-service-order.dto';
 import { CreateCarServicePaymentDto } from '../dto/create-car-service-payment.dto';
 
@@ -36,6 +37,7 @@ export class TabletKioskController {
     private readonly productsService: ProductsService,
     private readonly productCategoriesService: ProductCategoriesService,
     private readonly paymentsService: PaymentsService,
+    private readonly branchMenuService: BranchMenuService,
   ) {}
 
   private get businessId(): string {
@@ -60,14 +62,23 @@ export class TabletKioskController {
 
   @Get('products')
   @ApiOperation({ summary: 'Active products for the kiosk' })
-  getProducts(@Query('categoryId') categoryId?: string) {
-    return this.productsService.findAll({
-      businessId: this.businessId,
-      isActive: true,
-      categoryId,
-      page: 1,
-      limit: 100,
-    });
+  async getProducts(@Query('categoryId') categoryId?: string) {
+    const [result, branchMenu] = await Promise.all([
+      this.productsService.findAll({
+        businessId: this.businessId,
+        branchId: this.branchId,
+        isActive: true,
+        categoryId,
+        page: 1,
+        limit: 100,
+      }),
+      this.branchMenuService.forBranch(this.businessId, this.branchId),
+    ]);
+    // The kiosk's branch catalog, without what ran out.
+    const data = result.data.filter(
+      (product) => !branchMenu.get(product.id)?.outOfStock,
+    );
+    return { ...result, data };
   }
 
   @Post('orders')

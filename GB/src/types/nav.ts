@@ -6,6 +6,8 @@ export type ModuleKey =
   | 'orders'
   | 'ordersBacklog'
   | 'kitchen'
+  | 'deliveries'
+  | 'discounts'
   | 'cash-register'
   | 'products'
   | 'inventory'
@@ -24,7 +26,8 @@ export type ModuleKey =
   | 'marketing'
   | 'analytics'
   | 'settings'
-  | 'roles';
+  | 'roles'
+  | 'branchComparison';
 
 export interface NavLeaf {
   kind: 'item';

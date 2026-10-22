@@ -163,23 +163,31 @@ export class InventoryMovementsRepository implements IInventoryMovementsReposito
     branchId?: string,
   ): Promise<LowStockRow[]> {
     const params: unknown[] = [businessId];
-    let stockJoinCondition =
-      'sv.inventory_item_id = ii.id AND sv.business_id = ii.business_id';
-
+    let branchCondition = '';
     if (branchId) {
       params.push(branchId);
-      stockJoinCondition += ` AND sv.branch_id = $${params.length}`;
+      branchCondition = ` AND ii.branch_id = $${params.length}`;
     }
 
+    // Each item is its branch's and is measured by that branch's stock.
     const result = await this.db.query<LowStockRow>(
-      `SELECT ii.id AS inventory_item_id, ii.name, ii.unit, ii.minimum_stock::text AS minimum_stock,
-              COALESCE(SUM(sv.stock), 0)::text AS current_stock
+      `SELECT ii.id AS inventory_item_id, ii.name, ii.unit,
+              ii.minimum_stock::text AS minimum_stock,
+              COALESCE((
+                SELECT SUM(sv.stock) FROM inventory_stock_view sv
+                WHERE sv.business_id = ii.business_id AND sv.branch_id = ii.branch_id
+                  AND sv.inventory_item_id = ii.id
+              ), 0)::text AS current_stock,
+              b.id AS branch_id, b.name AS branch_name
        FROM inventory_items ii
-       LEFT JOIN inventory_stock_view sv ON ${stockJoinCondition}
-       WHERE ii.business_id = $1 AND ii.deleted_at IS NULL AND ii.is_active = true
-       GROUP BY ii.id, ii.name, ii.unit, ii.minimum_stock
-       HAVING COALESCE(SUM(sv.stock), 0) < ii.minimum_stock
-       ORDER BY ii.name`,
+       JOIN branches b ON b.id = ii.branch_id AND b.is_active = true
+       WHERE ii.business_id = $1 AND ii.deleted_at IS NULL AND ii.is_active = true${branchCondition}
+         AND COALESCE((
+           SELECT SUM(sv.stock) FROM inventory_stock_view sv
+           WHERE sv.business_id = ii.business_id AND sv.branch_id = ii.branch_id
+             AND sv.inventory_item_id = ii.id
+         ), 0) < ii.minimum_stock
+       ORDER BY ii.name, b.created_at`,
       params,
     );
     return result.rows;

@@ -6,9 +6,11 @@ import { Permissions } from '../../../common/decorators/permissions.decorator';
 import { CreatePaymentDto } from '../dto/create-payment.dto';
 import { UpdatePaymentMethodDto } from '../dto/update-payment-method.dto';
 import { PaymentsService } from '../services/payments.service';
+import { BranchOperation } from '../../../common/decorators/branch-operation.decorator';
 
 @ApiTags('Payments')
 @ApiBearerAuth()
+@BranchOperation()
 @Controller('orders/:orderId/payments')
 export class PaymentsController {
   constructor(private readonly paymentsService: PaymentsService) {}

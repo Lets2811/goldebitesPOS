@@ -16,11 +16,19 @@ import LoadingSkeleton from '../../../components/common/LoadingSkeleton';
 import { normalizeApiError } from '../../../lib/api/api-error';
 import { useProductCategories } from '../../../modules/product-categories/hooks/use-product-categories';
 import { useSetCategoryOrder } from '../../../modules/product-categories/hooks/use-set-category-order';
-import type { CategoryOrderScope, ProductCategory } from '../../../modules/product-categories/types/product-category.types';
+import type {
+  CategoryOrderScope,
+  ProductCategory,
+} from '../../../modules/product-categories/types/product-category.types';
 import { useProducts } from '../../../modules/products/hooks/use-products';
 import type { Product } from '../../../modules/products/types/product.types';
 import { brand } from '../../../theme/palette';
 import { formatCOP } from '../../../utils/format';
+import { useComboBuilderName } from '../../../modules/products/combo-builder';
+import { usePermissions } from '../../../modules/auth/hooks/use-permissions';
+import ComboBuilderNameCard from './ComboBuilderNameCard';
+import ComboTemplateCard from './ComboTemplateCard';
+import LiveComboPreview from './LiveComboPreview';
 
 /** Lo que el cliente ve en cada lista: el menú no muestra lo que es solo de combo, y al revés. */
 const offeredIn = (product: Product, scope: CategoryOrderScope) =>
@@ -45,6 +53,7 @@ function PhonePreview({
   uncategorized: Product[];
   activeId: string | null;
 }) {
+  const comboName = useComboBuilderName();
   const visible = sections.filter((section) => section.products.length > 0);
   const renderSection = (key: string, name: string, products: Product[], active: boolean) => (
     <Box
@@ -58,12 +67,19 @@ function PhonePreview({
         backgroundColor: active ? alpha(brand.gold, 0.16) : 'transparent',
       }}
     >
-      <Typography variant="overline" sx={{ color: brand.gold, fontWeight: 700, letterSpacing: 1.2, fontSize: '0.62rem' }}>
+      <Typography
+        variant="overline"
+        sx={{ color: brand.gold, fontWeight: 700, letterSpacing: 1.2, fontSize: '0.62rem' }}
+      >
         {name}
       </Typography>
       <Divider sx={{ mb: 0.75, borderColor: brand.gold, opacity: 0.3 }} />
       {products.slice(0, 4).map((product) => (
-        <Stack key={product.id} direction="row" sx={{ justifyContent: 'space-between', py: 0.35, gap: 1 }}>
+        <Stack
+          key={product.id}
+          direction="row"
+          sx={{ justifyContent: 'space-between', py: 0.35, gap: 1 }}
+        >
           <Typography variant="caption" noWrap sx={{ fontWeight: 600 }}>
             {product.name}
           </Typography>
@@ -93,8 +109,19 @@ function PhonePreview({
         backgroundColor: (theme) => alpha(theme.palette.text.primary, 0.03),
       }}
     >
-      <Box sx={{ width: 70, height: 5, borderRadius: 3, bgcolor: 'divider', mx: 'auto', mb: 1.25 }} />
-      <Box sx={{ height: 520, overflowY: 'auto', px: 1.5, py: 1, borderRadius: 3, bgcolor: 'background.default' }}>
+      <Box
+        sx={{ width: 70, height: 5, borderRadius: 3, bgcolor: 'divider', mx: 'auto', mb: 1.25 }}
+      />
+      <Box
+        sx={{
+          height: 520,
+          overflowY: 'auto',
+          px: 1.5,
+          py: 1,
+          borderRadius: 3,
+          bgcolor: 'background.default',
+        }}
+      >
         <Stack sx={{ alignItems: 'center', mb: 2, mt: 1 }} spacing={0.5}>
           {scope === 'MENU' ? (
             <UtensilsCrossed size={20} color={brand.gold} />
@@ -102,21 +129,31 @@ function PhonePreview({
             <Sparkles size={20} color={brand.gold} />
           )}
           <Typography variant="subtitle2" sx={{ fontWeight: 800 }}>
-            {scope === 'MENU' ? 'Menú' : 'Arma tu combo'}
+            {scope === 'MENU' ? 'Menú' : comboName}
           </Typography>
         </Stack>
         {visible.length === 0 && uncategorized.length === 0 ? (
-          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', textAlign: 'center', mt: 4 }}>
+          <Typography
+            variant="caption"
+            color="text.secondary"
+            sx={{ display: 'block', textAlign: 'center', mt: 4 }}
+          >
             {scope === 'MENU'
               ? 'No hay productos visibles en el menú.'
-              : 'Ningún producto está marcado para "Arma tu combo".'}
+              : `Ningún producto está marcado para «${comboName}».`}
           </Typography>
         ) : (
           <Stack spacing={1.5}>
             {visible.map((section) =>
-              renderSection(section.category.id, section.category.name, section.products, section.category.id === activeId),
+              renderSection(
+                section.category.id,
+                section.category.name,
+                section.products,
+                section.category.id === activeId,
+              ),
             )}
-            {uncategorized.length > 0 && renderSection('uncategorized', 'Otros', uncategorized, false)}
+            {uncategorized.length > 0 &&
+              renderSection('uncategorized', 'Otros', uncategorized, false)}
           </Stack>
         )}
       </Box>
@@ -130,11 +167,26 @@ function PhonePreview({
  * o se usan las flechas, con la vista previa del celular siguiendo en vivo.
  * Cada cambio se guarda al soltar.
  */
-export default function MenuOrganizerTab({ initialScope = 'MENU' }: { initialScope?: CategoryOrderScope }) {
+export default function MenuOrganizerTab({
+  initialScope = 'MENU',
+}: {
+  initialScope?: CategoryOrderScope;
+}) {
   const { enqueueSnackbar } = useSnackbar();
   const [scope, setScope] = useState<CategoryOrderScope>(initialScope);
-  const { data: categoryPage, isLoading: categoriesLoading } = useProductCategories({ isActive: true, limit: 100 });
-  const { data: productPage, isLoading: productsLoading } = useProducts({ isActive: true, isVisible: true, limit: 100 });
+  const comboName = useComboBuilderName();
+  const { hasPermission } = usePermissions();
+  /** Each click on "edit the template" from the preview opens the full-screen editor. */
+  const [editorRequest, setEditorRequest] = useState(0);
+  const { data: categoryPage, isLoading: categoriesLoading } = useProductCategories({
+    isActive: true,
+    limit: 100,
+  });
+  const { data: productPage, isLoading: productsLoading } = useProducts({
+    isActive: true,
+    isVisible: true,
+    limit: 100,
+  });
   const setOrderMutation = useSetCategoryOrder();
 
   const categories = useMemo(() => categoryPage?.data ?? [], [categoryPage]);
@@ -160,7 +212,10 @@ export default function MenuOrganizerTab({ initialScope = 'MENU' }: { initialSco
   const orderAtDragStart = useRef<string[]>([]);
   const [savedTick, setSavedTick] = useState(false);
 
-  const byId = useMemo(() => new Map(categories.map((category) => [category.id, category])), [categories]);
+  const byId = useMemo(
+    () => new Map(categories.map((category) => [category.id, category])),
+    [categories],
+  );
   const allSections = order
     .map((id) => byId.get(id))
     .filter((category): category is ProductCategory => Boolean(category))
@@ -170,7 +225,9 @@ export default function MenuOrganizerTab({ initialScope = 'MENU' }: { initialSco
         .filter((product) => product.categoryId === category.id && offeredIn(product, scope))
         .sort((a, b) => a.name.localeCompare(b.name)),
     }));
-  const uncategorized = products.filter((product) => !product.categoryId && offeredIn(product, scope));
+  const uncategorized = products.filter(
+    (product) => !product.categoryId && offeredIn(product, scope),
+  );
   // Solo se ordenan las secciones que el cliente ve en esta lista: cruzarse con una que no aparece no cambiaría nada a la vista.
   const sections = allSections.filter((section) => section.products.length > 0);
   const hiddenSections = allSections.filter((section) => section.products.length === 0);
@@ -210,7 +267,11 @@ export default function MenuOrganizerTab({ initialScope = 'MENU' }: { initialSco
 
   return (
     <Stack spacing={2.5}>
-      <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ alignItems: { sm: 'center' } }}>
+      <Stack
+        direction={{ xs: 'column', sm: 'row' }}
+        spacing={2}
+        sx={{ alignItems: { sm: 'center' } }}
+      >
         <ToggleButtonGroup
           exclusive
           size="small"
@@ -221,13 +282,18 @@ export default function MenuOrganizerTab({ initialScope = 'MENU' }: { initialSco
             <UtensilsCrossed size={15} /> Menú
           </ToggleButton>
           <ToggleButton value="BUILDER" sx={{ gap: 0.75 }}>
-            <Sparkles size={15} /> Arma tu combo
+            <Sparkles size={15} /> {comboName}
           </ToggleButton>
         </ToggleButtonGroup>
         <Typography variant="body2" color="text.secondary" sx={{ flex: 1 }}>
-          Arrastra las secciones para ordenarlas como las verá el cliente. Cada lista tiene su propio orden.
+          Arrastra las secciones para ordenarlas como las verá el cliente. Cada lista tiene su
+          propio orden.
         </Typography>
-        <Stack direction="row" spacing={0.75} sx={{ alignItems: 'center', color: 'text.secondary', minWidth: 110 }}>
+        <Stack
+          direction="row"
+          spacing={0.75}
+          sx={{ alignItems: 'center', color: 'text.secondary', minWidth: 110 }}
+        >
           {setOrderMutation.isPending ? (
             <>
               <CircularProgress size={13} />
@@ -242,13 +308,31 @@ export default function MenuOrganizerTab({ initialScope = 'MENU' }: { initialSco
         </Stack>
       </Stack>
 
-      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'minmax(0, 1fr) 320px' }, gap: 3, alignItems: 'start' }}>
+      {scope === 'BUILDER' && <ComboBuilderNameCard canEdit={hasPermission('products.update')} />}
+      {scope === 'BUILDER' && (
+        <ComboTemplateCard
+          canEdit={hasPermission('products.update')}
+          openEditorRequest={editorRequest}
+        />
+      )}
+
+      <Box
+        sx={{
+          display: 'grid',
+          gridTemplateColumns: {
+            xs: '1fr',
+            md: `minmax(0, 1fr) ${scope === 'BUILDER' ? 380 : 320}px`,
+          },
+          gap: 3,
+          alignItems: 'start',
+        }}
+      >
         <Card variant="outlined" sx={{ p: 1 }}>
           {sections.length === 0 ? (
             <Typography variant="body2" color="text.secondary" sx={{ p: 2 }}>
               {scope === 'MENU'
                 ? 'Ninguna sección tiene productos visibles en el menú.'
-                : 'Ninguna sección tiene productos para "Arma tu combo". Márcalos en cada producto, en "Disponible para el cliente en".'}
+                : `Ninguna sección tiene productos para «${comboName}». Márcalos en cada producto, en "Disponible para el cliente en".`}
             </Typography>
           ) : (
             <Stack spacing={0.75}>
@@ -290,14 +374,23 @@ export default function MenuOrganizerTab({ initialScope = 'MENU' }: { initialSco
                     }}
                   >
                     <GripVertical size={18} style={{ opacity: 0.6, flexShrink: 0 }} />
-                    <Typography variant="body2" color="text.secondary" sx={{ width: 22, fontVariantNumeric: 'tabular-nums' }}>
+                    <Typography
+                      variant="body2"
+                      color="text.secondary"
+                      sx={{ width: 22, fontVariantNumeric: 'tabular-nums' }}
+                    >
                       {index + 1}
                     </Typography>
                     <Box sx={{ flex: 1, minWidth: 0 }}>
                       <Typography variant="body2" sx={{ fontWeight: 700 }} noWrap>
                         {category.name}
                       </Typography>
-                      <Typography variant="caption" color="text.secondary" noWrap sx={{ display: 'block' }}>
+                      <Typography
+                        variant="caption"
+                        color="text.secondary"
+                        noWrap
+                        sx={{ display: 'block' }}
+                      >
                         {sectionProducts.length} producto{sectionProducts.length === 1 ? '' : 's'}
                       </Typography>
                     </Box>
@@ -308,7 +401,11 @@ export default function MenuOrganizerTab({ initialScope = 'MENU' }: { initialSco
                           aria-label={`Subir ${category.name}`}
                           disabled={index === 0 || setOrderMutation.isPending}
                           onClick={() => {
-                            const next = moveShown(order, category.id, sections[index - 1].category.id);
+                            const next = moveShown(
+                              order,
+                              category.id,
+                              sections[index - 1].category.id,
+                            );
                             setOrder(next);
                             save(next);
                           }}
@@ -324,7 +421,11 @@ export default function MenuOrganizerTab({ initialScope = 'MENU' }: { initialSco
                           aria-label={`Bajar ${category.name}`}
                           disabled={index === sections.length - 1 || setOrderMutation.isPending}
                           onClick={() => {
-                            const next = moveShown(order, category.id, sections[index + 1].category.id);
+                            const next = moveShown(
+                              order,
+                              category.id,
+                              sections[index + 1].category.id,
+                            );
                             setOrder(next);
                             save(next);
                           }}
@@ -352,10 +453,30 @@ export default function MenuOrganizerTab({ initialScope = 'MENU' }: { initialSco
         </Card>
 
         <Box>
-          <Typography variant="overline" color="text.secondary" sx={{ display: 'block', textAlign: 'center', mb: 1 }}>
+          <Typography
+            variant="overline"
+            color="text.secondary"
+            sx={{ display: 'block', textAlign: 'center', mb: 1 }}
+          >
             Así lo verá el cliente
           </Typography>
-          <PhonePreview scope={scope} sections={sections} uncategorized={uncategorized} activeId={draggingId} />
+          {scope === 'BUILDER' ? (
+            // The combo as the customer really gets it (template or default view), in the order on screen.
+            <LiveComboPreview
+              sections={sections}
+              uncategorized={uncategorized}
+              onOpenEditor={
+                hasPermission('products.update') ? () => setEditorRequest((n) => n + 1) : undefined
+              }
+            />
+          ) : (
+            <PhonePreview
+              scope={scope}
+              sections={sections}
+              uncategorized={uncategorized}
+              activeId={draggingId}
+            />
+          )}
         </Box>
       </Box>
     </Stack>

@@ -35,7 +35,7 @@ const FIELD_COLUMN: Record<InventoryQueryField, string> = {
   [InventoryQueryField.CREATED_AT]: 'ii.created_at',
 };
 
-const SELECT_COLUMNS = `id, business_id, category_id, name, sku, unit, minimum_stock, current_cost, serial_number, brand, model, is_active, created_at, updated_at, deleted_at`;
+const SELECT_COLUMNS = `id, business_id, category_id, name, sku, unit, minimum_stock, current_cost, serial_number, brand, model, branch_id, is_active, created_at, updated_at, deleted_at`;
 
 interface CountRow {
   count: string;
@@ -50,8 +50,8 @@ export class InventoryItemsRepository implements IInventoryItemsRepository {
     client?: DbClient,
   ): Promise<InventoryItemRow> {
     const result = await this.db.query<InventoryItemRow>(
-      `INSERT INTO inventory_items (business_id, category_id, name, sku, unit, minimum_stock, current_cost, serial_number, brand, model)
-       VALUES ($1, $2, $3, $4, $5, COALESCE($6::numeric, 0), COALESCE($7::numeric, 0), $8, $9, $10)
+      `INSERT INTO inventory_items (business_id, category_id, name, sku, unit, minimum_stock, current_cost, serial_number, brand, model, branch_id)
+       VALUES ($1, $2, $3, $4, $5, COALESCE($6::numeric, 0), COALESCE($7::numeric, 0), $8, $9, $10, $11)
        RETURNING ${SELECT_COLUMNS}`,
       [
         data.businessId,
@@ -64,6 +64,7 @@ export class InventoryItemsRepository implements IInventoryItemsRepository {
         data.serialNumber ?? null,
         data.brand ?? null,
         data.model ?? null,
+        data.branchId,
       ],
       client,
     );
@@ -89,6 +90,11 @@ export class InventoryItemsRepository implements IInventoryItemsRepository {
   ): Promise<{ rows: InventoryItemRow[]; total: number }> {
     const conditions: string[] = ['business_id = $1', 'deleted_at IS NULL'];
     const params: unknown[] = [query.businessId];
+
+    if (query.branchId) {
+      params.push(query.branchId);
+      conditions.push(`branch_id = $${params.length}`);
+    }
 
     if (query.categoryId) {
       params.push(query.categoryId);
@@ -195,16 +201,17 @@ export class InventoryItemsRepository implements IInventoryItemsRepository {
     return result.rows[0] ?? null;
   }
 
+  /** A SKU is unique within a branch's list. */
   async existsBySku(
-    businessId: string,
+    branchId: string,
     sku: string,
     excludeId?: string,
   ): Promise<boolean> {
     const result = await this.db.query<{ id: string }>(
       `SELECT id FROM inventory_items
-       WHERE business_id = $1 AND sku = $2 AND deleted_at IS NULL
+       WHERE branch_id = $1 AND sku = $2 AND deleted_at IS NULL
          AND ($3::uuid IS NULL OR id != $3)`,
-      [businessId, sku, excludeId ?? null],
+      [branchId, sku, excludeId ?? null],
     );
     return result.rows.length > 0;
   }
@@ -220,7 +227,11 @@ export class InventoryItemsRepository implements IInventoryItemsRepository {
     );
     const total = parseInt(countResult.rows[0]?.count ?? '0', 10);
 
-    const dataParams = [...params, data.limit, getOffset(data.page, data.limit)];
+    const dataParams = [
+      ...params,
+      data.limit,
+      getOffset(data.page, data.limit),
+    ];
     const rowsResult = await this.db.query<InventoryQueryResultRow>(
       `SELECT ii.id, ii.category_id, cat.name AS category_name, ii.name, ii.sku, ii.unit,
               ii.minimum_stock, ii.current_cost, COALESCE(stock.stock, 0)::text AS current_stock,
@@ -239,28 +250,45 @@ export class InventoryItemsRepository implements IInventoryItemsRepository {
   ): Promise<InventoryQueryAggregateResult> {
     const { fromClause, params } = this.buildFromWhere(data);
 
-    const AGGREGATE_EXPRESSION: Record<Exclude<InventoryQueryIntent, InventoryQueryIntent.DETAIL>, string> = {
+    const AGGREGATE_EXPRESSION: Record<
+      Exclude<InventoryQueryIntent, InventoryQueryIntent.DETAIL>,
+      string
+    > = {
       [InventoryQueryIntent.COUNT]: 'COUNT(*)',
-      [InventoryQueryIntent.SUM_STOCK]: 'COALESCE(SUM(COALESCE(stock.stock, 0)), 0)',
-      [InventoryQueryIntent.TOTAL_VALUE]: 'COALESCE(SUM(COALESCE(stock.stock, 0) * ii.current_cost), 0)',
+      [InventoryQueryIntent.SUM_STOCK]:
+        'COALESCE(SUM(COALESCE(stock.stock, 0)), 0)',
+      [InventoryQueryIntent.TOTAL_VALUE]:
+        'COALESCE(SUM(COALESCE(stock.stock, 0) * ii.current_cost), 0)',
       [InventoryQueryIntent.AVERAGE_COST]: 'COALESCE(AVG(ii.current_cost), 0)',
     };
 
-    const expression = AGGREGATE_EXPRESSION[data.intent as Exclude<InventoryQueryIntent, InventoryQueryIntent.DETAIL>];
+    const expression =
+      AGGREGATE_EXPRESSION[
+        data.intent as Exclude<
+          InventoryQueryIntent,
+          InventoryQueryIntent.DETAIL
+        >
+      ];
 
     const result = await this.db.query<{ value: string }>(
       `SELECT ${expression}::text AS value ${fromClause}`,
       params,
     );
 
-    return { intent: data.intent, value: parseFloat(result.rows[0]?.value ?? '0') };
+    return {
+      intent: data.intent,
+      value: parseFloat(result.rows[0]?.value ?? '0'),
+    };
   }
 
   /** Shared FROM/JOIN/WHERE for both row listing and aggregation — never duplicate this. */
   private buildFromWhere(
     data: Pick<RunInventoryQueryData, 'businessId' | 'branchId' | 'conditions'>,
   ): { fromClause: string; params: unknown[] } {
-    const conditions: string[] = ['ii.business_id = $1', 'ii.deleted_at IS NULL'];
+    const conditions: string[] = [
+      'ii.business_id = $1',
+      'ii.deleted_at IS NULL',
+    ];
     const params: unknown[] = [data.businessId];
 
     for (const condition of data.conditions) {
@@ -296,7 +324,10 @@ export class InventoryItemsRepository implements IInventoryItemsRepository {
   }
 
   /** Maps one already-validated condition to a SQL fragment, pushing its value(s) as params. */
-  private buildConditionClause(condition: InventoryQueryCondition, params: unknown[]): string {
+  private buildConditionClause(
+    condition: InventoryQueryCondition,
+    params: unknown[],
+  ): string {
     const column = FIELD_COLUMN[condition.field];
 
     switch (condition.operator) {

@@ -7,6 +7,8 @@ import { buildTheme } from '../theme/theme';
 import { useUiStore } from '../store/uiStore';
 import { queryClient } from '../lib/query-client';
 import AppRoutes from '../routes/AppRoutes';
+import PhoneAppRoutes from '../routes/PhoneAppRoutes';
+import { env } from '../config/env';
 
 export default function App() {
   const themeMode = useUiStore((s) => s.themeMode);
@@ -22,7 +24,7 @@ export default function App() {
           autoHideDuration={3500}
         >
           <BrowserRouter>
-            <AppRoutes />
+            {env.phoneApp ? <PhoneAppRoutes app={env.phoneApp} /> : <AppRoutes />}
           </BrowserRouter>
         </SnackbarProvider>
       </ThemeProvider>

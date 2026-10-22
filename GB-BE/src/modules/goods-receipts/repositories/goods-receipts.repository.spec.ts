@@ -46,7 +46,7 @@ describe('GoodsReceiptsRepository (integration)', () => {
     supplierId = supplier.rows[0].id;
 
     const item = await pool.query<{ id: string }>(
-      `INSERT INTO inventory_items (business_id, name, unit) VALUES ($1, 'Flour', 'kg') RETURNING id`,
+      `INSERT INTO inventory_items (branch_id, business_id, name, unit) VALUES ((SELECT id FROM branches WHERE business_id = $1 ORDER BY created_at, id LIMIT 1), $1, 'Flour', 'kg') RETURNING id`,
       [businessId],
     );
     itemId = item.rows[0].id;

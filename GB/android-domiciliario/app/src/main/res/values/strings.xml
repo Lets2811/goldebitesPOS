@@ -1,0 +1,11 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">GB Domicilios</string>
+    <string name="title_activity_main">GB Domicilios</string>
+    <string name="package_name">net.goldenbites.domiciliario</string>
+    <string name="custom_url_scheme">net.goldenbites.domiciliario</string>
+    <!-- The notification while the location is shared (background-geolocation plugin). -->
+    <string name="capacitor_background_geolocation_notification_channel_name">Ubicación del domicilio</string>
+    <string name="capacitor_background_geolocation_notification_icon">drawable/ic_stat_golden_bites</string>
+    <string name="capacitor_background_geolocation_notification_color">#D4AF37</string>
+</resources>

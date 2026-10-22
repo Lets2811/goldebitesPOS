@@ -11,6 +11,8 @@ export interface Product {
   salePrice: number;
   currentCost: number;
   imageUrl: string | null;
+  /** The branch it belongs to: each branch has its own catalog. */
+  branchId: string;
   isActive: boolean;
   /** Independent of isActive — whether this product should appear on customer-facing surfaces like the public menu. */
   isVisible: boolean;
@@ -37,6 +39,7 @@ export interface ProductRow {
   image_path: string | null;
   image_mime_type: string | null;
   image_updated_at: Date | null;
+  branch_id: string;
   is_active: boolean;
   is_visible: boolean;
   track_inventory: boolean;

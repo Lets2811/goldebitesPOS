@@ -9,6 +9,7 @@ import {
   Query,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { ApplyOrderDiscountDto } from '../../discounts/discounts.dto';
 import { CurrentBusiness } from '../../../common/decorators/current-business.decorator';
 import { CurrentUser } from '../../../common/decorators/current-user.decorator';
 import { Permissions } from '../../../common/decorators/permissions.decorator';
@@ -18,10 +19,12 @@ import { ReplaceOrderItemsDto } from '../dto/replace-order-items.dto';
 import { UpdateOrderStatusDto } from '../dto/update-order-status.dto';
 import { OrdersService } from '../services/orders.service';
 import { RequiresFeature } from '../../../common/decorators/requires-feature.decorator';
+import { BranchOperation } from '../../../common/decorators/branch-operation.decorator';
 
 @ApiTags('Orders')
 @ApiBearerAuth()
 @RequiresFeature('orders')
+@BranchOperation()
 @Controller('orders')
 export class OrdersController {
   constructor(private readonly ordersService: OrdersService) {}
@@ -113,6 +116,34 @@ export class OrdersController {
       businessId,
       id,
       dto.items,
+      actorUserId,
+    );
+  }
+
+  @Put(':id/discount')
+  @RequiresFeature('discounts')
+  @Permissions('discounts.apply')
+  @ApiOperation({
+    summary:
+      'Apply a discount at checkout (promotion, coupon or manual percentage), or remove it with NONE',
+  })
+  applyDiscount(
+    @CurrentBusiness() businessId: string,
+    @CurrentUser('userId') actorUserId: string,
+    @Param('id') id: string,
+    @Body() dto: ApplyOrderDiscountDto,
+  ) {
+    return this.ordersService.applyDiscount(
+      businessId,
+      id,
+      dto.source === 'NONE'
+        ? { source: 'NONE' }
+        : {
+            source: dto.source,
+            percent: dto.percent,
+            discountId: dto.discountId,
+            code: dto.code,
+          },
       actorUserId,
     );
   }

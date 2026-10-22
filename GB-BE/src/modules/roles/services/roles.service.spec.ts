@@ -186,7 +186,7 @@ describe('RolesService', () => {
   });
 
   describe('provisionSystemRoles', () => {
-    it('creates all 7 system roles and grants their default permissions', async () => {
+    it('creates all 8 system roles and grants their default permissions', async () => {
       let counter = 0;
       rolesRepository.create.mockImplementation(() =>
         Promise.resolve(makeRole({ id: `role-${++counter}` })),
@@ -201,9 +201,9 @@ describe('RolesService', () => {
         client,
       );
 
-      expect(rolesRepository.create).toHaveBeenCalledTimes(7);
-      expect(rolesRepository.replacePermissions).toHaveBeenCalledTimes(7);
-      expect(rolesByName.size).toBe(7);
+      expect(rolesRepository.create).toHaveBeenCalledTimes(8);
+      expect(rolesRepository.replacePermissions).toHaveBeenCalledTimes(8);
+      expect(rolesByName.size).toBe(8);
       expect(rolesByName.has('SUPER_ADMIN')).toBe(true);
       expect(rolesByName.has('EMPLOYEE')).toBe(true);
     });

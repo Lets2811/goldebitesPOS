@@ -3,11 +3,15 @@ import { Navigate, Routes, Route } from 'react-router-dom';
 import AppLayout from '../components/layout/AppLayout';
 import LoadingSkeleton from '../components/common/LoadingSkeleton';
 import ProtectedRoute from './ProtectedRoute';
-import PlatformAdminRoute from './PlatformAdminRoute';
 import AuthProtectedRoute from '../modules/auth/components/protected-route';
 import ForbiddenPage from './ForbiddenPage';
 import NotFoundPage from './NotFoundPage';
-import { LEGACY_PATH_REDIRECTS, MODULE_PATHS, MODULE_PERMISSIONS, isModuleDisabled } from './navConfig';
+import {
+  LEGACY_PATH_REDIRECTS,
+  MODULE_PATHS,
+  MODULE_PERMISSIONS,
+  isModuleDisabled,
+} from './navConfig';
 import { KIOSK_PATHS, KIOSK_PERMISSIONS } from './kioskConfig';
 
 const LoginPage = lazy(() => import('../modules/auth/pages/LoginPage'));
@@ -19,6 +23,13 @@ const DashboardPage = lazy(() => import('../features/dashboard/pages/DashboardPa
 const OrdersPage = lazy(() => import('../features/orders/pages/OrdersPage'));
 const OrdersBacklogPage = lazy(() => import('../features/orders/pages/OrdersBacklogPage'));
 const KitchenPage = lazy(() => import('../features/kitchen/pages/KitchenPage'));
+const DeliveriesPage = lazy(() => import('../features/deliveries/pages/DeliveriesPage'));
+const DiscountsPage = lazy(() => import('../features/discounts/pages/DiscountsPage'));
+const BranchComparisonPage = lazy(
+  () => import('../features/branch-comparison/pages/BranchComparisonPage'),
+);
+const CourierAppPage = lazy(() => import('../features/deliveries/courier/CourierAppPage'));
+const PublicTrackingPage = lazy(() => import('../features/deliveries/public/PublicTrackingPage'));
 const CashRegisterPage = lazy(() => import('../features/cash-register/pages/CashRegisterPage'));
 const ProductsPage = lazy(() => import('../features/products/pages/ProductsPage'));
 const ProductsHubPage = lazy(() => import('../features/products/pages/ProductsHubPage'));
@@ -47,11 +58,11 @@ const AnalyticsPage = lazy(() => import('../features/analytics/pages/AnalyticsPa
 const SettingsPage = lazy(() => import('../features/settings/pages/SettingsPage'));
 const BranchTablesNfcPage = lazy(() => import('../features/settings/pages/BranchTablesNfcPage'));
 const RolesPage = lazy(() => import('../features/roles/pages/RolesPage'));
-const PlatformAdminPage = lazy(() => import('../features/platform-admin/pages/PlatformAdminPage'));
-const FeatureFlagsPage = lazy(() => import('../features/platform-admin/pages/FeatureFlagsPage'));
 const WaiterKioskPage = lazy(() => import('../features/kiosk-waiter/pages/WaiterKioskPage'));
 const KitchenKioskPage = lazy(() => import('../features/kiosk-kitchen/pages/KitchenKioskPage'));
-const CarServiceKioskPage = lazy(() => import('../features/kiosk-car-service/pages/CarServiceKioskPage'));
+const CarServiceKioskPage = lazy(
+  () => import('../features/kiosk-car-service/pages/CarServiceKioskPage'),
+);
 
 function Loadable({ children }: { children: React.ReactNode }) {
   return <Suspense fallback={<LoadingSkeleton variant="page" />}>{children}</Suspense>;
@@ -69,15 +80,28 @@ export default function AppRoutes() {
         }
       />
       <Route
-        path="/menu/:businessId"
+        // "/combo" too: "Arma tu combo" has its own address (see PublicMenuBrowser).
+        path="/menu/:businessId/*"
         element={
           <Loadable>
             <PublicMenuPage />
           </Loadable>
         }
       />
+      {/* The customer follows their delivery with a code: no login. */}
+      {['/seguimiento', '/seguimiento/:code'].map((path) => (
+        <Route
+          key={path}
+          path={path}
+          element={
+            <Loadable>
+              <PublicTrackingPage />
+            </Loadable>
+          }
+        />
+      ))}
       <Route
-        path="/m/:token"
+        path="/m/:token/*"
         element={
           <Loadable>
             <NfcTableMenuPage />
@@ -104,7 +128,11 @@ export default function AppRoutes() {
               }
             />
           </Route>
-          <Route element={<ProtectedRoute permission={MODULE_PERMISSIONS.orders} module="orders" />}>
+          <Route
+            element={
+              <ProtectedRoute operational permission={MODULE_PERMISSIONS.orders} module="orders" />
+            }
+          >
             <Route
               path={MODULE_PATHS.orders}
               element={
@@ -114,7 +142,15 @@ export default function AppRoutes() {
               }
             />
           </Route>
-          <Route element={<ProtectedRoute permission={MODULE_PERMISSIONS.ordersBacklog} module="orders" />}>
+          <Route
+            element={
+              <ProtectedRoute
+                operational
+                permission={MODULE_PERMISSIONS.ordersBacklog}
+                module="orders"
+              />
+            }
+          >
             <Route
               path={MODULE_PATHS.ordersBacklog}
               element={
@@ -124,7 +160,15 @@ export default function AppRoutes() {
               }
             />
           </Route>
-          <Route element={<ProtectedRoute permission={MODULE_PERMISSIONS.kitchen} module="kitchen" />}>
+          <Route
+            element={
+              <ProtectedRoute
+                operational
+                permission={MODULE_PERMISSIONS.kitchen}
+                module="kitchen"
+              />
+            }
+          >
             <Route
               path={MODULE_PATHS.kitchen}
               element={
@@ -134,7 +178,57 @@ export default function AppRoutes() {
               }
             />
           </Route>
-          <Route element={<ProtectedRoute permission={MODULE_PERMISSIONS['cash-register']} module="cash-register" />}>
+          <Route
+            element={
+              <ProtectedRoute
+                operational
+                permission={MODULE_PERMISSIONS.deliveries}
+                module="deliveries"
+              />
+            }
+          >
+            <Route
+              path={MODULE_PATHS.deliveries}
+              element={
+                <Loadable>
+                  <DeliveriesPage />
+                </Loadable>
+              }
+            />
+          </Route>
+          <Route
+            element={
+              <ProtectedRoute permission={MODULE_PERMISSIONS.discounts} module="discounts" />
+            }
+          >
+            <Route
+              path={MODULE_PATHS.discounts}
+              element={
+                <Loadable>
+                  <DiscountsPage />
+                </Loadable>
+              }
+            />
+          </Route>
+          <Route element={<ProtectedRoute permission={MODULE_PERMISSIONS.branchComparison} />}>
+            <Route
+              path={MODULE_PATHS.branchComparison}
+              element={
+                <Loadable>
+                  <BranchComparisonPage />
+                </Loadable>
+              }
+            />
+          </Route>
+          <Route
+            element={
+              <ProtectedRoute
+                operational
+                permission={MODULE_PERMISSIONS['cash-register']}
+                module="cash-register"
+              />
+            }
+          >
             <Route
               path={MODULE_PATHS['cash-register']}
               element={
@@ -144,7 +238,9 @@ export default function AppRoutes() {
               }
             />
           </Route>
-          <Route element={<ProtectedRoute permission={MODULE_PERMISSIONS.products} module="products" />}>
+          <Route
+            element={<ProtectedRoute permission={MODULE_PERMISSIONS.products} module="products" />}
+          >
             <Route
               path={MODULE_PATHS.products}
               element={
@@ -186,10 +282,20 @@ export default function AppRoutes() {
               }
             />
             {/* Old addresses of the two fixed option screens, now groups of their own. */}
-            <Route path="/productos/salsas" element={<Navigate to={MODULE_PATHS.products} replace />} />
-            <Route path="/productos/acompanantes" element={<Navigate to={MODULE_PATHS.products} replace />} />
+            <Route
+              path="/productos/salsas"
+              element={<Navigate to={MODULE_PATHS.products} replace />}
+            />
+            <Route
+              path="/productos/acompanantes"
+              element={<Navigate to={MODULE_PATHS.products} replace />}
+            />
           </Route>
-          <Route element={<ProtectedRoute permission={MODULE_PERMISSIONS.inventory} module="inventory" />}>
+          <Route
+            element={
+              <ProtectedRoute permission={MODULE_PERMISSIONS.inventory} module="inventory" />
+            }
+          >
             <Route
               path={MODULE_PATHS.inventory}
               element={
@@ -199,7 +305,11 @@ export default function AppRoutes() {
               }
             />
           </Route>
-          <Route element={<ProtectedRoute permission={MODULE_PERMISSIONS.purchases} module="purchases" />}>
+          <Route
+            element={
+              <ProtectedRoute permission={MODULE_PERMISSIONS.purchases} module="purchases" />
+            }
+          >
             <Route
               path={MODULE_PATHS.purchases}
               element={
@@ -209,7 +319,11 @@ export default function AppRoutes() {
               }
             />
           </Route>
-          <Route element={<ProtectedRoute permission={MODULE_PERMISSIONS.suppliers} module="suppliers" />}>
+          <Route
+            element={
+              <ProtectedRoute permission={MODULE_PERMISSIONS.suppliers} module="suppliers" />
+            }
+          >
             <Route
               path={MODULE_PATHS.suppliers}
               element={
@@ -221,7 +335,11 @@ export default function AppRoutes() {
           </Route>
           {/* Los módulos apagados (ver DISABLED_MODULES en navConfig) no tienen ruta: caen en NotFoundPage. */}
           {!isModuleDisabled('customers') && (
-            <Route element={<ProtectedRoute permission={MODULE_PERMISSIONS.customers} module="customers" />}>
+            <Route
+              element={
+                <ProtectedRoute permission={MODULE_PERMISSIONS.customers} module="customers" />
+              }
+            >
               <Route
                 path={MODULE_PATHS.customers}
                 element={
@@ -233,7 +351,9 @@ export default function AppRoutes() {
             </Route>
           )}
           {!isModuleDisabled('loyalty') && (
-            <Route element={<ProtectedRoute permission={MODULE_PERMISSIONS.loyalty} module="loyalty" />}>
+            <Route
+              element={<ProtectedRoute permission={MODULE_PERMISSIONS.loyalty} module="loyalty" />}
+            >
               <Route
                 path={MODULE_PATHS.loyalty}
                 element={
@@ -244,7 +364,9 @@ export default function AppRoutes() {
               />
             </Route>
           )}
-          <Route element={<ProtectedRoute permission={MODULE_PERMISSIONS.finances} module="finances" />}>
+          <Route
+            element={<ProtectedRoute permission={MODULE_PERMISSIONS.finances} module="finances" />}
+          >
             <Route
               path={MODULE_PATHS.finances}
               element={
@@ -262,7 +384,11 @@ export default function AppRoutes() {
               </Loadable>
             }
           >
-            <Route element={<ProtectedRoute permission={MODULE_PERMISSIONS.employees} module="employees" />}>
+            <Route
+              element={
+                <ProtectedRoute permission={MODULE_PERMISSIONS.employees} module="employees" />
+              }
+            >
               <Route
                 path={MODULE_PATHS.employees}
                 element={
@@ -272,7 +398,11 @@ export default function AppRoutes() {
                 }
               />
             </Route>
-            <Route element={<ProtectedRoute permission={MODULE_PERMISSIONS.employees} module="employees" />}>
+            <Route
+              element={
+                <ProtectedRoute permission={MODULE_PERMISSIONS.employees} module="employees" />
+              }
+            >
               <Route
                 path={MODULE_PATHS.hrRoster}
                 element={
@@ -302,7 +432,9 @@ export default function AppRoutes() {
                 }
               />
             </Route>
-            <Route element={<ProtectedRoute permission={MODULE_PERMISSIONS.roles} module="roles" />}>
+            <Route
+              element={<ProtectedRoute permission={MODULE_PERMISSIONS.roles} module="roles" />}
+            >
               <Route
                 path={MODULE_PATHS.roles}
                 element={
@@ -336,7 +468,15 @@ export default function AppRoutes() {
               }
             />
           </Route>
-          <Route element={<ProtectedRoute permission={MODULE_PERMISSIONS.checklists} module="checklists" />}>
+          <Route
+            element={
+              <ProtectedRoute
+                operational
+                permission={MODULE_PERMISSIONS.checklists}
+                module="checklists"
+              />
+            }
+          >
             <Route
               path={MODULE_PATHS.checklists}
               element={
@@ -346,7 +486,11 @@ export default function AppRoutes() {
               }
             />
           </Route>
-          <Route element={<ProtectedRoute permission={MODULE_PERMISSIONS.waste} module="waste" />}>
+          <Route
+            element={
+              <ProtectedRoute operational permission={MODULE_PERMISSIONS.waste} module="waste" />
+            }
+          >
             <Route
               path={MODULE_PATHS.waste}
               element={
@@ -356,7 +500,11 @@ export default function AppRoutes() {
               }
             />
           </Route>
-          <Route element={<ProtectedRoute permission={MODULE_PERMISSIONS.maintenance} module="maintenance" />}>
+          <Route
+            element={
+              <ProtectedRoute permission={MODULE_PERMISSIONS.maintenance} module="maintenance" />
+            }
+          >
             <Route
               path={MODULE_PATHS.maintenance}
               element={
@@ -367,7 +515,11 @@ export default function AppRoutes() {
             />
           </Route>
           {!isModuleDisabled('documents') && (
-            <Route element={<ProtectedRoute permission={MODULE_PERMISSIONS.documents} module="documents" />}>
+            <Route
+              element={
+                <ProtectedRoute permission={MODULE_PERMISSIONS.documents} module="documents" />
+              }
+            >
               <Route
                 path={MODULE_PATHS.documents}
                 element={
@@ -379,7 +531,14 @@ export default function AppRoutes() {
             </Route>
           )}
           {!isModuleDisabled('documentScans') && (
-            <Route element={<ProtectedRoute permission={MODULE_PERMISSIONS.documentScans} module="documentScans" />}>
+            <Route
+              element={
+                <ProtectedRoute
+                  permission={MODULE_PERMISSIONS.documentScans}
+                  module="documentScans"
+                />
+              }
+            >
               <Route
                 path={MODULE_PATHS.documentScans}
                 element={
@@ -391,7 +550,11 @@ export default function AppRoutes() {
             </Route>
           )}
           {!isModuleDisabled('marketing') && (
-            <Route element={<ProtectedRoute permission={MODULE_PERMISSIONS.marketing} module="marketing" />}>
+            <Route
+              element={
+                <ProtectedRoute permission={MODULE_PERMISSIONS.marketing} module="marketing" />
+              }
+            >
               <Route
                 path={MODULE_PATHS.marketing}
                 element={
@@ -403,7 +566,11 @@ export default function AppRoutes() {
             </Route>
           )}
           {!isModuleDisabled('analytics') && (
-            <Route element={<ProtectedRoute permission={MODULE_PERMISSIONS.analytics} module="analytics" />}>
+            <Route
+              element={
+                <ProtectedRoute permission={MODULE_PERMISSIONS.analytics} module="analytics" />
+              }
+            >
               <Route
                 path={MODULE_PATHS.analytics}
                 element={
@@ -434,29 +601,11 @@ export default function AppRoutes() {
               }
             />
           </Route>
-          <Route element={<PlatformAdminRoute />}>
-            <Route
-              path="/plataforma"
-              element={
-                <Loadable>
-                  <PlatformAdminPage />
-                </Loadable>
-              }
-            />
-            <Route
-              path="/plataforma/feature-flags"
-              element={
-                <Loadable>
-                  <FeatureFlagsPage />
-                </Loadable>
-              }
-            />
-          </Route>
           <Route path="/sin-acceso" element={<ForbiddenPage />} />
           <Route path="*" element={<NotFoundPage />} />
         </Route>
 
-        <Route element={<ProtectedRoute permission={KIOSK_PERMISSIONS.waiter} />}>
+        <Route element={<ProtectedRoute operational permission={KIOSK_PERMISSIONS.waiter} />}>
           <Route
             path={KIOSK_PATHS.waiter}
             element={
@@ -466,7 +615,7 @@ export default function AppRoutes() {
             }
           />
         </Route>
-        <Route element={<ProtectedRoute permission={KIOSK_PERMISSIONS.kitchen} />}>
+        <Route element={<ProtectedRoute operational permission={KIOSK_PERMISSIONS.kitchen} />}>
           <Route
             path={KIOSK_PATHS.kitchen}
             element={
@@ -476,7 +625,17 @@ export default function AppRoutes() {
             }
           />
         </Route>
-        <Route element={<ProtectedRoute permission={KIOSK_PERMISSIONS.carService} />}>
+        <Route element={<ProtectedRoute permission="deliveries.deliver" module="deliveries" />}>
+          <Route
+            path={KIOSK_PATHS.courier}
+            element={
+              <Loadable>
+                <CourierAppPage />
+              </Loadable>
+            }
+          />
+        </Route>
+        <Route element={<ProtectedRoute operational permission={KIOSK_PERMISSIONS.carService} />}>
           <Route
             path={KIOSK_PATHS.carService}
             element={

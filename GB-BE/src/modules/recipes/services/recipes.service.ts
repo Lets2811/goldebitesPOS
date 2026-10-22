@@ -2,6 +2,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import {
   ConflictException,
   EntityNotFoundException,
+  BusinessRuleException,
 } from '../../../common/exceptions';
 import { DbClient } from '../../../database/types/database.types';
 import { TransactionService } from '../../../database/transaction.service';
@@ -54,7 +55,11 @@ export class RecipesService {
       );
     }
 
-    await this.assertItemsOwnedByBusiness(data.businessId, items);
+    await this.assertItemsOwnedByBusiness(
+      data.businessId,
+      items,
+      product.branch_id,
+    );
 
     const recipeData = { ...data, name: data.name ?? product.name };
 
@@ -179,7 +184,11 @@ export class RecipesService {
       businessId,
       productId,
     );
-    await this.assertItemsOwnedByBusiness(businessId, items);
+    const product = await this.productsService.getOwnedOrFail(
+      businessId,
+      productId,
+    );
+    await this.assertItemsOwnedByBusiness(businessId, items, product.branch_id);
 
     await this.transactionService.execute(async (client) => {
       await this.recipesRepository.replaceItems(recipe.id, items, client);
@@ -235,9 +244,11 @@ export class RecipesService {
     );
   }
 
+  /** The items exist, once each, and are the product's branch's: each branch cooks from its own stock. */
   private async assertItemsOwnedByBusiness(
     businessId: string,
     items: RecipeItemInput[],
+    branchId: string,
   ): Promise<void> {
     const uniqueIds = new Set(items.map((item) => item.inventoryItemId));
     if (uniqueIds.size !== items.length) {
@@ -247,10 +258,16 @@ export class RecipesService {
       );
     }
     for (const item of items) {
-      await this.inventoryItemsService.getOwnedOrFail(
+      const inventoryItem = await this.inventoryItemsService.getOwnedOrFail(
         businessId,
         item.inventoryItemId,
       );
+      if (inventoryItem.branch_id !== branchId) {
+        throw new BusinessRuleException(
+          `"${inventoryItem.name}" es un insumo de otra sede`,
+          'RECIPE_ITEM_OTHER_BRANCH',
+        );
+      }
     }
   }
 

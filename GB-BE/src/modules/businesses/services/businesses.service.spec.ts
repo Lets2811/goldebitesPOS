@@ -10,6 +10,11 @@ describe('BusinessesService', () => {
     update: jest.Mock;
     setActive: jest.Mock;
     updateTaxRate: jest.Mock;
+    updateDiscountsAtCheckout: jest.Mock;
+    updateComboBuilder: jest.Mock;
+    getComboBuilderTemplate: jest.Mock;
+    updateMenuTopSellers: jest.Mock;
+    setComboBuilderTemplate: jest.Mock;
     updateLoyaltyConfig: jest.Mock;
     setLogo: jest.Mock;
     getLogo: jest.Mock;
@@ -31,6 +36,11 @@ describe('BusinessesService', () => {
       currency: 'COP',
       timezone: 'America/Bogota',
       tax_rate: '0.0000',
+      discounts_at_checkout: true,
+      menu_top_sellers: true,
+      combo_builder_name: null,
+      combo_builder_description: null,
+      has_combo_builder_template: false,
       loyalty_points_per_thousand: '1.00',
       loyalty_birthday_bonus_enabled: false,
       loyalty_birthday_bonus_points: 0,
@@ -49,6 +59,11 @@ describe('BusinessesService', () => {
       update: jest.fn(),
       setActive: jest.fn(),
       updateTaxRate: jest.fn(),
+      updateDiscountsAtCheckout: jest.fn(),
+      updateMenuTopSellers: jest.fn(),
+      updateComboBuilder: jest.fn(),
+      getComboBuilderTemplate: jest.fn(),
+      setComboBuilderTemplate: jest.fn(),
       updateLoyaltyConfig: jest.fn(),
       setLogo: jest.fn(),
       getLogo: jest.fn(),

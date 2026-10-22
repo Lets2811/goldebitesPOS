@@ -1,7 +1,7 @@
 import { timingSafeEqual } from 'node:crypto';
 import Anthropic from '@anthropic-ai/sdk';
 import cors from 'cors';
-import express, { type Response } from 'express';
+import express, { type Request, type Response } from 'express';
 import { z } from 'zod';
 import {
   runTurn,
@@ -10,8 +10,9 @@ import {
   type TuraEvent,
 } from './agent/agent.service.js';
 import { runSimulatedTurn } from './agent/simulated-turn.js';
+import { allTools } from './tools/registry.js';
 import { newAudit, recordAudit } from './audit/audit-log.js';
-import { authenticate, UnauthenticatedError } from './auth.js';
+import { authenticate, UnauthenticatedError, type Session } from './auth.js';
 import { config } from './config.js';
 import { PosApiError } from './pos/pos-client.js';
 import { newMeter, recordTurn, summarizeUsage, type TurnRecord } from './usage/usage-log.js';
@@ -81,16 +82,10 @@ app.get('/tura/health', (_req, res) => {
  * recent turns) and receives the answer as a stream of server-sent events —
  * see TuraEvent.
  */
-app.post('/tura/chat', async (req, res) => {
-  const parsed = chatRequestSchema.safeParse(req.body);
-  if (!parsed.success) {
-    res.status(400).json({ message: 'Solicitud inválida' });
-    return;
-  }
-
-  let session;
+/** The caller, or null once a response explaining why not was sent. */
+async function authenticateOrReply(req: Request, res: Response): Promise<Session | null> {
   try {
-    session = await authenticate(req);
+    return await authenticate(req);
   } catch (error) {
     if (error instanceof UnauthenticatedError) {
       res.status(401).json({ message: 'No autenticado' });
@@ -103,6 +98,19 @@ app.post('/tura/chat', async (req, res) => {
       console.error('Authentication failed unexpectedly', error);
       res.status(500).json({ message: 'Error interno' });
     }
+    return null;
+  }
+}
+
+app.post('/tura/chat', async (req, res) => {
+  const parsed = chatRequestSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ message: 'Solicitud inválida' });
+    return;
+  }
+
+  const session = await authenticateOrReply(req, res);
+  if (!session) {
     return;
   }
 
@@ -155,6 +163,7 @@ app.post('/tura/chat', async (req, res) => {
     // Failed and abandoned turns are logged too: they still cost what they used.
     recordTurn({
       at: new Date(startedAt).toISOString(),
+      businessId: session.businessId,
       mode: parsed.data.mode,
       outcome,
       firstTextMs: meter.firstTextAt === null ? null : meter.firstTextAt - startedAt,
@@ -187,17 +196,25 @@ function isAdmin(header: string | undefined): boolean {
 }
 
 /**
- * Usage and cost of the last `days` days, for the developer. Guarded by its own
- * key (TURA_ADMIN_KEY) rather than a POS role: what TURA costs to run is not
- * something the restaurant's staff should see.
+ * Whether a request may read what TURA costs. It is not part of the product,
+ * so it takes its own key (TURA_ADMIN_KEY) instead of a POS role; the Golden
+ * Bites Admin holds it on its server and shows it to its team.
  */
-app.get('/tura/admin/usage', async (req, res) => {
+function allowAdmin(req: Request, res: Response): boolean {
   if (!config.adminKey) {
     res.status(404).json({ message: 'No disponible' });
-    return;
+    return false;
   }
   if (!isAdmin(req.headers.authorization)) {
     res.status(401).json({ message: 'Clave de administración incorrecta' });
+    return false;
+  }
+  return true;
+}
+
+/** Usage and cost of the last `days` days, in total, by model, by day and by business. */
+app.get('/tura/admin/usage', async (req, res) => {
+  if (!allowAdmin(req, res)) {
     return;
   }
   const days = z.coerce.number().int().min(1).max(365).catch(30).parse(req.query.days);
@@ -207,6 +224,24 @@ app.get('/tura/admin/usage', async (req, res) => {
     console.error('Could not read usage', error);
     res.status(500).json({ message: 'No se pudo leer el registro de uso' });
   }
+});
+
+/**
+ * Every tool TURA has: what it does, as the model is told, and the POS
+ * permission it needs. Nothing secret, so no key: the Admin lists them even
+ * without TURA_ADMIN_KEY. The public nginx does not forward /tura/admin/, so
+ * only the private network (the Admin's server) reaches it.
+ */
+app.get('/tura/admin/tools', (_req, res) => {
+  res.json({
+    model: config.model,
+    tools: allTools().map((tool) => ({
+      name: tool.definition.name,
+      description: tool.definition.description ?? '',
+      permission: tool.permission,
+      kind: tool.kind,
+    })),
+  });
 });
 
 app.listen(config.port, () => {

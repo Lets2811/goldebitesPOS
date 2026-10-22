@@ -44,6 +44,8 @@ export interface FeatureModuleDefinition extends FeatureDefinition {
 export const FEATURE_MODULES: FeatureModuleDefinition[] = [
   { key: 'roles', label: 'Roles y permisos' },
   { key: 'orders', label: 'Pedidos' },
+  // Promotions, coupons and manual percentages at checkout.
+  { key: 'discounts', label: 'Descuentos' },
   { key: 'kitchen', label: 'Cocina' },
   {
     key: 'cash-register',
@@ -90,6 +92,8 @@ export const FEATURE_MODULES: FeatureModuleDefinition[] = [
   // DIAN electronic invoicing through Factus, with the business's own
   // account (see the e-invoicing module). Sold separately, so it starts off.
   { key: 'einvoicing', label: 'Facturación electrónica (DIAN)', optIn: true },
+  // Domicilios: route, price by distance and courier. Sold separately, so it starts off.
+  { key: 'deliveries', label: 'Domicilios', optIn: true },
 ];
 
 /** The keys that are off for a business unless it has a row turning them on. */

@@ -46,7 +46,7 @@ describe('OrdersRepository (integration)', () => {
     branchId = branch.rows[0].id;
 
     const product = await pool.query<{ id: string }>(
-      `INSERT INTO products (business_id, name, sale_price) VALUES ($1, 'Burger', 25000) RETURNING id`,
+      `INSERT INTO products (branch_id, business_id, name, sale_price) VALUES ((SELECT id FROM branches WHERE business_id = $1 ORDER BY created_at, id LIMIT 1), $1, 'Burger', 25000) RETURNING id`,
       [businessId],
     );
     productId = product.rows[0].id;
@@ -552,7 +552,7 @@ describe('OrdersRepository (integration)', () => {
     it('getTopProducts() ranks by revenue by default and by units when asked', async () => {
       // Few units of something expensive, many of something cheap.
       const cheap = await pool.query<{ id: string }>(
-        `INSERT INTO products (business_id, name, sale_price) VALUES ($1, 'Agua', 1000) RETURNING id`,
+        `INSERT INTO products (branch_id, business_id, name, sale_price) VALUES ((SELECT id FROM branches WHERE business_id = $1 ORDER BY created_at, id LIMIT 1), $1, 'Agua', 1000) RETURNING id`,
         [businessId],
       );
       const expensive = await createSale(2, 30000);

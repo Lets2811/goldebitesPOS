@@ -13,3 +13,10 @@ export interface TuraLinkCode {
   code: string;
   expiresAt: string;
 }
+
+/** A business's TURA as the platform admin sees it. */
+export interface PlatformTuraStatus {
+  /** Whether the business has the TURA module (and it is on platform-wide). */
+  enabled: boolean;
+  links: TuraLink[];
+}

@@ -40,6 +40,24 @@ export interface PublicMenu {
    * simply doesn't show.
    */
   builderCategories: PublicMenuCategory[];
+  /** What the business calls "Arma tu combo", and the line under it (defaults applied). */
+  builderName: string;
+  builderDescription: string;
+  /** Whether "Arma tu combo" shows with the business's own template (fetched apart). */
+  hasBuilderTemplate: boolean;
   /** The business's active option groups, in display order, each with its active options. */
   optionGroups: PublicMenuOptionGroup[];
+  /**
+   * "Lo más pedido": the branch's most ordered products of the menu (orders
+   * taken, paid or not), the most ordered first. TODAY once the day has
+   * enough orders; until then RECENT (yesterday's), or today's few when
+   * yesterday had none. Null when the business turned it off or there is nothing
+   * to show. Only ids of products in `categories`: what can be ordered now.
+   */
+  topSellers: PublicMenuTopSellers | null;
+}
+
+export interface PublicMenuTopSellers {
+  period: 'TODAY' | 'RECENT';
+  productIds: string[];
 }

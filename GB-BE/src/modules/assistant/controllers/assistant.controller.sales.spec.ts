@@ -24,7 +24,6 @@ describe('AssistantController — GET /assistant/sales', () => {
       roleId: 'role-1',
       roleName: 'MANAGER',
       permissions: ['analytics.read'],
-      isPlatformAdmin: false,
       enabledFeatures: ['analytics'],
       mustChangePassword: false,
       ...overrides,
@@ -57,20 +56,35 @@ describe('AssistantController — GET /assistant/sales', () => {
 
   const range = { dateFrom: '2026-10-01', dateTo: '2026-10-13' };
 
+  const branchScope = {
+    resolve: jest.fn().mockResolvedValue({
+      branchId: 'branch-1',
+      scope: { branch: null },
+      single: true,
+      namesById: new Map([['branch-1', 'Centro']]),
+      active: [{ id: 'branch-1', name: 'Centro' }],
+    }),
+  };
+
   beforeEach(() => {
     salesService = { getSales: jest.fn() };
     controller = new AssistantController(
       new AssistantService(),
       {} as AssistantProductsService,
       salesService as unknown as AssistantSalesService,
+      {} as never,
+      branchScope as never,
+      {} as never,
     );
   });
 
   it('takes the business from the session and the rest from the query, with its defaults', async () => {
-    await controller.getSales('business-1', await parseQuery(range));
+    const user = makeUser();
+    await controller.getSales('business-1', user, await parseQuery(range));
 
     expect(salesService.getSales).toHaveBeenCalledWith({
       businessId: 'business-1',
+      user,
       dateFrom: '2026-10-01',
       dateTo: '2026-10-13',
       branchName: undefined,
@@ -84,6 +98,7 @@ describe('AssistantController — GET /assistant/sales', () => {
   it('forwards the grouping, the products and a branch named by the user', async () => {
     await controller.getSales(
       'business-1',
+      makeUser(),
       await parseQuery({
         ...range,
         groupBy: 'week',

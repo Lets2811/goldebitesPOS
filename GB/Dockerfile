@@ -10,6 +10,12 @@ ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
 # "staging" shows the STAGING chip (docker-compose.staging.yml); empty = production.
 ARG VITE_APP_ENV=
 ENV VITE_APP_ENV=$VITE_APP_ENV
+# TURA's app, linked from the platform admin's TURA panel; empty hides the link.
+ARG VITE_TURA_APP_URL=
+ENV VITE_TURA_APP_URL=$VITE_TURA_APP_URL
+# Google Maps browser key (Domicilios: map, routes, address search). Empty: the map shows a notice.
+ARG VITE_GOOGLE_MAPS_API_KEY=
+ENV VITE_GOOGLE_MAPS_API_KEY=$VITE_GOOGLE_MAPS_API_KEY
 RUN npm run build
 
 FROM nginx:1.27-alpine AS production
