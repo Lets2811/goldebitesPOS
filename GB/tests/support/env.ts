@@ -46,6 +46,18 @@ export const kitchenUser = {
 };
 
 /**
+ * Repartidor de prueba (rol COURIER). También lo crea la suite por API.
+ * Requiere el módulo Domicilios activo en el negocio (es opcional).
+ */
+export const courierUser = {
+  email: required('E2E_COURIER_EMAIL'),
+  password: required('E2E_COURIER_PASSWORD'),
+  firstName: 'Domiciliario',
+  lastName: 'E2E',
+  roleName: 'COURIER',
+};
+
+/**
  * Cuenta de plataforma del seed. Desde la migración 088 usa la app Admin
  * aparte: en el POS su cuenta está inactiva (ver TC-AUTH-038).
  */

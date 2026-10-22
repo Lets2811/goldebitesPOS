@@ -1,7 +1,7 @@
 import { expect, test } from '../fixtures';
-import { apiURL, cashierUser, kitchenUser } from '../support/env';
+import { apiURL, cashierUser, courierUser, kitchenUser } from '../support/env';
 import { CASHIER_STORAGE_STATE, NO_SESSION } from '../support/storage-state';
-import { apiLogin, ensureTestUser } from '../support/test-users';
+import { apiLogin, enabledFeatures, ensureTestUser } from '../support/test-users';
 
 /**
  * Permisos por rol. Los resultados esperados son los observados en la app
@@ -18,10 +18,12 @@ test.describe('AUTH - Permisos por rol', () => {
       await page.goto('/');
       await appShell.expectDashboard();
 
+      // Domicilios aparece porque el módulo está activo en el negocio
       await expect(appShell.sidebarLinks).toHaveText([
         'Centro de operaciones',
         'Pedidos',
         'Cocina',
+        'Domicilios',
         'Caja',
         'Productos y recetas',
         'Checklists',
@@ -109,6 +111,58 @@ test.describe('AUTH - Permisos por rol', () => {
 
       await expect(page).toHaveURL('/cocina');
       await expect(page.getByRole('heading', { name: 'Cocina', exact: true })).toBeVisible();
+    });
+  });
+
+  test.describe('Repartidor (COURIER)', () => {
+    test.use({ storageState: NO_SESSION });
+
+    test.beforeAll(async ({ request }) => {
+      await ensureTestUser(request, courierUser);
+
+      const features = await enabledFeatures(request, courierUser.email, courierUser.password);
+      if (!features.includes('deliveries')) {
+        throw new Error(
+          'El módulo Domicilios no está activo en Golden Bites. Actívalo (POS-ADMIN o business_features) para correr estos tests.',
+        );
+      }
+    });
+
+    test.beforeEach(async ({ loginPage }) => {
+      await loginPage.goto();
+      await loginPage.login(courierUser.email, courierUser.password);
+    });
+
+    test('TC-AUTH-042 - El repartidor entra directo a su app', async ({ page }) => {
+      await expect(page).toHaveURL('/domiciliario');
+      await expect(
+        page.getByRole('heading', { name: 'Golden Bites · Domicilios' }),
+      ).toBeVisible();
+
+      for (const section of ['Mi ruta actual', 'Pendientes', 'Mis domicilios', 'Balance']) {
+        await expect(page.getByRole('button', { name: new RegExp(`^${section}`) })).toBeVisible();
+      }
+    });
+
+    test('TC-AUTH-043 - El repartidor no entra al back office', async ({ page }) => {
+      await expect(page).toHaveURL('/domiciliario');
+
+      for (const path of ['/', '/pedidos', '/caja']) {
+        await test.step(`Intentar entrar a ${path}`, async () => {
+          await page.goto(path);
+
+          await expect(page).toHaveURL('/domiciliario');
+        });
+      }
+    });
+
+    test('TC-AUTH-044 - El repartidor cierra sesión desde su app', async ({ page, loginPage }) => {
+      await expect(page).toHaveURL('/domiciliario');
+
+      // exact: el botón "Pendientes · Asignados, por salir" también contiene "salir"
+      await page.getByRole('button', { name: 'Salir', exact: true }).click();
+
+      await loginPage.expectLoaded();
     });
   });
 });

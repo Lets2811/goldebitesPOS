@@ -22,6 +22,13 @@ export async function apiLogin(request: APIRequestContext, email: string, passwo
   return body.data.accessToken as string;
 }
 
+/** Módulos activos del negocio, tal como viajan en el token del usuario. */
+export async function enabledFeatures(request: APIRequestContext, email: string, password: string) {
+  const token = await apiLogin(request, email, password);
+  const payload = JSON.parse(Buffer.from(token.split('.')[1], 'base64url').toString());
+  return payload.enabledFeatures as string[];
+}
+
 /**
  * Crea el usuario de prueba en el negocio del admin si todavía no existe.
  * Es idempotente: si ya existe, no lo toca (se asume que nadie cambió su
