@@ -8,6 +8,16 @@ export interface Business {
   currency: string;
   timezone: string;
   taxRate: number;
+  /** Whether the checkout offers the "Descuento" section (Configuración). */
+  discountsAtCheckout: boolean;
+  /** Si el menú del cliente abre con "Lo más pedido hoy". */
+  menuTopSellers: boolean;
+  /** "Arma tu combo" under the business's own name; null: the default. */
+  comboBuilderName: string | null;
+  /** The line under it; null: the default. */
+  comboBuilderDescription: string | null;
+  /** Whether "Arma tu combo" uses the business's own HTML template. */
+  hasComboBuilderTemplate: boolean;
   isActive: boolean;
   createdAt: string;
   updatedAt: string;

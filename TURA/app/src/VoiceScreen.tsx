@@ -6,6 +6,7 @@ import { getLink } from './link';
 import { onboardingOpening, onboardingReply } from './onboarding';
 import { navigate } from './route';
 import { NotLinkedError, streamChat, type ChatTurn } from './tura-client';
+import { ChangeCard } from './ChangeCard';
 import {
   canListen,
   say,
@@ -118,6 +119,8 @@ export function VoiceScreen() {
   const [caption, setCaption] = useState(opening);
   const [failure, setFailure] = useState('');
   const history = useRef<ChatTurn[]>([]);
+  /** Changes TURA made in this answer, shown while it tells them. */
+  const [changes, setChanges] = useState<string[]>([]);
   // The microphone stays closed until TURA has said its opening line. The
   // shared state cannot say so by itself: on the first render it still holds
   // whatever it was when the screen was last left.
@@ -161,6 +164,8 @@ export function VoiceScreen() {
       },
       onPhrase(text) {
         setCaption(text);
+        // A new question: the changes of the last answer leave the screen.
+        setChanges([]);
         setQuestion({ text });
         setState('thinking');
       },
@@ -259,6 +264,9 @@ export function VoiceScreen() {
             sentences.forEach(sayAloud);
           } else if (event.type === 'tool') {
             setCaption('Consultando el POS…');
+          } else if (event.type === 'change') {
+            const { message } = event;
+            setChanges((current) => [...current, message]);
           } else if (event.type === 'error') {
             cancelled = true;
             fail(event.message);
@@ -339,6 +347,14 @@ export function VoiceScreen() {
             <p className="voice__hint">{copy.hint}</p>
           </div>
         </div>
+
+        {changes.length > 0 && (
+          <div className="voice__actions">
+            {changes.map((message, index) => (
+              <ChangeCard key={index} message={message} />
+            ))}
+          </div>
+        )}
 
         <button
           type="button"

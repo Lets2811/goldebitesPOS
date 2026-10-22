@@ -8,7 +8,7 @@ import {
 } from '../domain/business.types';
 import { IBusinessesRepository } from './businesses.repository.interface';
 
-const SELECT_COLUMNS = `id, name, legal_name, tax_id, email, phone, currency, timezone, tax_rate, loyalty_points_per_thousand, loyalty_birthday_bonus_enabled, loyalty_birthday_bonus_points, is_active, created_at, updated_at`;
+const SELECT_COLUMNS = `id, name, legal_name, tax_id, email, phone, currency, timezone, tax_rate, discounts_at_checkout, menu_top_sellers, combo_builder_name, combo_builder_description, (combo_builder_template IS NOT NULL) AS has_combo_builder_template, loyalty_points_per_thousand, loyalty_birthday_bonus_enabled, loyalty_birthday_bonus_points, is_active, created_at, updated_at`;
 
 @Injectable()
 export class BusinessesRepository implements IBusinessesRepository {
@@ -38,7 +38,8 @@ export class BusinessesRepository implements IBusinessesRepository {
 
   async findAll(): Promise<BusinessRow[]> {
     const result = await this.db.query<BusinessRow>(
-      `SELECT ${SELECT_COLUMNS} FROM businesses ORDER BY created_at`,
+      // Internal businesses (the old platform one) are not customers.
+      `SELECT ${SELECT_COLUMNS} FROM businesses WHERE NOT is_internal ORDER BY created_at`,
     );
     return result.rows;
   }
@@ -111,6 +112,66 @@ export class BusinessesRepository implements IBusinessesRepository {
       `UPDATE businesses SET tax_rate = $2 WHERE id = $1 RETURNING ${SELECT_COLUMNS}`,
       [id, taxRate],
       client,
+    );
+    return result.rows[0] ?? null;
+  }
+
+  async updateDiscountsAtCheckout(
+    id: string,
+    enabled: boolean,
+    client?: DbClient,
+  ): Promise<BusinessRow | null> {
+    const result = await this.db.query<BusinessRow>(
+      `UPDATE businesses SET discounts_at_checkout = $2 WHERE id = $1 RETURNING ${SELECT_COLUMNS}`,
+      [id, enabled],
+      client,
+    );
+    return result.rows[0] ?? null;
+  }
+
+  async updateMenuTopSellers(
+    id: string,
+    enabled: boolean,
+    client?: DbClient,
+  ): Promise<BusinessRow | null> {
+    const result = await this.db.query<BusinessRow>(
+      `UPDATE businesses SET menu_top_sellers = $2 WHERE id = $1 RETURNING ${SELECT_COLUMNS}`,
+      [id, enabled],
+      client,
+    );
+    return result.rows[0] ?? null;
+  }
+
+  async updateComboBuilder(
+    id: string,
+    name: string | null,
+    description: string | null,
+    client?: DbClient,
+  ): Promise<BusinessRow | null> {
+    const result = await this.db.query<BusinessRow>(
+      `UPDATE businesses SET combo_builder_name = $2, combo_builder_description = $3
+       WHERE id = $1 RETURNING ${SELECT_COLUMNS}`,
+      [id, name, description],
+      client,
+    );
+    return result.rows[0] ?? null;
+  }
+
+  async getComboBuilderTemplate(id: string): Promise<string | null> {
+    const result = await this.db.query<{ html: string | null }>(
+      'SELECT combo_builder_template AS html FROM businesses WHERE id = $1',
+      [id],
+    );
+    return result.rows[0]?.html ?? null;
+  }
+
+  async setComboBuilderTemplate(
+    id: string,
+    html: string | null,
+  ): Promise<BusinessRow | null> {
+    const result = await this.db.query<BusinessRow>(
+      `UPDATE businesses SET combo_builder_template = $2 WHERE id = $1 RETURNING ${SELECT_COLUMNS}`,
+      [id, html],
     );
     return result.rows[0] ?? null;
   }

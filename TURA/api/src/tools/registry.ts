@@ -1,6 +1,11 @@
 import type { Session } from '../auth.js';
 import { consultarProductos } from './consultar-productos.js';
 import { consultarVentas } from './consultar-ventas.js';
+import { consultarInventario } from './consultar-inventario.js';
+import { ajustarExistencias } from './ajustar-existencias.js';
+import { modificarInsumo } from './modificar-insumo.js';
+import { modificarProducto } from './modificar-producto.js';
+import { compararSedes } from './comparar-sedes.js';
 import type { AssistantTool } from './types.js';
 
 /**
@@ -8,7 +13,20 @@ import type { AssistantTool } from './types.js';
  * a line here. The order is part of what the model's prompt cache is keyed
  * on, so new tools go at the end.
  */
-const TOOLS: AssistantTool[] = [consultarProductos, consultarVentas];
+const TOOLS: AssistantTool[] = [
+  consultarProductos,
+  consultarVentas,
+  consultarInventario,
+  ajustarExistencias,
+  modificarInsumo,
+  modificarProducto,
+  compararSedes,
+];
+
+/** Every tool, as the Golden Bites Admin lists them. */
+export function allTools(): AssistantTool[] {
+  return TOOLS;
+}
 
 /**
  * The tools offered in one conversation. Those the user has no permission

@@ -6,6 +6,7 @@ import {
 import { Reflector } from '@nestjs/core';
 import { AuthGuard } from '@nestjs/passport';
 import { IS_PUBLIC_KEY } from '../decorators/public.decorator';
+import { INTERNAL_ROUTE_KEY } from '../../internal/internal-api';
 
 @Injectable()
 export class JwtAuthGuard extends AuthGuard('jwt') {
@@ -19,7 +20,13 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
       context.getClass(),
     ]);
 
-    if (isPublic) {
+    // The internal API (POS-ADMIN) is checked by InternalApiGuard, not by POS sessions.
+    const isInternalRoute = this.reflector.getAllAndOverride<boolean>(
+      INTERNAL_ROUTE_KEY,
+      [context.getHandler(), context.getClass()],
+    );
+
+    if (isPublic || isInternalRoute) {
       return true;
     }
 

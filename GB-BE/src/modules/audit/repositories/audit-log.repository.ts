@@ -19,9 +19,14 @@ export class AuditLogRepository implements IAuditLogRepository {
 
   async insert(data: RecordAuditEntryData, client?: DbClient): Promise<void> {
     await this.db.query(
+      // The actor is a POS user or a Golden Bites (platform) account: the id
+      // lands in the column of the table it belongs to.
       `INSERT INTO audit_logs
-         (business_id, branch_id, user_id, entity_type, entity_id, action, old_values, new_values, metadata, ip_address, user_agent)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
+         (business_id, branch_id, user_id, platform_user_id, entity_type, entity_id, action, old_values, new_values, metadata, ip_address, user_agent)
+       VALUES ($1, $2,
+               (SELECT id FROM users WHERE id = $3::uuid),
+               (SELECT id FROM platform_users WHERE id = $3::uuid),
+               $4, $5, $6, $7, $8, $9, $10, $11)`,
       [
         data.businessId ?? null,
         data.branchId ?? null,

@@ -1,4 +1,12 @@
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import {
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+} from 'recharts';
 import ChartCard from './ChartCard';
 import { brand, chartAxis, chartGrid } from '../../../theme/palette';
 import { formatCOP } from '../../../utils/format';
@@ -22,7 +30,12 @@ export default function Sales7DaysChart({ data }: { data: DailySalesPoint[] }) {
             </linearGradient>
           </defs>
           <CartesianGrid vertical={false} stroke={chartGrid} />
-          <XAxis dataKey="label" tick={{ fill: chartAxis, fontSize: 11 }} axisLine={{ stroke: chartGrid }} tickLine={false} />
+          <XAxis
+            dataKey="label"
+            tick={{ fill: chartAxis, fontSize: 11 }}
+            axisLine={{ stroke: chartGrid }}
+            tickLine={false}
+          />
           <YAxis
             tick={{ fill: chartAxis, fontSize: 11 }}
             axisLine={false}
@@ -31,11 +44,21 @@ export default function Sales7DaysChart({ data }: { data: DailySalesPoint[] }) {
             width={40}
           />
           <Tooltip
-            contentStyle={{ backgroundColor: '#1A1A1D', border: '1px solid #2A2A2E', borderRadius: 8 }}
+            contentStyle={{
+              backgroundColor: '#1A1A1D',
+              border: '1px solid #2A2A2E',
+              borderRadius: 8,
+            }}
             labelStyle={{ color: brand.bone }}
             formatter={(value) => [formatCOP(Number(value)), 'Ventas']}
           />
-          <Area type="monotone" dataKey="sales" stroke={brand.gold} strokeWidth={2} fill="url(#salesGradient)" />
+          <Area
+            type="monotone"
+            dataKey="sales"
+            stroke={brand.gold}
+            strokeWidth={2}
+            fill="url(#salesGradient)"
+          />
         </AreaChart>
       </ResponsiveContainer>
     </ChartCard>

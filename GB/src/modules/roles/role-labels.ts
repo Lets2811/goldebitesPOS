@@ -7,6 +7,7 @@ export const SYSTEM_ROLE_LABELS: Record<string, string> = {
   KITCHEN: 'Cocina',
   INVENTORY: 'Inventario',
   EMPLOYEE: 'Empleado',
+  COURIER: 'Domiciliario',
 };
 
 export function getRoleLabel(name: string): string {

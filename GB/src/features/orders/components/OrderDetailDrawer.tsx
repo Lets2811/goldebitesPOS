@@ -14,7 +14,21 @@ import DialogContentText from '@mui/material/DialogContentText';
 import DialogActions from '@mui/material/DialogActions';
 import { useSnackbar } from 'notistack';
 import IconButton from '@mui/material/IconButton';
-import { MapPin, ArrowRight, Ban, CreditCard, Users, Printer, Receipt, Pencil, Plus, Check, X, FileCheck, FileText } from 'lucide-react';
+import {
+  MapPin,
+  ArrowRight,
+  Ban,
+  CreditCard,
+  Users,
+  Printer,
+  Receipt,
+  Pencil,
+  Plus,
+  Check,
+  X,
+  FileCheck,
+  FileText,
+} from 'lucide-react';
 import DetailDrawer from '../../../components/common/DetailDrawer';
 import StatusChip from '../../../components/common/StatusChip';
 import OptionSelectionsText from '../../../modules/option-groups/components/OptionSelectionsText';
@@ -41,6 +55,7 @@ import EInvoiceDialog from './EInvoiceDialog';
 import { normalizeApiError } from '../../../lib/api/api-error';
 import LoadingSkeleton from '../../../components/common/LoadingSkeleton';
 import SplitBillDialog from './SplitBillDialog';
+import OrderDiscountSection from './OrderDiscountSection';
 import EditOrderItemsDrawer from './EditOrderItemsDrawer';
 import AddOrderItemsDrawer from './AddOrderItemsDrawer';
 import {
@@ -157,13 +172,20 @@ export default function OrderDetailDrawer({
         title={`Pedido #${order.orderNumber}`}
         subtitle={ORDER_TYPE_LABELS[order.orderType]}
         headerExtra={
-          <StatusChip label={ORDER_STATUS_LABELS[order.status]} tone={ORDER_STATUS_TONE[order.status]} />
+          <StatusChip
+            label={ORDER_STATUS_LABELS[order.status]}
+            tone={ORDER_STATUS_TONE[order.status]}
+          />
         }
         footer={
           order.status !== 'DELIVERED' && order.status !== 'CANCELLED' ? (
             <Can permission="orders.update">
               <Stack direction="row" spacing={1.5}>
-                <Button color="error" startIcon={<Ban size={16} />} onClick={() => setCancelOpen(true)}>
+                <Button
+                  color="error"
+                  startIcon={<Ban size={16} />}
+                  onClick={() => setCancelOpen(true)}
+                >
                   Cancelar
                 </Button>
                 {next && (
@@ -199,16 +221,19 @@ export default function OrderDetailDrawer({
             >
               Imprimir factura
             </Button>
-            {eInvoicing && eInvoice?.status !== 'ISSUED' && order.paymentStatus === 'PAID' && order.status !== 'CANCELLED' && (
-              <Button
-                variant="contained"
-                size="small"
-                startIcon={<FileCheck size={16} />}
-                onClick={() => setEInvoiceOpen(true)}
-              >
-                Factura electrónica
-              </Button>
-            )}
+            {eInvoicing &&
+              eInvoice?.status !== 'ISSUED' &&
+              order.paymentStatus === 'PAID' &&
+              order.status !== 'CANCELLED' && (
+                <Button
+                  variant="contained"
+                  size="small"
+                  startIcon={<FileCheck size={16} />}
+                  onClick={() => setEInvoiceOpen(true)}
+                >
+                  Factura electrónica
+                </Button>
+              )}
             {order.status !== 'DELIVERED' && order.status !== 'CANCELLED' && (
               <Can permission="orders.update">
                 <Button
@@ -242,10 +267,20 @@ export default function OrderDetailDrawer({
               action={
                 eInvoice.status === 'ISSUED' ? (
                   <Stack direction="row" spacing={0.5}>
-                    <Button size="small" color="inherit" startIcon={<FileText size={14} />} onClick={() => void openEInvoicePdf(eInvoice.id)}>
+                    <Button
+                      size="small"
+                      color="inherit"
+                      startIcon={<FileText size={14} />}
+                      onClick={() => void openEInvoicePdf(eInvoice.id)}
+                    >
                       PDF
                     </Button>
-                    <Button size="small" color="inherit" startIcon={<Printer size={14} />} onClick={() => void printElectronicInvoice(order, payments, eInvoice)}>
+                    <Button
+                      size="small"
+                      color="inherit"
+                      startIcon={<Printer size={14} />}
+                      onClick={() => void printElectronicInvoice(order, payments, eInvoice)}
+                    >
                       Imprimir
                     </Button>
                   </Stack>
@@ -256,7 +291,9 @@ export default function OrderDetailDrawer({
                 <>
                   Factura electrónica <b>{eInvoice.number}</b>
                   {eInvoice.environment === 'SANDBOX' ? ' (pruebas)' : ''} ·{' '}
-                  {eInvoice.customer.kind === 'IDENTIFIED' ? eInvoice.customer.name : 'Consumidor final'}
+                  {eInvoice.customer.kind === 'IDENTIFIED'
+                    ? eInvoice.customer.name
+                    : 'Consumidor final'}
                 </>
               ) : (
                 <>No se pudo emitir: {eInvoice.errorMessage}. Corrige y vuelve a intentar.</>
@@ -275,7 +312,11 @@ export default function OrderDetailDrawer({
               </Typography>
             )}
             {order.deliveryAddress && (
-              <Stack direction="row" spacing={0.5} sx={{ alignItems: 'flex-start', color: 'text.secondary', mt: 0.5 }}>
+              <Stack
+                direction="row"
+                spacing={0.5}
+                sx={{ alignItems: 'flex-start', color: 'text.secondary', mt: 0.5 }}
+              >
                 <MapPin size={13} style={{ marginTop: 2 }} />
                 <Typography variant="caption">{order.deliveryAddress}</Typography>
               </Stack>
@@ -296,7 +337,11 @@ export default function OrderDetailDrawer({
                       {item.quantity}× {item.productNameSnapshot}
                     </Typography>
                     {item.optionSelections.length > 0 && (
-                      <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+                      <Typography
+                        variant="caption"
+                        color="text.secondary"
+                        sx={{ display: 'block' }}
+                      >
                         <OptionSelectionsText item={item} />
                       </Typography>
                     )}
@@ -321,12 +366,14 @@ export default function OrderDetailDrawer({
               </Typography>
               <CurrencyDisplay value={order.subtotal} variant="body2" />
             </Stack>
-            <Stack direction="row" sx={{ justifyContent: 'space-between' }}>
-              <Typography variant="body2" color="text.secondary">
-                Descuento
-              </Typography>
-              <CurrencyDisplay value={-order.discountAmount} variant="body2" />
-            </Stack>
+            {order.discountAmount > 0 && (
+              <Stack direction="row" sx={{ justifyContent: 'space-between' }}>
+                <Typography variant="body2" color="text.secondary">
+                  {order.discountLabel ?? 'Descuento'}
+                </Typography>
+                <CurrencyDisplay value={-order.discountAmount} variant="body2" />
+              </Stack>
+            )}
             <Stack direction="row" sx={{ justifyContent: 'space-between' }}>
               <Typography variant="body2" color="text.secondary">
                 Impuestos
@@ -345,7 +392,11 @@ export default function OrderDetailDrawer({
               <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
                 Total
               </Typography>
-              <CurrencyDisplay value={order.totalAmount} variant="subtitle1" sx={{ fontWeight: 700 }} />
+              <CurrencyDisplay
+                value={order.totalAmount}
+                variant="subtitle1"
+                sx={{ fontWeight: 700 }}
+              />
             </Stack>
           </Stack>
 
@@ -366,7 +417,10 @@ export default function OrderDetailDrawer({
           <Divider />
 
           <Box>
-            <Stack direction="row" sx={{ alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
+            <Stack
+              direction="row"
+              sx={{ alignItems: 'center', justifyContent: 'space-between', mb: 1 }}
+            >
               <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
                 Pagos
               </Typography>
@@ -405,7 +459,11 @@ export default function OrderDetailDrawer({
                     </IconButton>
                   </Stack>
                 ) : (
-                  <Stack key={payment.id} direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Stack
+                    key={payment.id}
+                    direction="row"
+                    sx={{ justifyContent: 'space-between', alignItems: 'center' }}
+                  >
                     <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>
                       <Typography variant="body2">
                         {PAYMENT_METHOD_LABELS[payment.paymentMethod]}
@@ -430,7 +488,12 @@ export default function OrderDetailDrawer({
                     </Stack>
                     <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
                       <CurrencyDisplay value={payment.amount} variant="body2" />
-                      <DateDisplay value={payment.paidAt} mode="time" variant="caption" color="text.secondary" />
+                      <DateDisplay
+                        value={payment.paidAt}
+                        mode="time"
+                        variant="caption"
+                        color="text.secondary"
+                      />
                     </Stack>
                   </Stack>
                 ),
@@ -441,6 +504,8 @@ export default function OrderDetailDrawer({
                 </Typography>
               )}
             </Stack>
+
+            <OrderDiscountSection order={order} amountPaid={amountPaid} />
 
             {canRegisterPayment && (
               <Can permission="orders.update">
@@ -485,9 +550,15 @@ export default function OrderDetailDrawer({
                   </Button>
                 </Stack>
                 {paymentMethod === 'CASH' && (
-                  <CashChangeCalculator amountDue={paymentAmount === '' ? balanceDue : Number(paymentAmount)} />
+                  <CashChangeCalculator
+                    amountDue={paymentAmount === '' ? balanceDue : Number(paymentAmount)}
+                  />
                 )}
-                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
+                <Typography
+                  variant="caption"
+                  color="text.secondary"
+                  sx={{ display: 'block', mt: 0.5 }}
+                >
                   Saldo pendiente: {balanceDue}
                 </Typography>
               </Can>
@@ -538,7 +609,9 @@ export default function OrderDetailDrawer({
           onClose={() => setEInvoiceOpen(false)}
           onIssued={(invoice) => {
             setEInvoiceOpen(false);
-            enqueueSnackbar(`Factura electrónica ${invoice.number} emitida`, { variant: 'success' });
+            enqueueSnackbar(`Factura electrónica ${invoice.number} emitida`, {
+              variant: 'success',
+            });
             void printElectronicInvoice(order, payments, invoice);
           }}
         />
@@ -570,7 +643,8 @@ export default function OrderDetailDrawer({
                 setEditItemsOpen(false);
                 enqueueSnackbar('Pedido actualizado correctamente', { variant: 'success' });
               },
-              onError: (error) => enqueueSnackbar(normalizeApiError(error).message, { variant: 'error' }),
+              onError: (error) =>
+                enqueueSnackbar(normalizeApiError(error).message, { variant: 'error' }),
             },
           );
         }}
@@ -589,7 +663,8 @@ export default function OrderDetailDrawer({
                 setAddItemsOpen(false);
                 enqueueSnackbar('Productos agregados al pedido', { variant: 'success' });
               },
-              onError: (error) => enqueueSnackbar(normalizeApiError(error).message, { variant: 'error' }),
+              onError: (error) =>
+                enqueueSnackbar(normalizeApiError(error).message, { variant: 'error' }),
             },
           );
         }}

@@ -1,4 +1,4 @@
-import { useParams } from 'react-router-dom';
+import { useParams, useSearchParams } from 'react-router-dom';
 import Box from '@mui/material/Box';
 import PublicMenuBrowser from '../components/PublicMenuBrowser';
 
@@ -9,10 +9,13 @@ import PublicMenuBrowser from '../components/PublicMenuBrowser';
  */
 export default function PublicMenuPage() {
   const { businessId } = useParams<{ businessId: string }>();
+  // ?sede=: the menu of that branch (what it offers, at its prices).
+  const [searchParams] = useSearchParams();
+  const branchId = searchParams.get('sede') ?? undefined;
 
   return (
     <Box sx={{ minHeight: '100vh', bgcolor: 'background.default', py: { xs: 3, sm: 6 }, px: 2 }}>
-      <PublicMenuBrowser businessId={businessId} readOnly />
+      <PublicMenuBrowser businessId={businessId} branchId={branchId} readOnly />
     </Box>
   );
 }

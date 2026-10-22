@@ -17,6 +17,8 @@ import { Permissions } from '../../../common/decorators/permissions.decorator';
 import { Public } from '../../../common/decorators/public.decorator';
 import { RawResponse } from '../../../common/decorators/raw-response.decorator';
 import { RequiresFeature } from '../../../common/decorators/requires-feature.decorator';
+import { InternalActor, InternalRoute } from '../../../internal/internal-api';
+import { GenerateLinkCodeForUserDto } from '../dto/generate-link-code-for-user.dto';
 import { LinkTokenDto } from '../dto/link-token.dto';
 import { RedeemLinkCodeDto } from '../dto/redeem-link-code.dto';
 import { TURA_FEATURE, TuraLinksService } from '../services/tura-links.service';
@@ -95,11 +97,72 @@ export class TuraLinksController {
   }
 
   @Public()
+  @Post('logout')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @RawResponse()
+  @ApiOperation({
+    summary:
+      'Sign a TURA app out: its link stops working here and now, not only on the device',
+  })
+  async logout(@Body() dto: LinkTokenDto) {
+    await this.turaLinksService.logout(dto.linkToken);
+  }
+
+  @Public()
   @Post('token')
   @ApiOperation({
     summary: 'Exchange a TURA link token for a short-lived access token',
   })
   issueAccessToken(@Body() dto: LinkTokenDto) {
     return this.turaLinksService.issueAccessToken(dto.linkToken);
+  }
+}
+
+/**
+ * The platform admin connecting TURA for a business's users, so a business
+ * can be set up without its staff doing it themselves. The code is said or
+ * typed to TURA like any other, and the link acts as the chosen user.
+ */
+@ApiTags('Platform Admin')
+@ApiBearerAuth()
+@InternalRoute()
+@Controller('internal/businesses/:businessId/tura')
+export class PlatformTuraLinksController {
+  constructor(private readonly turaLinksService: TuraLinksService) {}
+
+  @Get()
+  @ApiOperation({
+    summary: 'Whether a business has TURA, and which of its users are linked',
+  })
+  getStatus(@Param('businessId', ParseUUIDPipe) businessId: string) {
+    return this.turaLinksService.getPlatformStatus(businessId);
+  }
+
+  @Post('codes')
+  @ApiOperation({
+    summary: 'Generate a one-time code that links TURA to one of its users',
+  })
+  generateCode(
+    @Param('businessId', ParseUUIDPipe) businessId: string,
+    @InternalActor() actorUserId: string,
+    @Body() dto: GenerateLinkCodeForUserDto,
+  ) {
+    return this.turaLinksService.generateCodeForUser(
+      businessId,
+      dto.userId,
+      actorUserId,
+    );
+  }
+
+  @Delete('links/:id')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @RawResponse()
+  @ApiOperation({ summary: "Unlink a user's TURA; its access stops working" })
+  async revoke(
+    @Param('businessId', ParseUUIDPipe) businessId: string,
+    @Param('id', ParseUUIDPipe) id: string,
+    @InternalActor() actorUserId: string,
+  ) {
+    await this.turaLinksService.revokeForPlatform(businessId, id, actorUserId);
   }
 }

@@ -30,14 +30,19 @@ describe('ProductsController', () => {
       setVisible: jest.fn(),
       softDelete: jest.fn(),
     };
-    controller = new ProductsController(service as unknown as ProductsService);
+    controller = new ProductsController(
+      service as unknown as ProductsService,
+      {} as never,
+    );
   });
 
   it('create() scopes to the current business', async () => {
     service.create.mockResolvedValue({ id: 'p1' } as never);
-    await controller.create('business-1', 'actor-1', { name: 'Burger' });
+    await controller.create('business-1', 'actor-1', 'branch-1', {
+      name: 'Burger',
+    });
     expect(service.create).toHaveBeenCalledWith(
-      { businessId: 'business-1', name: 'Burger' },
+      { businessId: 'business-1', name: 'Burger', branchId: 'branch-1' },
       'actor-1',
     );
   });

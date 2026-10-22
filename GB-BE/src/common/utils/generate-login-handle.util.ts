@@ -13,7 +13,10 @@ function sanitize(name: string): string {
  * with 'x'; falls back to "us" only when both names sanitize to nothing
  * (all-symbol input). Caller appends a disambiguating number and domain.
  */
-export function buildLoginHandleBase(firstName: string, lastName: string): string {
+export function buildLoginHandleBase(
+  firstName: string,
+  lastName: string,
+): string {
   const first = sanitize(firstName);
   const last = sanitize(lastName);
   if (!first && !last) return 'us';

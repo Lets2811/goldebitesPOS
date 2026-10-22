@@ -22,7 +22,8 @@ import { IOrdersRepository } from './orders.repository.interface';
 
 const SELECT_COLUMNS = `id, business_id, branch_id, customer_id, customer_name, created_by, order_number::text AS order_number,
   order_type, status, payment_status, payment_policy, table_number, delivery_address, delivery_instructions,
-  subtotal, discount_amount, tax_amount, delivery_fee, total_amount, notes,
+  subtotal, discount_amount, discount_percent, discount_id, discount_source, discount_label,
+  tax_amount, delivery_fee, total_amount, notes,
   confirmed_at, prepared_at, delivered_at, cancelled_at, created_at, updated_at`;
 
 const ITEM_COLUMNS = `id, order_id, product_id, product_name_snapshot, product_description_snapshot, quantity, unit_price,
@@ -69,19 +70,21 @@ export class OrdersRepository implements IOrdersRepository {
       `WITH cur_date AS (
          SELECT (now() AT TIME ZONE $12)::date AS d
        ),
+       -- Each branch numbers its own day.
        counter AS (
-         INSERT INTO daily_order_counters (business_id, order_date, last_number)
-         SELECT $1, d, 1 FROM cur_date
-         ON CONFLICT (business_id, order_date)
+         INSERT INTO daily_order_counters (business_id, branch_id, order_date, last_number)
+         SELECT $1, $2, d, 1 FROM cur_date
+         ON CONFLICT (business_id, branch_id, order_date)
          DO UPDATE SET last_number = daily_order_counters.last_number + 1
          RETURNING last_number, order_date
        )
        INSERT INTO orders (business_id, branch_id, customer_id, created_by, order_type, table_number,
          delivery_address, delivery_instructions, discount_amount, delivery_fee, notes, order_number, customer_name,
-         payment_policy)
+         payment_policy, order_date)
        SELECT $1, $2, $3, $4, $5, $6, $7, $8, COALESCE($9::numeric, 0), COALESCE($10::numeric, 0), $11,
          -- At least two digits ("-07"); lpad would cut a 100th order to "-10", a duplicate.
-         to_char(counter.order_date, 'MMDD') || '-' || lpad(counter.last_number::text, GREATEST(2, length(counter.last_number::text)), '0'), $13, $14
+         to_char(counter.order_date, 'MMDD') || '-' || lpad(counter.last_number::text, GREATEST(2, length(counter.last_number::text)), '0'), $13, $14,
+         counter.order_date
        FROM counter
        RETURNING ${SELECT_COLUMNS}`,
       [
@@ -303,6 +306,31 @@ export class OrdersRepository implements IOrdersRepository {
     );
   }
 
+  async setDiscount(
+    orderId: string,
+    discount: {
+      percent: number;
+      discountId: string | null;
+      source: string;
+      label: string;
+    } | null,
+    client?: DbClient,
+  ): Promise<void> {
+    await this.db.query(
+      `UPDATE orders
+       SET discount_percent = $2, discount_id = $3, discount_source = $4, discount_label = $5
+       WHERE id = $1`,
+      [
+        orderId,
+        discount?.percent ?? null,
+        discount?.discountId ?? null,
+        discount?.source ?? null,
+        discount?.label ?? null,
+      ],
+      client,
+    );
+  }
+
   async setStatus(
     id: string,
     businessId: string,
@@ -464,5 +492,48 @@ export class OrdersRepository implements IOrdersRepository {
       params,
     );
     return result.rows;
+  }
+
+  /**
+   * What customers ordered in a range, paid or not: every order not
+   * cancelled, by when it was taken. The products by units, the most ordered
+   * first, and how many orders there were.
+   */
+  async getMostOrdered(
+    businessId: string,
+    branchId: string | undefined,
+    dateFrom: string,
+    dateTo: string,
+    limit: number,
+  ): Promise<{ order_count: string; product_ids: string[] | null }> {
+    const params: unknown[] = [businessId, dateFrom, dateTo];
+    let branchCondition = '';
+    if (branchId) {
+      params.push(branchId);
+      branchCondition = ` AND o.branch_id = $${params.length}`;
+    }
+    params.push(limit);
+    const result = await this.db.query<{
+      order_count: string;
+      product_ids: string[] | null;
+    }>(
+      `WITH taken AS (
+         SELECT o.id FROM orders o
+         WHERE o.business_id = $1 AND o.status <> 'CANCELLED'
+           AND o.created_at >= $2 AND o.created_at <= $3${branchCondition}
+       ),
+       ranked AS (
+         SELECT oi.product_id, SUM(oi.quantity) AS units
+         FROM taken JOIN order_items oi ON oi.order_id = taken.id
+         WHERE oi.product_id IS NOT NULL
+         GROUP BY oi.product_id
+         ORDER BY units DESC, oi.product_id
+         LIMIT $${params.length}
+       )
+       SELECT (SELECT COUNT(*) FROM taken)::text AS order_count,
+              (SELECT array_agg(product_id ORDER BY units DESC, product_id) FROM ranked) AS product_ids`,
+      params,
+    );
+    return result.rows[0];
   }
 }

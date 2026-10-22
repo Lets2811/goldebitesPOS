@@ -1,0 +1,32 @@
+import { Module } from '@nestjs/common';
+import { AuditModule } from '../../modules/audit/audit.module';
+import { BranchesModule } from '../../modules/branches/branches.module';
+import { BusinessFeaturesModule } from '../../modules/business-features/business-features.module';
+import { BusinessesModule } from '../../modules/businesses/businesses.module';
+import { PlatformFeatureFlagsModule } from '../../modules/platform-feature-flags/platform-feature-flags.module';
+import { RolesModule } from '../../modules/roles/roles.module';
+import { UsersModule } from '../../modules/users/users.module';
+import { PlatformAdminController } from './controllers/platform-admin.controller';
+import { PlatformOverviewController } from './controllers/platform-overview.controller';
+import { PlatformOverviewRepository } from './repositories/platform-overview.repository';
+import { PlatformAdminService } from './services/platform-admin.service';
+import { PlatformOverviewService } from './services/platform-overview.service';
+
+@Module({
+  imports: [
+    BusinessesModule,
+    BranchesModule,
+    RolesModule,
+    UsersModule,
+    BusinessFeaturesModule,
+    PlatformFeatureFlagsModule,
+    AuditModule,
+  ],
+  controllers: [PlatformAdminController, PlatformOverviewController],
+  providers: [
+    PlatformAdminService,
+    PlatformOverviewService,
+    PlatformOverviewRepository,
+  ],
+})
+export class PlatformAdminModule {}

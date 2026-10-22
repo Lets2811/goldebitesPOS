@@ -17,6 +17,7 @@ export class InventoryItemMapper {
       serialNumber: row.serial_number,
       brand: row.brand,
       model: row.model,
+      branchId: row.branch_id,
       isActive: row.is_active,
       createdAt: row.created_at,
       updatedAt: row.updated_at,

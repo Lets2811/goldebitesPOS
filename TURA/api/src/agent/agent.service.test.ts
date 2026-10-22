@@ -300,7 +300,7 @@ describe('what the model is sent', () => {
     assert.deepEqual(request.output_config, { effort: config.effort });
     assert.deepEqual(
       request.tools?.map((tool) => ('name' in tool ? tool.name : null)),
-      ['consultar_productos'],
+      ['consultar_productos', 'consultar_inventario'],
     );
   });
 
@@ -323,7 +323,6 @@ describe('what the model is sent', () => {
     assert.match(system[1].text, /Golden Bites/);
     assert.match(system[1].text, /America\/Bogota/);
     assert.match(system[1].text, /\d{1,2}:\d{2}/);
-    assert.match(system[1].text, /sede/);
   });
 
   it('gives two users the same cached prefix', async () => {
@@ -469,7 +468,86 @@ describe('sales questions', () => {
 
     assert.deepEqual(
       requests[0].tools?.map((tool) => ('name' in tool ? tool.name : null)),
-      ['consultar_productos'],
+      ['consultar_productos', 'consultar_inventario'],
     );
+  });
+});
+
+describe('changes (write tools)', () => {
+  const PRODUCT_ID = '1c8d9e3f-0a2b-4d4c-9e6f-7a8b9c0d1e2f';
+  const writer = makeSession({ permissions: ['products.read', 'products.update'] });
+  const papas = (overrides: Record<string, unknown> = {}) =>
+    mockPos((request) => ({
+      body: {
+        success: true,
+        data:
+          request.method === 'GET'
+            ? { id: PRODUCT_ID, name: 'Papas fritas', salePrice: 8000, isActive: true, isVisible: true, ...overrides }
+            : {},
+      },
+    }));
+  const deactivate = {
+    content: [
+      {
+        type: 'tool_use' as const,
+        id: 'w1',
+        name: 'modificar_producto',
+        input: { producto_id: PRODUCT_ID, accion: 'desactivar' },
+      },
+    ],
+    stop_reason: 'tool_use' as const,
+  };
+
+  it('makes the change right away, without asking, and tells the model it is done', async () => {
+    const requests = papas();
+
+    const outcome = await ask(
+      [deactivate, say('Listo, desactivé las papas fritas.')],
+      [{ role: 'user', content: 'Desactiva las papas fritas' }],
+      writer,
+    );
+
+    const [change] = requests.filter((request) => request.method !== 'GET');
+    assert.ok(change.url.pathname.endsWith(`/products/${PRODUCT_ID}/status`));
+    assert.deepEqual(change.body, { isActive: false });
+    const shown = outcome.events.find((event) => event.type === 'change');
+    assert.ok(shown && shown.type === 'change');
+    assert.equal(shown.message, 'Listo: "Papas fritas" quedó desactivado.');
+    assert.match(String(toolResults(outcome.requests[1])[0].content), /^Hecho\./);
+  });
+
+  it('names the branch of the change to whoever works across several', async () => {
+    papas({ branchId: 'branch-2' });
+    const owner = makeSession({
+      permissions: ['products.read', 'products.update', 'branches.switch'],
+      branches: {
+        own: { id: 'branch-1', name: 'Centro' },
+        canSeeAll: true,
+        list: [
+          { id: 'branch-1', name: 'Centro' },
+          { id: 'branch-2', name: 'Norte' },
+        ],
+      },
+    });
+
+    const outcome = await ask([deactivate, say('Listo.')], [{ role: 'user', content: 'Desactiva las papas' }], owner);
+
+    assert.match(String(toolResults(outcome.requests[1])[0].content), /Sede: Norte\.$/);
+  });
+
+  it('a change the POS would refuse is explained instead of made', async () => {
+    const requests = papas({ isActive: false });
+
+    const outcome = await ask(
+      [deactivate, say('Ya estaban desactivadas.')],
+      [{ role: 'user', content: 'Desactiva las papas fritas' }],
+      writer,
+    );
+
+    assert.ok(requests.every((request) => request.method === 'GET'), 'nothing was written');
+    assert.ok(!outcome.events.some((event) => event.type === 'change'));
+    const [result] = toolResults(outcome.requests[1]);
+    assert.equal(result.is_error, true);
+    assert.match(String(result.content), /ya está desactivado/);
   });
 });

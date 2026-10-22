@@ -15,7 +15,7 @@
 // in time by the SQL this script writes (--sql-out), to run right after it.
 //
 // Usage (Node 18+):
-//   node deploy/staging/demo-data.mjs --api https://staging.goldenbites.net/api/v1 \
+//   node deploy/staging/demo-data.mjs --api https://staging.goldenbites.net/api/v1 //     --admin-api https://admin-staging.goldenbites.net/admin-api/v1 \
 //     --superadmin-email superadmin@goldenbitespos.local --superadmin-password ... \
 //     --restaurant-email admin@goldenbites.local --restaurant-password ... \
 //     --creds-out demo-credentials.txt --sql-out demo-backdate.sql
@@ -28,10 +28,12 @@ import { randomBytes } from 'node:crypto';
 const args = Object.fromEntries(
   process.argv.slice(2).reduce((pairs, arg, i, all) => (arg.startsWith('--') ? [...pairs, [arg.slice(2), all[i + 1]]] : pairs), []),
 );
-for (const key of ['api', 'superadmin-email', 'superadmin-password', 'restaurant-email', 'restaurant-password', 'creds-out', 'sql-out']) {
+for (const key of ['api', 'admin-api', 'superadmin-email', 'superadmin-password', 'restaurant-email', 'restaurant-password', 'creds-out', 'sql-out']) {
   if (!args[key]) throw new Error(`Missing --${key}`);
 }
 const API = args.api.replace(/\/+$/, '');
+// POS-ADMIN's API: creating businesses and branches is the Golden Bites team's job.
+const ADMIN_API = args['admin-api'].replace(/\/+$/, '');
 const DAYS = Number(args.days ?? 7);
 const TIMEZONE = 'America/Bogota';
 
@@ -45,11 +47,11 @@ const localDate = (daysAgo = 0) =>
   new Date(Date.now() - daysAgo * 86400000).toLocaleDateString('en-CA', { timeZone: TIMEZONE });
 const log = (...parts) => console.log(...parts);
 
-async function api(token, method, path, body) {
+async function api(token, method, path, body, base = API) {
   let response;
   // The API allows 600 requests a minute per IP: on 429, wait as told and retry.
   for (let attempt = 0; ; attempt++) {
-    response = await fetch(API + path, {
+    response = await fetch(base + path, {
       method,
       headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
       body: body === undefined ? undefined : JSON.stringify(body),
@@ -73,6 +75,12 @@ const list = async (token, path) => {
 };
 async function login(email, pass) {
   const result = await api(null, 'POST', '/auth/login', { email, password: pass });
+  return result.accessToken;
+}
+/** POS-ADMIN (the Golden Bites team's Admin): its own API and sign-in, apart from the POS. */
+const adminApi = (token, method, path, body) => api(token, method, path, body, ADMIN_API);
+async function platformLogin(email, pass) {
+  const result = await adminApi(null, 'POST', '/auth/login', { email, password: pass });
   return result.accessToken;
 }
 /** Steps that only add flavor: report a failure and keep going. */
@@ -258,10 +266,10 @@ async function setupBusiness(def, token, businessId) {
   const [first, ...rest] = def.branches;
   // Name and contact details go through the platform admin; the table count is the business's own.
   const details = ({ tableCount, ...rest }) => rest;
-  await api(state.superToken, 'PATCH', `/platform-admin/businesses/${businessId}/branches/${existing[0].id}`, details(first));
+  await adminApi(state.superToken, 'PATCH', `/businesses/${businessId}/branches/${existing[0].id}`, details(first));
   ctx.branches.push({ ...first, id: existing[0].id });
   for (const branch of rest) {
-    const created = await api(state.superToken, 'POST', `/platform-admin/businesses/${businessId}/branches`, details(branch));
+    const created = await adminApi(state.superToken, 'POST', `/businesses/${businessId}/branches`, details(branch));
     ctx.branches.push({ ...branch, id: created.id });
   }
   for (const branch of ctx.branches) {
@@ -533,8 +541,8 @@ async function finances(ctx) {
 
 // ------------------------------------------------------------------ main
 const state = {};
-state.superToken = await login(args['superadmin-email'], args['superadmin-password']);
-credentials.push(['Plataforma', 'Superadministrador del POS', args['superadmin-email'], args['superadmin-password']]);
+state.superToken = await platformLogin(args['superadmin-email'], args['superadmin-password']);
+credentials.push(['Admin (admin.goldenbites.net)', 'Equipo Golden Bites', args['superadmin-email'], args['superadmin-password']]);
 
 // Restaurant: the seed's empty "Golden Bites" business.
 const restaurantToken = await login(args['restaurant-email'], args['restaurant-password']);
@@ -546,7 +554,7 @@ const restaurant = await setupBusiness(RESTAURANT, restaurantToken, restaurantMe
 // Bar: a new business through the platform admin.
 const barOwnerEmail = `dueno@${BAR.domain}`;
 const barOwnerPassword = password();
-const bar = await api(state.superToken, 'POST', '/platform-admin/businesses', {
+const bar = await adminApi(state.superToken, 'POST', '/businesses', {
   name: BAR.name, currency: 'COP', timezone: TIMEZONE, ownerFirstName: BAR.owner.firstName, ownerLastName: BAR.owner.lastName,
   ownerEmail: barOwnerEmail, ownerPassword: barOwnerPassword,
 });

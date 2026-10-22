@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { usePermissions } from '../../auth/hooks/use-permissions';
 import { eInvoicingApi, eInvoicingKeys } from '../api/e-invoicing.api';
-import type { EInvoiceBuyer, EInvoicingSettingsPayload } from '../types/e-invoicing.types';
+import type { EInvoiceBuyer } from '../types/e-invoicing.types';
 
 /**
  * Whether this business can issue electronic invoices: the add-on is on, the
@@ -34,28 +34,6 @@ export function useIssueEInvoice() {
     onSuccess: (invoice) => queryClient.setQueryData(eInvoicingKeys.order(invoice.orderId), invoice),
     // A rejection is stored too (with its errors): show it.
     onError: (_error, { orderId }) => queryClient.invalidateQueries({ queryKey: eInvoicingKeys.order(orderId) }),
-  });
-}
-
-export function useEInvoicingSettings(businessId: string | undefined) {
-  return useQuery({
-    queryKey: eInvoicingKeys.settings(businessId ?? ''),
-    queryFn: () => eInvoicingApi.settings(businessId!),
-    enabled: Boolean(businessId),
-  });
-}
-
-export function useSaveEInvoicingSettings(businessId: string) {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (payload: EInvoicingSettingsPayload) => eInvoicingApi.saveSettings(businessId, payload),
-    onSuccess: (settings) => queryClient.setQueryData(eInvoicingKeys.settings(businessId), settings),
-  });
-}
-
-export function useTestEInvoicingConnection(businessId: string) {
-  return useMutation({
-    mutationFn: (payload: EInvoicingSettingsPayload) => eInvoicingApi.testConnection(businessId, payload),
   });
 }
 

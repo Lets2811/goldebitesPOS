@@ -21,6 +21,8 @@ export interface ITuraLinksRepository {
   findActive(businessId: string, id: string): Promise<TuraLinkRow | null>;
   findAllActive(businessId: string): Promise<TuraLinkWithUserRow[]>;
   revoke(businessId: string, id: string): Promise<boolean>;
+  /** Revokes the active link holding this token, if any. */
+  revokeByTokenHash(tokenHash: string): Promise<void>;
 }
 
 export const TURA_LINKS_REPOSITORY = Symbol('TURA_LINKS_REPOSITORY');

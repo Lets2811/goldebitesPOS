@@ -74,6 +74,15 @@ export interface Order {
 
   discountAmount: number;
 
+  /** The percentage the discount is (null for a fixed amount, or none). */
+  discountPercent: number | null;
+
+  /** Where the discount came from: MANUAL, PROMOTION or COUPON (null: none, or a fixed amount). */
+  discountSource: string | null;
+
+  /** How the discount reads on the order and the receipt, e.g. "Cupón VERANO10 (10%)". */
+  discountLabel: string | null;
+
   taxAmount: number;
 
   deliveryFee: number;
@@ -127,6 +136,14 @@ export interface OrderRow {
   subtotal: string;
 
   discount_amount: string;
+
+  discount_percent?: string | null;
+
+  discount_id?: string | null;
+
+  discount_source?: string | null;
+
+  discount_label?: string | null;
 
   tax_amount: string;
 
@@ -284,6 +301,13 @@ export interface TopProduct {
 /** What "best-selling" is measured by: the money a product brought in, or the units sold. */
 
 export type TopProductsOrder = 'revenue' | 'quantity';
+
+/** The products most ordered in a range (orders taken, paid or not), and how many orders there were. */
+export interface MostOrdered {
+  orderCount: number;
+  /** Product ids, the most ordered first. */
+  productIds: string[];
+}
 
 export interface TopProductRow {
   product_id: string | null;

@@ -1,6 +1,7 @@
 import { BusinessRuleException } from '../../../common/exceptions';
 import { DailySales } from '../../orders/domain/order.interface';
 import { AssistantSalesQuery } from '../domain/assistant-sales.interface';
+import { AssistantBranchScopeService } from './assistant-branch-scope.service';
 import { AssistantSalesService } from './assistant-sales.service';
 
 describe('AssistantSalesService', () => {
@@ -20,6 +21,7 @@ describe('AssistantSalesService', () => {
   ): AssistantSalesQuery {
     return {
       businessId,
+      user: { branchId: null, permissions: ['analytics.read'] },
       dateFrom: '2026-10-01',
       dateTo: '2026-10-13',
       includeTopProducts: false,
@@ -31,7 +33,11 @@ describe('AssistantSalesService', () => {
 
   function givenBranches(...names: string[]) {
     branchesService.findAll.mockResolvedValue({
-      data: names.map((name, index) => ({ id: `branch-${index + 1}`, name })),
+      data: names.map((name, index) => ({
+        id: `branch-${index + 1}`,
+        name,
+        isActive: true,
+      })),
       meta: { total: names.length },
     });
   }
@@ -62,7 +68,7 @@ describe('AssistantSalesService', () => {
     service = new AssistantSalesService(
       analyticsService as never,
       businessesService as never,
-      branchesService as never,
+      new AssistantBranchScopeService(branchesService as never),
     );
   });
 
@@ -448,11 +454,46 @@ describe('AssistantSalesService', () => {
       ).toBe('Sede Norte');
     });
 
+    it('keeps a user tied to one branch to that branch, and refuses naming another', async () => {
+      givenBranches('Centro', 'Norte');
+      const user = { branchId: 'branch-2', permissions: ['analytics.read'] };
+
+      const result = await service.getSales(makeQuery({ user }));
+      expect(result.scope).toEqual({ branch: 'Norte' });
+      expect(analyticsService.getSalesSummary).toHaveBeenCalledWith(
+        businessId,
+        'branch-2',
+        expect.any(String),
+        expect.any(String),
+      );
+
+      await expect(
+        service.getSales(makeQuery({ user, branchName: 'Centro' })),
+      ).rejects.toMatchObject({ code: 'UNAUTHORIZED_OPERATION' });
+    });
+
+    it('lets whoever may see every branch pick one or have them all', async () => {
+      givenBranches('Centro', 'Norte');
+      const user = {
+        branchId: 'branch-1',
+        permissions: ['analytics.read', 'branches.switch'],
+      };
+
+      expect((await service.getSales(makeQuery({ user }))).scope).toEqual({
+        branch: null,
+        branches: ['Centro', 'Norte'],
+      });
+      expect(
+        (await service.getSales(makeQuery({ user, branchName: 'norte' }))).scope
+          .branch,
+      ).toBe('Norte');
+    });
+
     it("only ever looks at the caller's own business", async () => {
       await service.getSales(makeQuery());
 
       expect(branchesService.findAll).toHaveBeenCalledWith(
-        expect.objectContaining({ businessId, isActive: true }),
+        expect.objectContaining({ businessId }),
       );
       expect(businessesService.getTimezone).toHaveBeenCalledWith(businessId);
     });

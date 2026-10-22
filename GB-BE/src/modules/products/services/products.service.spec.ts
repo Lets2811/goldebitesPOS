@@ -47,6 +47,7 @@ describe('ProductsService', () => {
       image_path: null,
       image_mime_type: null,
       image_updated_at: null,
+      branch_id: 'branch-1',
       is_active: true,
       is_visible: true,
       track_inventory: true,
@@ -96,6 +97,7 @@ describe('ProductsService', () => {
 
       await service.create({
         businessId,
+        branchId: 'branch-1',
         name: 'Classic Burger',
         categoryId: 'cat-1',
       });
@@ -110,7 +112,12 @@ describe('ProductsService', () => {
       repository.existsBySku.mockResolvedValue(true);
 
       await expect(
-        service.create({ businessId, name: 'Classic Burger', sku: 'BRG-1' }),
+        service.create({
+          businessId,
+          branchId: 'branch-1',
+          name: 'Classic Burger',
+          sku: 'BRG-1',
+        }),
       ).rejects.toThrow(ConflictException);
     });
 
@@ -119,6 +126,7 @@ describe('ProductsService', () => {
 
       const product = await service.create({
         businessId,
+        branchId: 'branch-1',
         name: 'Classic Burger',
       });
 
@@ -135,6 +143,7 @@ describe('ProductsService', () => {
 
       const product = await service.create({
         businessId,
+        branchId: 'branch-1',
         name: 'Classic Burger',
         optionGroups: groups,
       });
@@ -158,6 +167,7 @@ describe('ProductsService', () => {
       await expect(
         service.create({
           businessId,
+          branchId: 'branch-1',
           name: 'Classic Burger',
           optionGroups: [{ groupId: 'other', maxChoices: 1 }],
         }),

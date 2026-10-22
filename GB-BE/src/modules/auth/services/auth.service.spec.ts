@@ -16,7 +16,11 @@ describe('AuthService', () => {
   let rolesService: { findOne: jest.Mock };
   let businessFeaturesService: { getEnabledKeys: jest.Mock };
   let platformFeatureFlagsService: { getEnabledKeys: jest.Mock };
-  let branchesService: { findOnlyActiveBranchId: jest.Mock };
+  let branchesService: {
+    findOnlyActiveBranchId: jest.Mock;
+    hasSeveralActive: jest.Mock;
+    isActiveBranch: jest.Mock;
+  };
   let jwtService: { sign: jest.Mock };
   let configService: { getOrThrow: jest.Mock };
   let transactionService: { execute: jest.Mock };
@@ -89,6 +93,8 @@ describe('AuthService', () => {
     };
     branchesService = {
       findOnlyActiveBranchId: jest.fn().mockResolvedValue(null),
+      hasSeveralActive: jest.fn().mockResolvedValue(false),
+      isActiveBranch: jest.fn().mockResolvedValue(true),
     };
     jwtService = { sign: jest.fn().mockReturnValue('signed.jwt.token') };
     configService = { getOrThrow: jest.fn().mockReturnValue(appConfig) };
@@ -125,6 +131,162 @@ describe('AuthService', () => {
       passwordResetTokenRepository,
       loginAttemptRepository,
     );
+  });
+
+  describe('working across branches (branches.switch)', () => {
+    const signedPayload = () =>
+      jwtService.sign.mock.calls.at(-1)?.[0] as {
+        branchId: string | null;
+        branchSelectionRequired: boolean;
+      };
+
+    beforeEach(() => {
+      rolesService.findOne.mockResolvedValue({
+        name: 'OWNER',
+        permissions: ['orders.read', 'branches.switch'],
+      });
+      branchesService.hasSeveralActive.mockResolvedValue(true);
+      usersService.findRawByEmailAcrossBusinesses.mockResolvedValue([
+        makeUserRow(),
+      ]);
+      usersService.verifyPassword.mockResolvedValue(true);
+    });
+
+    it('signs in without a branch, asking to pick one', async () => {
+      const result = await service.login(
+        { email: 'ada@goldenbites.local', password: 'x' },
+        {},
+      );
+
+      expect(signedPayload()).toMatchObject({
+        branchId: null,
+        branchSelectionRequired: true,
+      });
+      expect(result.user.branchSelectionRequired).toBe(true);
+    });
+
+    it('works at their own branch when the business has only one', async () => {
+      branchesService.hasSeveralActive.mockResolvedValue(false);
+
+      await service.login(
+        { email: 'ada@goldenbites.local', password: 'x' },
+        {},
+      );
+
+      expect(signedPayload()).toMatchObject({
+        branchId: 'branch-1',
+        branchSelectionRequired: false,
+      });
+    });
+
+    it('a user without the permission keeps their branch', async () => {
+      rolesService.findOne.mockResolvedValue({
+        name: 'CASHIER',
+        permissions: ['orders.read'],
+      });
+
+      await service.login(
+        { email: 'ada@goldenbites.local', password: 'x' },
+        {},
+      );
+
+      expect(signedPayload()).toMatchObject({
+        branchId: 'branch-1',
+        branchSelectionRequired: false,
+      });
+      expect(branchesService.hasSeveralActive).not.toHaveBeenCalled();
+    });
+
+    it('switchBranch takes the session to the branch and keeps it on the refresh token', async () => {
+      usersService.findRawById.mockResolvedValue(makeUserRow());
+      refreshTokenRepository.findByTokenHash.mockResolvedValue({
+        id: 'rt-old',
+        user_id: 'user-1',
+        revoked_at: null,
+      });
+
+      const result = await service.switchBranch(
+        'user-1',
+        'business-1',
+        'branch-2',
+        'old-refresh',
+        {},
+      );
+
+      expect(refreshTokenRepository.revoke).toHaveBeenCalledWith('rt-old');
+      expect(signedPayload()).toMatchObject({
+        branchId: 'branch-2',
+        branchSelectionRequired: false,
+      });
+      expect(refreshTokenRepository.create).toHaveBeenCalledWith(
+        expect.objectContaining({ branchSelection: { branchId: 'branch-2' } }),
+      );
+      expect(result.user.branchId).toBe('branch-2');
+      expect(auditService.record).toHaveBeenCalledWith(
+        expect.objectContaining({ action: 'SWITCH_BRANCH' }),
+      );
+    });
+
+    it('switchBranch with null works across all branches', async () => {
+      usersService.findRawById.mockResolvedValue(makeUserRow());
+
+      await service.switchBranch('user-1', 'business-1', null, undefined, {});
+
+      expect(signedPayload()).toMatchObject({
+        branchId: null,
+        branchSelectionRequired: false,
+      });
+      expect(branchesService.isActiveBranch).not.toHaveBeenCalled();
+    });
+
+    it('switchBranch refuses a branch that is not an active one of the business', async () => {
+      usersService.findRawById.mockResolvedValue(makeUserRow());
+      branchesService.isActiveBranch.mockResolvedValue(false);
+
+      await expect(
+        service.switchBranch('user-1', 'business-1', 'branch-x', undefined, {}),
+      ).rejects.toMatchObject({ code: 'BRANCH_NOT_FOUND' });
+      expect(jwtService.sign).not.toHaveBeenCalled();
+    });
+
+    it('a refresh stays at the branch picked', async () => {
+      refreshTokenRepository.findByTokenHash.mockResolvedValue({
+        id: 'rt-1',
+        user_id: 'user-1',
+        revoked_at: null,
+        expires_at: new Date(Date.now() + 60_000),
+        branch_selected: true,
+        selected_branch_id: 'branch-2',
+      });
+      usersService.findRawByIdUnscoped.mockResolvedValue(makeUserRow());
+
+      await service.refresh('refresh', {});
+
+      expect(signedPayload()).toMatchObject({
+        branchId: 'branch-2',
+        branchSelectionRequired: false,
+      });
+    });
+
+    it('a refresh asks again when the branch picked was deactivated', async () => {
+      refreshTokenRepository.findByTokenHash.mockResolvedValue({
+        id: 'rt-1',
+        user_id: 'user-1',
+        revoked_at: null,
+        expires_at: new Date(Date.now() + 60_000),
+        branch_selected: true,
+        selected_branch_id: 'branch-2',
+      });
+      usersService.findRawByIdUnscoped.mockResolvedValue(makeUserRow());
+      branchesService.isActiveBranch.mockResolvedValue(false);
+
+      await service.refresh('refresh', {});
+
+      expect(signedPayload()).toMatchObject({
+        branchId: null,
+        branchSelectionRequired: true,
+      });
+    });
   });
 
   describe('login', () => {

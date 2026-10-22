@@ -24,6 +24,28 @@ interface LinkIdentity {
   businessName: string;
 }
 
+/** A branch of the business, as GET /assistant/branches names it. */
+export interface SessionBranch {
+  id: string;
+  name: string;
+}
+
+/**
+ * The branches the user can ask about (see GET /assistant/branches in GB-BE).
+ * Each branch runs on its own: its catalog, items, stock and sales.
+ */
+export interface SessionBranches {
+  /** The user's own branch, when they have one. */
+  own: SessionBranch | null;
+  /** The business has several branches and the user may see every one (branches.switch, or no branch). */
+  canSeeAll: boolean;
+  /** What the user can ask about: every active branch when canSeeAll, else their own (or none to tell apart). */
+  list: SessionBranch[];
+}
+
+/** Nothing known about branches: TURA then names none and the POS keeps every answer to what the user may see. */
+export const NO_BRANCHES: SessionBranches = { own: null, canSeeAll: false, list: [] };
+
 export interface Session {
   pos: PosClient;
   /** Who is asking, for the audit log. Null only while the AI is simulated and nobody is signed in. */
@@ -34,6 +56,7 @@ export interface Session {
   businessName: string | null;
   roleName: string;
   branchId: string | null;
+  branches: SessionBranches;
   permissions: string[];
 }
 
@@ -87,6 +110,7 @@ export async function authenticate(req: Request): Promise<Session> {
       businessName: null,
       roleName: '',
       branchId: null,
+      branches: NO_BRANCHES,
       permissions: [],
     };
   }
@@ -102,16 +126,24 @@ export async function authenticate(req: Request): Promise<Session> {
     permissions: claims.permissions,
   };
 
+  // Read alongside who the user is. Without it TURA only loses the names of
+  // the branches: the POS still keeps every answer to what the user may see.
+  const branches = readBranches(pos);
   try {
     if (claims.turaLinkId) {
       // Asked on every turn, so a link revoked in the POS, a user who was
       // deactivated or a business that lost the module stops working here
       // right away instead of when the access token expires.
       const { data: link } = await pos.get<LinkIdentity>('/tura-links/me');
-      return { ...access, firstName: link.userName, businessName: link.businessName };
+      return {
+        ...access,
+        firstName: link.userName,
+        businessName: link.businessName,
+        branches: await branches,
+      };
     }
     const { data: profile } = await pos.get<PosProfile>('/users/me');
-    return { ...access, firstName: profile.firstName, businessName: null };
+    return { ...access, firstName: profile.firstName, businessName: null, branches: await branches };
   } catch (error) {
     // GB-BE accepted the token but no longer stands behind it (the link is
     // gone): the app has to link again.
@@ -119,5 +151,21 @@ export async function authenticate(req: Request): Promise<Session> {
       throw new UnauthenticatedError();
     }
     throw error;
+  }
+}
+
+/** GET /assistant/branches, as TURA keeps it. */
+interface PosBranches {
+  ownBranch: SessionBranch | null;
+  canSeeAll: boolean;
+  branches: SessionBranch[];
+}
+
+async function readBranches(pos: PosClient): Promise<SessionBranches> {
+  try {
+    const { data } = await pos.get<PosBranches>('/assistant/branches');
+    return { own: data.ownBranch, canSeeAll: data.canSeeAll, list: data.branches };
+  } catch {
+    return NO_BRANCHES;
   }
 }

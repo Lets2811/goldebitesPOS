@@ -15,6 +15,7 @@ import { BusinessesService } from '../modules/businesses/services/businesses.ser
 import { RolesService } from '../modules/roles/services/roles.service';
 import { UsersService } from '../modules/users/services/users.service';
 import { createScriptClient } from './scripts/db-client';
+import * as bcrypt from 'bcrypt';
 
 const SEEDS_DIR = join(__dirname, '..', '..', 'database', 'seeds');
 
@@ -23,14 +24,10 @@ const GOLDEN_BITES_ADMIN_EMAIL = 'admin@goldenbites.local';
 const GOLDEN_BITES_ADMIN_PASSWORD = 'ChangeMe123!';
 
 /**
- * The platform operator itself — NOT a tenant. Golden Bites (the restaurant,
- * seeded above) is just one customer among others (e.g. Sublimarte); this is
- * the business that hosts the cross-tenant platform-admin account. Kept as
- * an ordinary business row (same schema as any tenant) so the existing
- * business_id-scoped auth model needs no special case, it's just flagged
- * is_platform_admin.
+ * The first account of the Golden Bites team, for the Admin app. It is not a
+ * restaurant user: platform accounts live in platform_users, apart from every
+ * business (see migration 088).
  */
-const PLATFORM_BUSINESS_NAME = 'Golden Bites POS';
 const PLATFORM_ADMIN_EMAIL = 'superadmin@goldenbitespos.local';
 const PLATFORM_ADMIN_PASSWORD = 'ChangeMe123!';
 
@@ -172,73 +169,32 @@ async function seedGoldenBites(
 }
 
 /**
- * Bootstraps the platform's own business + a SUPERADMIN user flagged
- * is_platform_admin — the account that manages every tenant (create
- * businesses, toggle their enabled modules), separate from any restaurant's
- * own SUPER_ADMIN. This is the one place is_platform_admin is ever granted
- * outside of a DBA doing it by hand, since /platform-admin endpoints
- * themselves require an existing platform admin to call (bootstrap problem).
+ * The first account of POS-ADMIN (the Golden Bites team's Admin), when there
+ * is none yet: POS-ADMIN needs an account to sign in with before it can do
+ * anything (bootstrap problem). Seeded here because this seed is what every
+ * deploy already runs against the shared database.
  */
-async function seedPlatformAdmin(
-  db: DatabaseService,
-  businessesService: BusinessesService,
-  branchesService: BranchesService,
-  rolesService: RolesService,
-  usersService: UsersService,
-): Promise<void> {
-  // By name OR by an existing platform admin, for the same reason as above.
-  const existing = await db.query<{ id: string }>(
-    `SELECT id FROM businesses WHERE name = $1
-     UNION ALL
-     SELECT business_id FROM users WHERE is_platform_admin
-     LIMIT 1`,
-    [PLATFORM_BUSINESS_NAME],
+async function seedPlatformAdmin(db: DatabaseService): Promise<void> {
+  const existing = await db.query<{ count: string }>(
+    'SELECT COUNT(*) AS count FROM platform_users',
   );
-
-  if (existing.rows.length > 0) {
-    console.log(
-      `"${PLATFORM_BUSINESS_NAME}" already exists, skipping creation.`,
-    );
+  const created =
+    Number(existing.rows[0].count) === 0 &&
+    (
+      await db.query(
+        `INSERT INTO platform_users (email, password_hash, first_name, last_name)
+         VALUES ($1, $2, 'Super', 'Admin')`,
+        [PLATFORM_ADMIN_EMAIL, await bcrypt.hash(PLATFORM_ADMIN_PASSWORD, 12)],
+      )
+    ).rowCount > 0;
+  if (!created) {
+    console.log('Platform accounts already exist, skipping creation.');
     return;
   }
-
-  const business = await businessesService.create({
-    name: PLATFORM_BUSINESS_NAME,
-    currency: 'COP',
-    timezone: 'America/Bogota',
-  });
-  console.log(`Created business "${business.name}" (${business.id}).`);
-
-  const branch = await branchesService.create({
-    businessId: business.id,
-    name: 'Plataforma',
-  });
-
-  const roles = await rolesService.findAllForBusiness(business.id);
-  const ownerRole = roles.find((role) => role.name === 'OWNER');
-  if (!ownerRole) {
-    throw new Error(
-      'OWNER role was not provisioned for the platform business.',
-    );
-  }
-
-  const user = await usersService.create(business.id, {
-    firstName: 'Super',
-    lastName: 'Admin',
-    email: PLATFORM_ADMIN_EMAIL,
-    password: PLATFORM_ADMIN_PASSWORD,
-    roleId: ownerRole.id,
-    branchId: branch.id,
-  });
-
-  await db.query('UPDATE users SET is_platform_admin = true WHERE id = $1', [
-    user.id,
-  ]);
-
   console.log(
     '\n=================================================================',
   );
-  console.log('  Platform SUPERADMIN account created:');
+  console.log('  Platform account (Admin app) created:');
   console.log(`    email:    ${PLATFORM_ADMIN_EMAIL}`);
   console.log(`    password: ${PLATFORM_ADMIN_PASSWORD}`);
   console.log(
@@ -283,13 +239,7 @@ async function run(): Promise<void> {
   try {
     const db = app.get(DatabaseService);
     await seedPermissionsCatalog(db);
-    await seedPlatformAdmin(
-      db,
-      app.get(BusinessesService),
-      app.get(BranchesService),
-      app.get(RolesService),
-      app.get(UsersService),
-    );
+    await seedPlatformAdmin(db);
     await seedGoldenBites(
       db,
       app.get(BusinessesService),

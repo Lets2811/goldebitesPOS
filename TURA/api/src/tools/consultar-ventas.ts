@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { daysInRange, isCalendarDay, todayInBusinessTimezone } from '../dates.js';
 import { PERIODS, resolvePeriod } from './periods.js';
+import { describeScope, sedeParam } from './branches.js';
 import { defineReadTool, ToolRefusedError } from './types.js';
 
 /** The same limits GET /assistant/sales enforces, checked here first so the refusal comes in the user's language. */
@@ -73,16 +74,7 @@ const input = z
       .max(10)
       .optional()
       .describe('Cuántos productos incluir (por defecto 5, máximo 10).'),
-    sede: z
-      .string()
-      .trim()
-      .min(1)
-      .max(120)
-      .optional()
-      .describe(
-        'Nombre de una sede, solo si el usuario la nombró. Sin este campo las cifras son de todas las ' +
-          'sedes del negocio. No lo uses para la sede del propio usuario si no la mencionó.',
-      ),
+    sede: sedeParam,
   })
   .superRefine((value, context) => {
     const hasRange = value.desde !== undefined || value.hasta !== undefined;
@@ -118,9 +110,9 @@ export const consultarVentas = defineReadTool({
     'equivalentes (por ejemplo, lunes a hoy contra lunes al mismo día de la semana pasada, con ' +
     'desde/hasta). Si piden comparar dos períodos sin más, usa cada uno como es y aclara que el actual ' +
     'está incompleto. ' +
-    'Sedes: en un negocio con varias, las cifras cubren todas salvo que el usuario nombre una. Si el ' +
-    'resultado trae "sedes_disponibles", di si la cifra es de todas o de una; si no lo trae, el negocio ' +
-    'tiene una sola sede y no hay que mencionar sedes.',
+    'Sedes: en un negocio con varias, las cifras cubren todas las que el usuario puede ver salvo que ' +
+    'nombre una. Si el resultado trae "alcance", di si la cifra es de todas o de una; si no lo trae, no ' +
+    'hay que mencionar sedes. Para comparar sedes entre sí usa comparar_sedes, no esta.',
   permission: 'analytics.read',
   input,
   async execute(
@@ -158,10 +150,7 @@ export const consultarVentas = defineReadTool({
     return {
       periodo: { desde: data.period.from, hasta: data.period.to },
       // Only a business with several branches has a scope worth mentioning.
-      ...(data.scope.branches && {
-        alcance: data.scope.branch ? `sede ${data.scope.branch}` : 'todas las sedes',
-        sedes_disponibles: data.scope.branches,
-      }),
+      ...describeScope(data.scope),
       resumen: {
         total_vendido: data.summary.totalSales,
         numero_ventas: data.summary.orderCount,

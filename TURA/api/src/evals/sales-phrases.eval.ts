@@ -13,7 +13,7 @@
  */
 import { runTurn } from '../agent/agent.service.js';
 import { newAudit } from '../audit/audit-log.js';
-import type { Session } from '../auth.js';
+import { NO_BRANCHES, type Session } from '../auth.js';
 import { addDays, todayInBusinessTimezone, weekdayIndex } from '../dates.js';
 import type { PosClient } from '../pos/pos-client.js';
 import { resolvePeriod, type Period } from '../tools/periods.js';
@@ -178,6 +178,7 @@ async function callsFor(phrase: string): Promise<Query[]> {
     businessName: 'Golden Bites',
     roleName: 'OWNER',
     branchId: null,
+    branches: NO_BRANCHES,
     permissions: ['analytics.read', 'products.read', 'inventory.read'],
   };
   await runTurn({

@@ -4,6 +4,7 @@ import type { Session } from '../auth.js';
 import { config } from '../config.js';
 import { PosApiError } from '../pos/pos-client.js';
 import { toolsFor } from '../tools/registry.js';
+import { atBranch } from '../tools/inventory-shared.js';
 import { ToolRefusedError, type AssistantTool } from '../tools/types.js';
 import type { TurnMeter } from '../usage/usage-log.js';
 import { buildSystemPrompt, type ConversationMode } from './system-prompt.js';
@@ -22,6 +23,8 @@ export interface ChatTurn {
 export type TuraEvent =
   | { type: 'text'; delta: string }
   | { type: 'tool'; name: string }
+  /** A change TURA made in the POS, as it was left: shown to the user besides what TURA says. */
+  | { type: 'change'; message: string }
   | { type: 'done' };
 
 /** The model declined to answer (a safety classifier stopped the request). */
@@ -192,7 +195,9 @@ export async function runTurn({
     // Every result of the round in one user message, in the order of the calls.
     messages.push({
       role: 'user',
-      content: await Promise.all(calls.map((call) => runTool(call, tools, session, audit))),
+      content: await Promise.all(
+        calls.map((call) => runTool(call, tools, session, audit, emit)),
+      ),
     });
   }
 
@@ -209,6 +214,7 @@ async function runTool(
   tools: AssistantTool[],
   session: Session,
   audit: TurnAudit,
+  emit: (event: TuraEvent) => void,
 ): Promise<Anthropic.ToolResultBlockParam> {
   const startedAt = Date.now();
   const entry: ToolAudit = { name: call.name, input: call.input, ok: false, ms: 0 };
@@ -224,15 +230,22 @@ async function runTool(
   if (!tool) {
     return fail(`La herramienta "${call.name}" no existe o no está disponible para este usuario.`);
   }
-  if (tool.kind !== 'read') {
-    return fail('Esta acción requiere confirmación del usuario y todavía no está disponible.');
-  }
   const input = tool.parse(call.input);
   if (!input.ok) {
     return fail(`Parámetros inválidos: ${input.error}`);
   }
 
   try {
+    if (tool.kind === 'write') {
+      // Made right away, as the user who asked; the tool checks it first and the POS authorizes it.
+      const done = await tool.run(input.value, { session });
+      const message = atBranch(session, done.message, done.branchId);
+      emit({ type: 'change', message });
+      entry.ok = true;
+      entry.ms = Date.now() - startedAt;
+      entry.result = previewResult(message);
+      return { type: 'tool_result', tool_use_id: call.id, content: `Hecho. ${message}` };
+    }
     const content = JSON.stringify(await tool.execute(input.value, { session }));
     entry.ok = true;
     entry.ms = Date.now() - startedAt;

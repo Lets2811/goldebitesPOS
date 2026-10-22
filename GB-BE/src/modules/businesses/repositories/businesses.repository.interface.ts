@@ -24,6 +24,27 @@ export interface IBusinessesRepository {
     taxRate: number,
     client?: DbClient,
   ): Promise<BusinessRow | null>;
+  updateMenuTopSellers(
+    id: string,
+    enabled: boolean,
+    client?: DbClient,
+  ): Promise<BusinessRow | null>;
+  updateDiscountsAtCheckout(
+    id: string,
+    enabled: boolean,
+    client?: DbClient,
+  ): Promise<BusinessRow | null>;
+  updateComboBuilder(
+    id: string,
+    name: string | null,
+    description: string | null,
+    client?: DbClient,
+  ): Promise<BusinessRow | null>;
+  getComboBuilderTemplate(id: string): Promise<string | null>;
+  setComboBuilderTemplate(
+    id: string,
+    html: string | null,
+  ): Promise<BusinessRow | null>;
   updateLoyaltyConfig(
     id: string,
     data: {

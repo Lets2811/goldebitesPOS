@@ -12,12 +12,19 @@ import { InventoryQueriesService } from './services/inventory-queries.service';
 
 @Module({
   imports: [AuditModule],
-  controllers: [InventoryItemsController, InventoryQueriesController, InventoryQueryTemplatesController],
+  controllers: [
+    InventoryItemsController,
+    InventoryQueriesController,
+    InventoryQueryTemplatesController,
+  ],
   providers: [
     InventoryItemsService,
     InventoryQueriesService,
     { provide: INVENTORY_ITEMS_REPOSITORY, useClass: InventoryItemsRepository },
-    { provide: INVENTORY_QUERY_TEMPLATES_REPOSITORY, useClass: InventoryQueryTemplatesRepository },
+    {
+      provide: INVENTORY_QUERY_TEMPLATES_REPOSITORY,
+      useClass: InventoryQueryTemplatesRepository,
+    },
   ],
   exports: [InventoryItemsService, INVENTORY_ITEMS_REPOSITORY],
 })

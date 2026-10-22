@@ -17,7 +17,10 @@ import type { OrderType } from '../../../modules/orders/types/order.types';
 import PublicMenuBrowser from '../components/PublicMenuBrowser';
 
 const DINE_TAKEAWAY_TYPES: Extract<OrderType, 'DINE_IN' | 'TAKEAWAY'>[] = ['DINE_IN', 'TAKEAWAY'];
-const TYPE_LABELS: Record<'DINE_IN' | 'TAKEAWAY', string> = { DINE_IN: 'Comer aquí', TAKEAWAY: 'Para llevar' };
+const TYPE_LABELS: Record<'DINE_IN' | 'TAKEAWAY', string> = {
+  DINE_IN: 'Comer aquí',
+  TAKEAWAY: 'Para llevar',
+};
 
 /** Tras llamar, el botón queda como "avisado" este tiempo: evita toques repetidos y confirma que la llamada salió. */
 const HELP_CONFIRMATION_MS = 60_000;
@@ -45,10 +48,17 @@ function CallStaffButton({ token }: { token: string | undefined }) {
         requestHelp.mutate(undefined, {
           onSuccess: () => setNotified(true),
           onError: () =>
-            enqueueSnackbar('No pudimos avisar al personal. Intenta de nuevo.', { variant: 'error' }),
+            enqueueSnackbar('No pudimos avisar al personal. Intenta de nuevo.', {
+              variant: 'error',
+            }),
         })
       }
-      sx={{ fontWeight: 700, '&.Mui-disabled': notified ? { bgcolor: 'success.main', color: 'success.contrastText' } : {} }}
+      sx={{
+        fontWeight: 700,
+        '&.Mui-disabled': notified
+          ? { bgcolor: 'success.main', color: 'success.contrastText' }
+          : {},
+      }}
     >
       {notified ? 'Ya avisamos al personal' : 'Llamar al personal'}
     </Button>
@@ -112,7 +122,11 @@ export default function NfcTableMenuPage() {
                 sx={{ fontWeight: 700 }}
               />
             ) : (
-              <Chip icon={<Store size={16} />} label="Entrega en mostrador" sx={{ fontWeight: 700 }} />
+              <Chip
+                icon={<Store size={16} />}
+                label="Entrega en mostrador"
+                sx={{ fontWeight: 700 }}
+              />
             )}
 
             {!selfService && (
@@ -129,6 +143,7 @@ export default function NfcTableMenuPage() {
       {resolved && (
         <PublicMenuBrowser
           businessId={resolved.businessId}
+          branchId={resolved.branchId}
           showMenuLabel={false}
           // Sin autoservicio el menú es solo de consulta: ni agregar productos, ni carrito, ni confirmar.
           readOnly={!selfService}

@@ -37,6 +37,7 @@ describe('InventoryItemsService', () => {
       serial_number: null,
       brand: null,
       model: null,
+      branch_id: 'branch-1',
       is_active: true,
       created_at: new Date(),
       updated_at: new Date(),
@@ -67,6 +68,7 @@ describe('InventoryItemsService', () => {
 
       const item = await service.create({
         businessId,
+        branchId: 'branch-1',
         name: 'Flour',
         unit: 'kg',
       });
@@ -80,7 +82,13 @@ describe('InventoryItemsService', () => {
       repository.existsBySku.mockResolvedValue(true);
 
       await expect(
-        service.create({ businessId, name: 'Flour', unit: 'kg', sku: 'FLR-1' }),
+        service.create({
+          businessId,
+          branchId: 'branch-1',
+          name: 'Flour',
+          unit: 'kg',
+          sku: 'FLR-1',
+        }),
       ).rejects.toThrow(ConflictException);
       expect(repository.create).not.toHaveBeenCalled();
     });
@@ -88,7 +96,12 @@ describe('InventoryItemsService', () => {
     it('skips the SKU uniqueness check when no SKU is given', async () => {
       repository.create.mockResolvedValue(makeRow());
 
-      await service.create({ businessId, name: 'Flour', unit: 'kg' });
+      await service.create({
+        businessId,
+        branchId: 'branch-1',
+        name: 'Flour',
+        unit: 'kg',
+      });
 
       expect(repository.existsBySku).not.toHaveBeenCalled();
     });

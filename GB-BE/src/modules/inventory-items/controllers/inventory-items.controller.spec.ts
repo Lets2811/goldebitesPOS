@@ -26,12 +26,17 @@ describe('InventoryItemsController', () => {
 
   it('create() scopes to the current business', async () => {
     service.create.mockResolvedValue({ id: 'item-1' } as never);
-    await controller.create('business-1', 'actor-1', {
+    await controller.create('business-1', 'actor-1', 'branch-1', {
       name: 'Flour',
       unit: 'kg',
     });
     expect(service.create).toHaveBeenCalledWith(
-      { businessId: 'business-1', name: 'Flour', unit: 'kg' },
+      {
+        businessId: 'business-1',
+        name: 'Flour',
+        unit: 'kg',
+        branchId: 'branch-1',
+      },
       'actor-1',
     );
   });

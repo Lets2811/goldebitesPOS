@@ -25,6 +25,8 @@ import {
 import { diskStorage } from 'multer';
 import { CurrentBusiness } from '../../../common/decorators/current-business.decorator';
 import { CurrentUser } from '../../../common/decorators/current-user.decorator';
+import { CurrentBranch } from '../../../common/decorators/current-branch.decorator';
+import { requireBranch } from '../../../common/utils/require-branch.util';
 import { Permissions } from '../../../common/decorators/permissions.decorator';
 import { RawResponse } from '../../../common/decorators/raw-response.decorator';
 import { CreateProductDto } from '../dto/create-product.dto';
@@ -33,6 +35,8 @@ import { SetProductStatusDto } from '../dto/set-product-status.dto';
 import { SetProductVisibilityDto } from '../dto/set-product-visibility.dto';
 import { UpdateProductDto } from '../dto/update-product.dto';
 import { ProductsService } from '../services/products.service';
+import { BranchMenuService } from '../services/branch-menu.service';
+import { BranchMenuQueryDto } from '../dto/branch-menu.dto';
 import {
   ALLOWED_PRODUCT_IMAGE_MIME_TYPES,
   MAX_PRODUCT_IMAGE_SIZE_BYTES,
@@ -48,7 +52,10 @@ import { RequiresFeature } from '../../../common/decorators/requires-feature.dec
 @RequiresFeature('products')
 @Controller('products')
 export class ProductsController {
-  constructor(private readonly productsService: ProductsService) {}
+  constructor(
+    private readonly productsService: ProductsService,
+    private readonly branchMenuService: BranchMenuService,
+  ) {}
 
   @Post()
   @Permissions('products.create')
@@ -56,9 +63,17 @@ export class ProductsController {
   create(
     @CurrentBusiness() businessId: string,
     @CurrentUser('userId') actorUserId: string,
+    @CurrentBranch() sessionBranchId: string | null,
     @Body() dto: CreateProductDto,
   ) {
-    return this.productsService.create({ businessId, ...dto }, actorUserId);
+    return this.productsService.create(
+      {
+        businessId,
+        ...dto,
+        branchId: requireBranch(dto.branchId ?? sessionBranchId),
+      },
+      actorUserId,
+    );
   }
 
   @Get()
@@ -70,6 +85,7 @@ export class ProductsController {
   ) {
     return this.productsService.findAll({
       businessId,
+      branchId: query.branchId,
       page: query.page,
       limit: query.limit,
       categoryId: query.categoryId,
@@ -86,6 +102,22 @@ export class ProductsController {
   })
   findAvailableForSale(@CurrentBusiness() businessId: string) {
     return this.productsService.findAvailableForSale(businessId);
+  }
+
+  @Get('menu')
+  @Permissions('products.read')
+  @ApiOperation({
+    summary:
+      'What a branch sells: the active products it offers, at its prices, and which ran out there',
+  })
+  getBranchMenu(
+    @CurrentBusiness() businessId: string,
+    @Query() query: BranchMenuQueryDto,
+  ) {
+    return this.branchMenuService.sellingMenu(
+      businessId,
+      query.branchId ?? null,
+    );
   }
 
   @Get(':id')

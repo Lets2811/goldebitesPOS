@@ -125,7 +125,7 @@ function buildInvoiceHtml(
   ${itemsHtml}
   <hr />
   <div class="totals-line"><span>Subtotal</span><span>${formatCOP(order.subtotal)}</span></div>
-  ${order.discountAmount > 0 ? `<div class="totals-line"><span>Descuento</span><span>-${formatCOP(order.discountAmount)}</span></div>` : ''}
+  ${order.discountAmount > 0 ? `<div class="totals-line"><span>${escapeHtml(order.discountLabel ?? 'Descuento')}</span><span>-${formatCOP(order.discountAmount)}</span></div>` : ''}
   ${order.taxAmount > 0 ? `<div class="totals-line"><span>Impuestos</span><span>${formatCOP(order.taxAmount)}</span></div>` : ''}
   ${order.deliveryFee > 0 ? `<div class="totals-line"><span>Domicilio</span><span>${formatCOP(order.deliveryFee)}</span></div>` : ''}
   <div class="totals-line total"><span>TOTAL</span><span>${formatCOP(order.totalAmount)}</span></div>

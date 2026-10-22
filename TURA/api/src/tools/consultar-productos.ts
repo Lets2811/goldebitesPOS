@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { describeScope, sedeParam, type PosBranchScope } from './branches.js';
 import { defineReadTool } from './types.js';
 
 /** `inventory` as GET /assistant/products returns it (see AssistantProductInventory in GB-BE). */
@@ -17,6 +18,7 @@ type PosProductInventory =
   | { controlled: true; mode: 'UNLINKED'; currentStock: null };
 
 interface PosProduct {
+  id: string;
   name: string;
   description: string | null;
   sku: string | null;
@@ -24,18 +26,22 @@ interface PosProduct {
   isActive: boolean;
   isVisible: boolean;
   inventory: PosProductInventory;
+  /** The product's branch, when the answer covers several. */
+  branch?: string;
+  /** At its branch: whether it is offered and whether it ran out. */
+  atBranch?: { offered: boolean; soldOut: boolean };
 }
 
 interface PosProductsResult {
   items: PosProduct[];
   count: number;
   total: number;
+  scope?: PosBranchScope;
 }
 
 /** Why a product sold straight from one inventory item has no stock figure, in words the model can pass on. */
 const NO_STOCK_REASONS: Record<string, string> = {
   NO_INVENTORY_ACCESS: 'el usuario no tiene permiso para ver inventario',
-  BRANCH_UNKNOWN: 'el usuario no tiene una sede asignada y el negocio tiene varias',
   INVENTORY_ITEM_UNAVAILABLE: 'el artículo de inventario vinculado fue eliminado o desactivado',
 };
 
@@ -76,7 +82,8 @@ export const consultarProductos = defineReadTool({
   description:
     'Busca productos del menú del POS por nombre o SKU y devuelve su precio de venta, si están ' +
     'activos y visibles en el menú, y sus existencias. Úsala para preguntas sobre un producto: ' +
-    'si existe, cuánto cuesta, cuántas unidades quedan o si está disponible. ' +
+    'si existe, cuánto cuesta, cuántas unidades quedan o si está disponible. Devuelve el "id" que ' +
+    'modificar_producto necesita. ' +
     'Las existencias solo se informan para productos que se venden tal cual desde un artículo de ' +
     'inventario (una botella de agua, una gaseosa); para los demás "existencias" es null y ' +
     '"motivo_sin_existencias" explica por qué — eso NO significa que haya cero. ' +
@@ -86,7 +93,10 @@ export const consultarProductos = defineReadTool({
     'Para saber qué productos tienen menos o más existencias ("qué se está acabando", "el de stock más ' +
     'bajo", "de qué hay más") usa "ordenar_por_existencias": el POS ordena todo el catálogo, así que una ' +
     'sola llamada basta y no hace falta buscar por partes. Con ese orden solo se incluyen los productos ' +
-    'que tienen existencias conocidas, y varios pueden empatar en el primer lugar: menciónalos todos.',
+    'que tienen existencias conocidas, y varios pueden empatar en el primer lugar: menciónalos todos. ' +
+    'Cada sede tiene su propio catálogo: si el resultado cubre varias sedes, cada producto dice de cuál es, ' +
+    'y un mismo producto puede aparecer una vez por sede con su precio y existencias de esa sede. ' +
+    '"agotado" en true significa que a su sede le falta algún ingrediente: no se puede pedir.',
   permission: 'products.read',
   input: z.object({
     buscar: z
@@ -122,9 +132,10 @@ export const consultarProductos = defineReadTool({
       .max(20)
       .optional()
       .describe('Cuántos productos devolver como máximo (por defecto 10, máximo 20).'),
+    sede: sedeParam,
   }),
   async execute(
-    { buscar, solo_activos, solo_visibles, ordenar_por_existencias, limite },
+    { buscar, solo_activos, solo_visibles, ordenar_por_existencias, limite, sede },
     { session },
   ) {
     const { data } = await session.pos.get<PosProductsResult>('/assistant/products', {
@@ -132,15 +143,20 @@ export const consultarProductos = defineReadTool({
       isActive: solo_activos,
       isVisible: solo_visibles,
       limit: limite,
+      branch: sede,
       ...(ordenar_por_existencias && {
         sortBy: 'stock',
         sortOrder: ordenar_por_existencias === 'menor' ? 'asc' : 'desc',
       }),
     });
     return {
+      ...describeScope(data.scope),
       total_coincidencias: data.total,
       productos: data.items.map((product) => ({
+        id: product.id,
         nombre: product.name,
+        ...(product.branch && { sede: product.branch }),
+        ...(product.atBranch?.soldOut && { agotado: true }),
         ...(product.description && { descripcion: product.description }),
         ...(product.sku && { sku: product.sku }),
         precio: product.salePrice,

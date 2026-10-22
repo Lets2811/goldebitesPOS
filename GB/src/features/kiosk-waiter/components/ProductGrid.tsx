@@ -3,7 +3,9 @@ import Stack from '@mui/material/Stack';
 import ButtonBase from '@mui/material/ButtonBase';
 import Typography from '@mui/material/Typography';
 import { UtensilsCrossed } from 'lucide-react';
-import { useProducts } from '../../../modules/products/hooks/use-products';
+import { useMemo } from 'react';
+import Chip from '@mui/material/Chip';
+import { useBranchMenu } from '../../../modules/products/branch-menu';
 import { formatCOP } from '../../../utils/format';
 import type { Product } from '../../../modules/products/types/product.types';
 
@@ -12,13 +14,16 @@ interface ProductGridProps {
   onSelect: (product: Product) => void;
 }
 
+/**
+ * The branch's menu, at its prices. What it ran out of (no ingredients left
+ * for its recipe) shows as sold out and can't be picked.
+ */
 export default function ProductGrid({ categoryId, onSelect }: ProductGridProps) {
-  const { data, isLoading } = useProducts({
-    isActive: true,
-    categoryId: categoryId ?? undefined,
-    limit: 100,
-  });
-  const products = data?.data ?? [];
+  const { data, isLoading } = useBranchMenu();
+  const products = useMemo(
+    () => (data ?? []).filter((product) => !categoryId || product.categoryId === categoryId),
+    [data, categoryId],
+  );
 
   if (!isLoading && products.length === 0) {
     return (
@@ -34,7 +39,9 @@ export default function ProductGrid({ categoryId, onSelect }: ProductGridProps) 
         <ButtonBase
           key={product.id}
           onClick={() => onSelect(product)}
+          disabled={product.outOfStock}
           sx={{
+            '&.Mui-disabled': { opacity: 0.45 },
             width: '100%',
             display: 'flex',
             alignItems: 'center',
@@ -73,9 +80,21 @@ export default function ProductGrid({ categoryId, onSelect }: ProductGridProps) 
             )}
           </Box>
           <Box sx={{ flex: 1, minWidth: 0 }}>
-            <Typography variant="body1" sx={{ fontWeight: 700, fontSize: '1.05rem', lineHeight: 1.3 }}>
+            <Typography
+              variant="body1"
+              sx={{ fontWeight: 700, fontSize: '1.05rem', lineHeight: 1.3 }}
+            >
               {product.name}
             </Typography>
+            {product.outOfStock && (
+              <Chip
+                label="Agotado"
+                size="small"
+                color="error"
+                variant="outlined"
+                sx={{ mt: 0.5, height: 20 }}
+              />
+            )}
           </Box>
           <Typography
             variant="body1"

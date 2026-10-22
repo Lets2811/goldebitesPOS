@@ -4,12 +4,25 @@ import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import Button from '@mui/material/Button';
 import ButtonBase from '@mui/material/ButtonBase';
+import Alert from '@mui/material/Alert';
 import Badge from '@mui/material/Badge';
 import Divider from '@mui/material/Divider';
 import Drawer from '@mui/material/Drawer';
 import IconButton from '@mui/material/IconButton';
 import Tooltip from '@mui/material/Tooltip';
-import { ArrowLeft, BookOpen, ClipboardList, LogOut, MapPin, Plus, Share2, X } from 'lucide-react';
+import useMediaQuery from '@mui/material/useMediaQuery';
+import { useTheme } from '@mui/material/styles';
+import {
+  ArrowLeft,
+  BookOpen,
+  ChevronRight,
+  ClipboardList,
+  LogOut,
+  MapPin,
+  Plus,
+  Share2,
+  X,
+} from 'lucide-react';
 import { useSnackbar } from 'notistack';
 import { useRequiredOptionCheck } from '../../../modules/option-groups/hooks/use-required-option-check';
 import { useNavigate } from 'react-router-dom';
@@ -36,9 +49,43 @@ import ActiveTablesGrid from '../components/ActiveTablesGrid';
 import TableHelpAlerts from '../../orders/components/TableHelpAlerts';
 import PublicMenuBrowser from '../../public-menu/components/PublicMenuBrowser';
 import PublicMenuLinkDialog from '../../products/components/PublicMenuLinkDialog';
+import { env } from '../../../config/env';
+import { isNativeApp } from '../../../lib/native/platform';
+import { forgetNativePush } from '../../../lib/native/native-push';
+import { useNativePush, type NativePushState } from '../../../lib/native/use-native-push';
+import { formatCOP } from '../../../utils/format';
+
+/** The waiter's app: how to get its phone to ring when a table calls; nothing when on or not possible. */
+const PUSH_HINTS: Partial<
+  Record<NativePushState, { severity: 'info' | 'warning'; text: string; action?: boolean }>
+> = {
+  off: {
+    severity: 'info',
+    text: 'Activa las notificaciones para que tu teléfono suene cuando una mesa pida ayuda, aunque esté bloqueado.',
+    action: true,
+  },
+  denied: {
+    severity: 'warning',
+    text: 'Las notificaciones están bloqueadas: actívalas en Ajustes → Apps → GB Mesero → Notificaciones.',
+  },
+};
+
+/** The web app has no notifications of its own here: nothing to ask for. */
+const useNoPush = (): { state: NativePushState; enable: () => Promise<void> } => ({
+  state: 'server-off',
+  enable: async () => {},
+});
+const useWaiterPush = isNativeApp ? useNativePush : useNoPush;
 
 /** 'showMenu' es la carta tal como la ve el cliente, para mostrársela en la tablet; 'menu' es el inicio del mesero. */
 type Screen = 'menu' | 'order' | 'tables' | 'showMenu';
+
+/**
+ * On a phone the products and the order do not fit side by side: the new
+ * order is two steps, first the products, then the order (table, total,
+ * "Enviar a cocina").
+ */
+type PhoneStep = 'products' | 'cart';
 
 export default function WaiterKioskPage() {
   const { enqueueSnackbar, closeSnackbar } = useSnackbar();
@@ -63,8 +110,17 @@ export default function WaiterKioskPage() {
   const [myOrdersOpen, setMyOrdersOpen] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [shareMenuOpen, setShareMenuOpen] = useState(false);
+  const push = useWaiterPush();
+  const [enablingPush, setEnablingPush] = useState(false);
+  const pushHint = PUSH_HINTS[push.state];
+  const isPhone = useMediaQuery(useTheme().breakpoints.down('sm'));
+  const [phoneStep, setPhoneStep] = useState<PhoneStep>('products');
+  const cartUnits = cart.reduce((sum, line) => sum + line.quantity, 0);
+  const cartTotal = cart.reduce((sum, line) => sum + line.unitPrice * line.quantity, 0);
 
   useEffect(() => {
+    // The phone app already fills the screen: nothing to enter or leave.
+    if (env.isWaiterApp) return;
     const requestFullscreen = () => {
       if (!document.fullscreenElement) {
         document.documentElement.requestFullscreen().catch(() => {});
@@ -99,20 +155,23 @@ export default function WaiterKioskPage() {
     for (const order of orders) {
       const prev = previousStatuses.current.get(order.id);
       if (prev && prev !== 'READY' && order.status === 'READY') {
-        enqueueSnackbar(`¡Pedido #${order.orderNumber} listo! ${getOrderIdentifierLabel(order, tableNames)}`, {
-          variant: 'success',
-          persist: true,
-          // Ancla arriba (no abajo, el default) para no tapar el botón "Marcar
-          // como entregado" del panel de detalle, que también vive abajo — este
-          // aviso queda fijo hasta que el mesero lo cierra, así que si se
-          // superpusiera con ese botón, bloquearía justo la acción que sigue.
-          anchorOrigin: { vertical: 'top', horizontal: 'right' },
-          action: (key) => (
-            <Button color="inherit" size="small" onClick={() => closeSnackbar(key)}>
-              OK
-            </Button>
-          ),
-        });
+        enqueueSnackbar(
+          `¡Pedido #${order.orderNumber} listo! ${getOrderIdentifierLabel(order, tableNames)}`,
+          {
+            variant: 'success',
+            persist: true,
+            // Ancla arriba (no abajo, el default) para no tapar el botón "Marcar
+            // como entregado" del panel de detalle, que también vive abajo — este
+            // aviso queda fijo hasta que el mesero lo cierra, así que si se
+            // superpusiera con ese botón, bloquearía justo la acción que sigue.
+            anchorOrigin: { vertical: 'top', horizontal: 'right' },
+            action: (key) => (
+              <Button color="inherit" size="small" onClick={() => closeSnackbar(key)}>
+                OK
+              </Button>
+            ),
+          },
+        );
         addNotification({
           title: 'Pedido listo',
           message: `#${order.orderNumber} — ${getOrderIdentifierLabel(order, tableNames)}`,
@@ -129,6 +188,7 @@ export default function WaiterKioskPage() {
     setOrderType('DINE_IN');
     setCustomerName('');
     setOrderNotes('');
+    setPhoneStep('products');
     setScreen('order');
   }
 
@@ -145,9 +205,12 @@ export default function WaiterKioskPage() {
       return;
     }
     if (orderType === 'DINE_IN' && tableNumber && occupiedTables.has(tableNumber)) {
-      enqueueSnackbar('Esa mesa ya tiene un pedido activo. Usa "Agregar productos" desde ese pedido.', {
-        variant: 'error',
-      });
+      enqueueSnackbar(
+        'Esa mesa ya tiene un pedido activo. Usa "Agregar productos" desde ese pedido.',
+        {
+          variant: 'error',
+        },
+      );
       return;
     }
 
@@ -176,7 +239,15 @@ export default function WaiterKioskPage() {
   }
 
   return (
-    <Box sx={{ height: '100vh', width: '100vw', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+    <Box
+      sx={{
+        height: '100vh',
+        width: '100vw',
+        overflow: 'hidden',
+        display: 'flex',
+        flexDirection: 'column',
+      }}
+    >
       <Stack
         direction="row"
         sx={{
@@ -213,12 +284,50 @@ export default function WaiterKioskPage() {
             size="small"
             color="inherit"
             startIcon={<LogOut size={16} />}
-            onClick={() => logout.mutate(undefined, { onSettled: () => navigate('/login', { replace: true }) })}
+            onClick={() => {
+              // The installed app: this phone stops ringing for this user (before the session ends).
+              void (isNativeApp ? forgetNativePush() : Promise.resolve()).finally(() =>
+                logout.mutate(undefined, {
+                  onSettled: () => navigate('/login', { replace: true }),
+                }),
+              );
+            }}
           >
             Salir
           </Button>
         </Stack>
       </Stack>
+
+      {pushHint && (
+        <Alert
+          severity={pushHint.severity}
+          sx={{ borderRadius: 0 }}
+          action={
+            pushHint.action ? (
+              <Button
+                color="inherit"
+                size="small"
+                loading={enablingPush}
+                onClick={() => {
+                  setEnablingPush(true);
+                  push
+                    .enable()
+                    .catch(() =>
+                      enqueueSnackbar('No se pudieron activar las notificaciones', {
+                        variant: 'error',
+                      }),
+                    )
+                    .finally(() => setEnablingPush(false));
+                }}
+              >
+                Activar
+              </Button>
+            ) : undefined
+          }
+        >
+          {pushHint.text}
+        </Alert>
+      )}
 
       {/* Las mesas que piden ayuda se ven y suenan en cualquier pantalla del mesero. */}
       <TableHelpAlerts branchId={branchId} tableNames={tableNames} sx={{ px: 2, pt: 1.5 }} />
@@ -259,7 +368,11 @@ export default function WaiterKioskPage() {
             </Typography>
           </ButtonBase>
 
-          <Badge badgeContent={occupiedTables.size} color="secondary" sx={{ '& .MuiBadge-badge': { fontSize: 14, height: 24, minWidth: 24 } }}>
+          <Badge
+            badgeContent={occupiedTables.size}
+            color="secondary"
+            sx={{ '& .MuiBadge-badge': { fontSize: 14, height: 24, minWidth: 24 } }}
+          >
             <ButtonBase
               onClick={() => setScreen('tables')}
               sx={{
@@ -313,13 +426,22 @@ export default function WaiterKioskPage() {
             <Button startIcon={<ArrowLeft size={16} />} onClick={() => setScreen('menu')}>
               Volver
             </Button>
-            <Button variant="outlined" startIcon={<Share2 size={16} />} onClick={() => setShareMenuOpen(true)}>
+            <Button
+              variant="outlined"
+              startIcon={<Share2 size={16} />}
+              onClick={() => setShareMenuOpen(true)}
+            >
               Enviar menú
             </Button>
           </Stack>
           {/* Solo de consulta: el pedido lo sigue tomando el mesero desde "Pedido nuevo". */}
           <Box sx={{ px: 2 }}>
-            <PublicMenuBrowser businessId={business.data?.id} readOnly />
+            <PublicMenuBrowser
+              businessId={business.data?.id}
+              branchId={branchId ?? undefined}
+              readOnly
+              comboInOwnRoute={false}
+            />
           </Box>
         </Box>
       )}
@@ -337,55 +459,101 @@ export default function WaiterKioskPage() {
 
       {screen === 'order' && (
         <Stack direction="row" sx={{ flex: 1, overflow: 'hidden' }}>
-          <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-            <Box sx={{ px: 1.5, py: 1 }}>
-              <Button startIcon={<ArrowLeft size={16} />} onClick={() => setScreen('menu')}>
-                Volver
-              </Button>
+          {(!isPhone || phoneStep === 'products') && (
+            <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+              <Box sx={{ px: 1.5, py: 1 }}>
+                <Button startIcon={<ArrowLeft size={16} />} onClick={() => setScreen('menu')}>
+                  Volver
+                </Button>
+              </Box>
+              <CategoryTabs value={categoryId} onChange={setCategoryId} />
+              <Box sx={{ flex: 1, overflowY: 'auto' }}>
+                <ProductGrid categoryId={categoryId} onSelect={addToCart} />
+              </Box>
+              {isPhone && (
+                <Box sx={{ p: 1.5, borderTop: '1px solid', borderColor: 'divider' }}>
+                  <Button
+                    variant="contained"
+                    fullWidth
+                    size="large"
+                    endIcon={<ChevronRight size={20} />}
+                    onClick={() => setPhoneStep('cart')}
+                    sx={{
+                      py: 1.5,
+                      fontWeight: 800,
+                      textTransform: 'none',
+                      justifyContent: 'space-between',
+                    }}
+                  >
+                    {cartUnits === 0
+                      ? 'Ver pedido'
+                      : `Ver pedido · ${cartUnits} ${cartUnits === 1 ? 'producto' : 'productos'} · ${formatCOP(cartTotal)}`}
+                  </Button>
+                </Box>
+              )}
             </Box>
-            <CategoryTabs value={categoryId} onChange={setCategoryId} />
-            <Box sx={{ flex: 1, overflowY: 'auto' }}>
-              <ProductGrid categoryId={categoryId} onSelect={addToCart} />
-            </Box>
-          </Box>
+          )}
 
-          <Box
-            sx={{
-              width: 380,
-              flexShrink: 0,
-              borderLeft: '1px solid',
-              borderColor: 'divider',
-              display: 'flex',
-              flexDirection: 'column',
-              overflow: 'hidden',
-            }}
-          >
-            <CartPanel
-              cart={cart}
-              onIncrement={increment}
-              onDecrement={decrement}
-              onRemove={remove}
-              onToggleOption={toggleOption}
-              tableNumber={tableNumber}
-              onTableNumberChange={setTableNumber}
-              tableCount={branch?.tableCount}
-              occupiedTables={occupiedTables}
-              orderType={orderType}
-              onOrderTypeChange={setOrderType}
-              customerName={customerName}
-              onCustomerNameChange={setCustomerName}
-              orderNotes={orderNotes}
-              onOrderNotesChange={setOrderNotes}
-              onSubmit={handleSubmit}
-              submitting={createOrder.isPending}
-            />
-          </Box>
+          {(!isPhone || phoneStep === 'cart') && (
+            <Box
+              sx={{
+                width: isPhone ? '100%' : 380,
+                flexShrink: 0,
+                borderLeft: isPhone ? 'none' : '1px solid',
+                borderColor: 'divider',
+                display: 'flex',
+                flexDirection: 'column',
+                overflow: 'hidden',
+              }}
+            >
+              {isPhone && (
+                <Box sx={{ px: 1.5, pt: 1 }}>
+                  <Button
+                    startIcon={<ArrowLeft size={16} />}
+                    onClick={() => setPhoneStep('products')}
+                  >
+                    Seguir agregando
+                  </Button>
+                </Box>
+              )}
+              <CartPanel
+                cart={cart}
+                onIncrement={increment}
+                onDecrement={decrement}
+                onRemove={remove}
+                onToggleOption={toggleOption}
+                tableNumber={tableNumber}
+                onTableNumberChange={setTableNumber}
+                tableCount={branch?.tableCount}
+                occupiedTables={occupiedTables}
+                orderType={orderType}
+                onOrderTypeChange={setOrderType}
+                customerName={customerName}
+                onCustomerNameChange={setCustomerName}
+                orderNotes={orderNotes}
+                onOrderNotesChange={setOrderNotes}
+                onSubmit={handleSubmit}
+                submitting={createOrder.isPending}
+              />
+            </Box>
+          )}
         </Stack>
       )}
 
       <Drawer anchor="right" open={myOrdersOpen} onClose={() => setMyOrdersOpen(false)}>
-        <Box sx={{ width: 360, height: '100%', display: 'flex', flexDirection: 'column' }}>
-          <Stack direction="row" sx={{ alignItems: 'center', justifyContent: 'space-between', p: 2 }}>
+        <Box
+          sx={{
+            width: 360,
+            maxWidth: '100vw',
+            height: '100%',
+            display: 'flex',
+            flexDirection: 'column',
+          }}
+        >
+          <Stack
+            direction="row"
+            sx={{ alignItems: 'center', justifyContent: 'space-between', p: 2 }}
+          >
             <Typography variant="h6" sx={{ fontWeight: 800 }}>
               Mis pedidos ({orders.length})
             </Typography>

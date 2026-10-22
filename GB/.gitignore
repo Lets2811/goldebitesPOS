@@ -34,3 +34,9 @@ dist-ssr
 /blob-report/
 /playwright/.cache/
 /playwright/.auth/
+
+# The phone apps' builds (see capacitor.config.ts)
+dist-mesero
+dist-domiciliario
+# The waiter app installer, built locally
+*.apk

@@ -20,7 +20,6 @@ function createUser(mustChangePassword: boolean): AuthenticatedUser {
     roleId: 'r1',
     roleName: 'CASHIER',
     permissions: [],
-    isPlatformAdmin: false,
     enabledFeatures: [],
     mustChangePassword,
   };
@@ -28,15 +27,23 @@ function createUser(mustChangePassword: boolean): AuthenticatedUser {
 
 describe('MustChangePasswordGuard', () => {
   it('allows the request when the user has no pending password change', () => {
-    const reflector = { getAllAndOverride: jest.fn().mockReturnValue(undefined) };
-    const guard = new MustChangePasswordGuard(reflector as unknown as Reflector);
+    const reflector = {
+      getAllAndOverride: jest.fn().mockReturnValue(undefined),
+    };
+    const guard = new MustChangePasswordGuard(
+      reflector as unknown as Reflector,
+    );
 
     expect(guard.canActivate(createContext(createUser(false)))).toBe(true);
   });
 
   it('blocks the request with PASSWORD_CHANGE_REQUIRED when the flag is set and the route is not exempt', () => {
-    const reflector = { getAllAndOverride: jest.fn().mockReturnValue(undefined) };
-    const guard = new MustChangePasswordGuard(reflector as unknown as Reflector);
+    const reflector = {
+      getAllAndOverride: jest.fn().mockReturnValue(undefined),
+    };
+    const guard = new MustChangePasswordGuard(
+      reflector as unknown as Reflector,
+    );
 
     let thrown: unknown;
     try {
@@ -51,14 +58,20 @@ describe('MustChangePasswordGuard', () => {
 
   it('allows the request when @SkipMustChangePassword() marks the route, even with the flag set', () => {
     const reflector = { getAllAndOverride: jest.fn().mockReturnValue(true) };
-    const guard = new MustChangePasswordGuard(reflector as unknown as Reflector);
+    const guard = new MustChangePasswordGuard(
+      reflector as unknown as Reflector,
+    );
 
     expect(guard.canActivate(createContext(createUser(true)))).toBe(true);
   });
 
   it('allows the request when there is no authenticated user at all (public routes)', () => {
-    const reflector = { getAllAndOverride: jest.fn().mockReturnValue(undefined) };
-    const guard = new MustChangePasswordGuard(reflector as unknown as Reflector);
+    const reflector = {
+      getAllAndOverride: jest.fn().mockReturnValue(undefined),
+    };
+    const guard = new MustChangePasswordGuard(
+      reflector as unknown as Reflector,
+    );
 
     expect(guard.canActivate(createContext(undefined))).toBe(true);
   });

@@ -1,3 +1,4 @@
+import { DiscountsModule } from '../discounts/discounts.module';
 import { Module } from '@nestjs/common';
 import { AuditModule } from '../audit/audit.module';
 import { BranchesModule } from '../branches/branches.module';
@@ -24,6 +25,7 @@ import { OrdersService } from './services/orders.service';
     LoyaltyModule,
     OptionGroupsModule,
     AuditModule,
+    DiscountsModule,
   ],
   controllers: [OrdersController],
   providers: [

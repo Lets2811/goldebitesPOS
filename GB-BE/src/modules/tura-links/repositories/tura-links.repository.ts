@@ -82,6 +82,13 @@ export class TuraLinksRepository implements ITuraLinksRepository {
     return result.rows;
   }
 
+  async revokeByTokenHash(tokenHash: string): Promise<void> {
+    await this.db.query(
+      `UPDATE tura_links SET revoked_at = now() WHERE token_hash = $1 AND revoked_at IS NULL`,
+      [tokenHash],
+    );
+  }
+
   async revoke(businessId: string, id: string): Promise<boolean> {
     const result = await this.db.query(
       `UPDATE tura_links SET revoked_at = now() WHERE business_id = $1 AND id = $2 AND revoked_at IS NULL`,

@@ -16,15 +16,17 @@ export class RefreshTokenRepository implements IRefreshTokenRepository {
     client?: DbClient,
   ): Promise<RefreshTokenRow> {
     const result = await this.db.query<RefreshTokenRow>(
-      `INSERT INTO refresh_tokens (user_id, token_hash, expires_at, ip_address, user_agent)
-       VALUES ($1, $2, $3, $4, $5)
-       RETURNING id, user_id, token_hash, expires_at, revoked_at, ip_address, user_agent, created_at`,
+      `INSERT INTO refresh_tokens (user_id, token_hash, expires_at, ip_address, user_agent, branch_selected, selected_branch_id)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
+       RETURNING id, user_id, token_hash, expires_at, revoked_at, ip_address, user_agent, created_at, branch_selected, selected_branch_id`,
       [
         data.userId,
         data.tokenHash,
         data.expiresAt,
         data.ipAddress ?? null,
         data.userAgent ?? null,
+        data.branchSelection !== undefined,
+        data.branchSelection?.branchId ?? null,
       ],
       client,
     );
@@ -36,7 +38,7 @@ export class RefreshTokenRepository implements IRefreshTokenRepository {
     client?: DbClient,
   ): Promise<RefreshTokenRow | null> {
     const result = await this.db.query<RefreshTokenRow>(
-      `SELECT id, user_id, token_hash, expires_at, revoked_at, ip_address, user_agent, created_at
+      `SELECT id, user_id, token_hash, expires_at, revoked_at, ip_address, user_agent, created_at, branch_selected, selected_branch_id
        FROM refresh_tokens
        WHERE token_hash = $1`,
       [tokenHash],

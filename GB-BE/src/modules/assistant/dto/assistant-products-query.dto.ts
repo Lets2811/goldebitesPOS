@@ -55,4 +55,13 @@ export class AssistantProductsQueryDto {
   @IsOptional()
   @IsIn(['asc', 'desc'])
   sortOrder: 'asc' | 'desc' = 'asc';
+
+  @ApiPropertyOptional({
+    description:
+      'Name of a branch to limit the answer to. Without it, every branch the caller may see (a user tied to one branch only ever sees theirs). Ignored by a business with a single branch.',
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  branch?: string;
 }

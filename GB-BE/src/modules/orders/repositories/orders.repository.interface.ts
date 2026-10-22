@@ -57,6 +57,17 @@ export interface IOrdersRepository {
     client?: DbClient,
   ): Promise<void>;
   findItems(orderId: string, client?: DbClient): Promise<OrderItemRow[]>;
+  setDiscount(
+    orderId: string,
+    discount: {
+      percent: number;
+      discountId: string | null;
+      source: string;
+      label: string;
+    } | null,
+    client?: DbClient,
+  ): Promise<void>;
+
   updateTotals(
     orderId: string,
     subtotal: number,
@@ -103,6 +114,13 @@ export interface IOrdersRepository {
     dateTo: string,
     timezone: string,
   ): Promise<DailySalesRow[]>;
+  getMostOrdered(
+    businessId: string,
+    branchId: string | undefined,
+    dateFrom: string,
+    dateTo: string,
+    limit: number,
+  ): Promise<{ order_count: string; product_ids: string[] | null }>;
   getTopProducts(
     businessId: string,
     branchId: string | undefined,
