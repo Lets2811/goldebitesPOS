@@ -45,7 +45,10 @@ export const kitchenUser = {
   roleName: 'KITCHEN',
 };
 
-/** Admin de plataforma (is_platform_admin): gestiona todos los negocios. */
+/**
+ * Cuenta de plataforma del seed. Desde la migración 088 usa la app Admin
+ * aparte: en el POS su cuenta está inactiva (ver TC-AUTH-038).
+ */
 export const platformAdminUser = {
   email: required('E2E_PLATFORM_ADMIN_EMAIL'),
   password: required('E2E_PLATFORM_ADMIN_PASSWORD'),

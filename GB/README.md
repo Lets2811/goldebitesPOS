@@ -120,7 +120,7 @@ cp .env.e2e.example .env.e2e
 | --- | --- |
 | `E2E_ADMIN_EMAIL` / `E2E_ADMIN_PASSWORD` | Usuario admin del seed |
 | `E2E_ADMIN_NAME` | Nombre mostrado en el menú de usuario |
-| `E2E_PLATFORM_ADMIN_EMAIL` / `E2E_PLATFORM_ADMIN_PASSWORD` | Admin de plataforma del seed |
+| `E2E_PLATFORM_ADMIN_EMAIL` / `E2E_PLATFORM_ADMIN_PASSWORD` | Cuenta de plataforma del seed (en el POS está inactiva; usa la app Admin) |
 | `E2E_CASHIER_EMAIL` / `E2E_CASHIER_PASSWORD` | Cajero de prueba (lo crea la suite) |
 | `E2E_KITCHEN_EMAIL` / `E2E_KITCHEN_PASSWORD` | Cocinero de prueba (lo crea la suite) |
 | `E2E_API_URL` (opcional) | URL de la API para preparar datos; por defecto `http://localhost:3000/api/v1` |
