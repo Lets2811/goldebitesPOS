@@ -92,14 +92,22 @@ La primera suite de regresión automatizada corresponde al módulo de autenticac
 tests/
   auth.setup.ts          # inicia sesión una vez y guarda la sesión (storageState)
   fixtures.ts            # `test` extendido con los Page Objects
-  pages/                 # Page Objects (LoginPage, AppShell, ForcePasswordChangePage)
+  pages/                 # Page Objects (Login, AppShell, cambio de contraseña, sede, Dashboard)
   support/               # variables de entorno, rutas de sesión y mocks de la API
   auth/
     login.spec.ts                  # formulario, credenciales y sesión
     login-redirect.spec.ts         # destino después del login
     login-errors.spec.ts           # estado de carga y errores del servidor (mocks)
     force-password-change.spec.ts  # cambio de contraseña obligatorio
+    permissions.spec.ts            # menú, rutas y API según el rol
+    branch-selection.spec.ts       # elegir sede después del login (simulado: la base local tiene una sede)
+  dashboard/
+    dashboard.spec.ts              # Centro de operaciones: indicadores, navegación, alertas y errores
 ```
+
+El seed solo trae usuarios administradores. Para probar permisos, la suite crea por API (con el admin) un cajero (`CASHIER`) y un cocinero (`KITCHEN`) de prueba la primera vez que corre; si ya existen, los reutiliza. Sus credenciales están en `.env.e2e`. También crea un repartidor (`COURIER`).
+
+Las pruebas esperan el módulo **Domicilios** activo en Golden Bites (es opcional y viene apagado). Se activa desde POS-ADMIN (Empresas → módulos) o, en local, con una fila en `business_features` (`feature_key = 'deliveries'`, `enabled = true`). Si no está activo, los tests del repartidor fallan con un mensaje que lo indica.
 
 Algunos escenarios no se pueden reproducir con los datos del seed (errores del servidor, cuentas con cambio de contraseña obligatorio). En esos casos se usa `page.route()` para interceptar la API; los helpers están en `tests/support/api-mocks.ts`. Los tests nunca modifican de verdad las credenciales de los usuarios del seed.
 
@@ -117,7 +125,11 @@ cp .env.e2e.example .env.e2e
 | --- | --- |
 | `E2E_ADMIN_EMAIL` / `E2E_ADMIN_PASSWORD` | Usuario admin del seed |
 | `E2E_ADMIN_NAME` | Nombre mostrado en el menú de usuario |
-| `E2E_PLATFORM_ADMIN_EMAIL` / `E2E_PLATFORM_ADMIN_PASSWORD` | Admin de plataforma del seed |
+| `E2E_PLATFORM_ADMIN_EMAIL` / `E2E_PLATFORM_ADMIN_PASSWORD` | Cuenta de plataforma del seed (en el POS está inactiva; usa la app Admin) |
+| `E2E_CASHIER_EMAIL` / `E2E_CASHIER_PASSWORD` | Cajero de prueba (lo crea la suite) |
+| `E2E_KITCHEN_EMAIL` / `E2E_KITCHEN_PASSWORD` | Cocinero de prueba (lo crea la suite) |
+| `E2E_COURIER_EMAIL` / `E2E_COURIER_PASSWORD` | Repartidor de prueba (lo crea la suite) |
+| `E2E_API_URL` (opcional) | URL de la API para preparar datos; por defecto `http://localhost:3000/api/v1` |
 | `BASE_URL` (opcional) | Probar contra otro ambiente; si se define, Playwright no levanta `npm run dev` |
 
 En CI se definen como variables de entorno del pipeline.

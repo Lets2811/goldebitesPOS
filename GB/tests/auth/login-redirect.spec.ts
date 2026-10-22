@@ -15,29 +15,18 @@ test.describe('AUTH - Redirección después del login', () => {
     await expect(page.getByRole('heading', { name: 'Mi Perfil' })).toBeVisible();
   });
 
-  test('TC-AUTH-020 - Admin de plataforma entra al panel de plataforma', async ({
-    page,
-    loginPage,
-  }) => {
+  // TC-AUTH-020 y 021 (admin de plataforma redirigido a /plataforma) se
+  // retiraron: desde la migración 088 las cuentas de plataforma usan la app
+  // Admin aparte y su cuenta del lado del POS quedó inactiva. Ver TC-AUTH-038.
+
+  test('TC-AUTH-038 - Cuenta de plataforma no puede entrar al POS', async ({ loginPage }) => {
     await loginPage.goto();
 
     await loginPage.login(platformAdminUser.email, platformAdminUser.password);
 
-    await expect(page).toHaveURL('/plataforma');
     await expect(
-      page.getByRole('heading', { name: 'Administración de plataforma' }),
+      loginPage.error('Tu cuenta no está activa. Contacta a tu administrador.'),
     ).toBeVisible();
-  });
-
-  test('TC-AUTH-021 - Admin de plataforma ignora la ruta solicitada', async ({
-    page,
-    loginPage,
-  }) => {
-    await page.goto('/mi-perfil');
     await loginPage.expectLoaded();
-
-    await loginPage.login(platformAdminUser.email, platformAdminUser.password);
-
-    await expect(page).toHaveURL('/plataforma');
   });
 });
