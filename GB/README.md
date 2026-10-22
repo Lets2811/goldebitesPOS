@@ -90,9 +90,37 @@ La primera suite de regresión automatizada corresponde al módulo de autenticac
 
 ```text
 tests/
+  auth.setup.ts          # inicia sesión una vez y guarda la sesión (storageState)
+  fixtures.ts            # `test` extendido con los Page Objects
+  pages/                 # Page Objects (LoginPage, AppShell, ForcePasswordChangePage)
+  support/               # variables de entorno, rutas de sesión y mocks de la API
   auth/
-    login.spec.ts
+    login.spec.ts                  # formulario, credenciales y sesión
+    login-redirect.spec.ts         # destino después del login
+    login-errors.spec.ts           # estado de carga y errores del servidor (mocks)
+    force-password-change.spec.ts  # cambio de contraseña obligatorio
 ```
+
+Algunos escenarios no se pueden reproducir con los datos del seed (errores del servidor, cuentas con cambio de contraseña obligatorio). En esos casos se usa `page.route()` para interceptar la API; los helpers están en `tests/support/api-mocks.ts`. Los tests nunca modifican de verdad las credenciales de los usuarios del seed.
+
+Los tests de otros módulos arrancan ya autenticados como admin (sesión guardada por `auth.setup.ts` en `playwright/.auth/admin.json`). Los tests que deben empezar sin sesión usan `test.use({ storageState: NO_SESSION })`, como `login.spec.ts`.
+
+### Variables de entorno de las pruebas
+
+Las credenciales no están en el código. Copia el ejemplo y ajústalo si tu seed usa otros datos:
+
+```bash
+cp .env.e2e.example .env.e2e
+```
+
+| Variable | Uso |
+| --- | --- |
+| `E2E_ADMIN_EMAIL` / `E2E_ADMIN_PASSWORD` | Usuario admin del seed |
+| `E2E_ADMIN_NAME` | Nombre mostrado en el menú de usuario |
+| `E2E_PLATFORM_ADMIN_EMAIL` / `E2E_PLATFORM_ADMIN_PASSWORD` | Admin de plataforma del seed |
+| `BASE_URL` (opcional) | Probar contra otro ambiente; si se define, Playwright no levanta `npm run dev` |
+
+En CI se definen como variables de entorno del pipeline.
 
 ### Instalación de Playwright
 
@@ -164,9 +192,9 @@ El frontend estará disponible en:
 http://localhost:5173
 ```
 
-Esta dirección corresponde también al `baseURL` configurado actualmente en `playwright.config.ts`.
+Esta dirección corresponde también al `baseURL` por defecto de `playwright.config.ts`. Si el frontend no está corriendo, Playwright lo levanta automáticamente con `npm run dev`; el backend sí debe iniciarse a mano.
 
-Una vez que la base de datos está preparada, normalmente no es necesario ejecutar las migraciones y el seed antes de cada corrida. Para el trabajo diario basta con iniciar backend y frontend antes de ejecutar Playwright.
+Una vez que la base de datos está preparada, normalmente no es necesario ejecutar las migraciones y el seed antes de cada corrida. Para el trabajo diario basta con iniciar el backend antes de ejecutar Playwright.
 
 ### Ejecución
 

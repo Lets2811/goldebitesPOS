@@ -1,582 +1,223 @@
-import { test, expect } from '@playwright/test';
+import { expect, test } from '../fixtures';
+import { adminUser } from '../support/env';
+import { NO_SESSION } from '../support/storage-state';
+
+const INVALID_CREDENTIALS = 'Correo o contraseña incorrectos.';
 
 test.describe('AUTH - Login', () => {
+  // Estos tests prueban el propio Login: siempre empiezan sin sesión.
+  test.use({ storageState: NO_SESSION });
 
-  test('TC-AUTH-001 - Mostrar pantalla de Login', async ({ page }) => {
+  test.describe('Formulario', () => {
+    test.beforeEach(async ({ loginPage }) => {
+      await loginPage.goto();
+    });
 
-    await page.goto('/login');
+    test('TC-AUTH-001 - Mostrar pantalla de Login', async ({ loginPage }) => {
+      await loginPage.expectLoaded();
+      await expect(loginPage.passwordInput).toBeVisible();
+    });
 
-    await expect(page).toHaveURL(/\/login/);
+    test('TC-AUTH-002 - Correo electrónico obligatorio', async ({ loginPage }) => {
+      await loginPage.passwordInput.fill('Password123');
+      await loginPage.submitButton.click();
 
-    await expect(
-      page.getByRole('textbox', { name: 'Correo electrónico' })
-    ).toBeVisible();
+      await expect(loginPage.error('Ingresa tu correo')).toBeVisible();
+      await loginPage.expectLoaded();
+    });
 
-    await expect(
-      page.getByRole('textbox', { name: 'Contraseña' })
-    ).toBeVisible();
+    test('TC-AUTH-003 - Contraseña obligatoria', async ({ loginPage }) => {
+      await loginPage.emailInput.fill('usuario@prueba.com');
+      await loginPage.submitButton.click();
 
-    await expect(
-      page.getByRole('button', { name: 'Ingresar' })
-    ).toBeVisible();
+      await expect(loginPage.error('Ingresa tu contraseña')).toBeVisible();
+      await loginPage.expectLoaded();
+    });
 
+    test('TC-AUTH-004 - Formato de correo electrónico inválido', async ({ loginPage }) => {
+      await loginPage.login('SDAD', 'Password123');
+
+      await expect(loginPage.error('Ingresa un correo válido')).toBeVisible();
+      await loginPage.expectLoaded();
+    });
+
+    test('TC-AUTH-010 - Correo y contraseña obligatorios', async ({ loginPage }) => {
+      await loginPage.submitButton.click();
+
+      await expect(loginPage.error('Ingresa tu correo')).toBeVisible();
+      await expect(loginPage.error('Ingresa tu contraseña')).toBeVisible();
+      await loginPage.expectLoaded();
+    });
+
+    test('TC-AUTH-015 - Campo contraseña enmascarado', async ({ loginPage }) => {
+      await expect(loginPage.passwordInput).toHaveAttribute('type', 'password');
+
+      await loginPage.passwordInput.fill('Password123');
+
+      await expect(loginPage.passwordInput).toHaveValue('Password123');
+      await expect(loginPage.passwordInput).toHaveAttribute('type', 'password');
+    });
   });
 
-  test('TC-AUTH-002 - Correo electrónico obligatorio', async ({ page }) => {
+  test.describe('Credenciales', () => {
+    test.beforeEach(async ({ loginPage }) => {
+      await loginPage.goto();
+    });
 
-    await page.goto('/login');
+    test('TC-AUTH-005 - Credenciales incorrectas', async ({ loginPage }) => {
+      await loginPage.login('usuario.inexistente@prueba.com', 'Password123');
 
-    await page
-      .getByRole('textbox', { name: 'Contraseña' })
-      .fill('Password123');
+      await expect(loginPage.error(INVALID_CREDENTIALS)).toBeVisible();
+      await loginPage.expectLoaded();
+    });
 
-    await page
-      .getByRole('button', { name: 'Ingresar' })
-      .click();
+    test('TC-AUTH-013 - Contraseña incorrecta para usuario existente', async ({ loginPage }) => {
+      await loginPage.login(adminUser.email, 'PasswordIncorrecto123!');
 
-    await expect(
-      page.getByText('Ingresa tu correo')
-    ).toBeVisible();
+      // Mismo mensaje que TC-AUTH-005: no revela si la cuenta existe
+      await expect(loginPage.error(INVALID_CREDENTIALS)).toBeVisible();
+      await loginPage.expectLoaded();
+    });
 
-    await expect(page).toHaveURL(/\/login/);
+    test('TC-AUTH-006 - Inicio de sesión exitoso', async ({ loginPage, appShell }) => {
+      await loginPage.login(adminUser.email, adminUser.password);
 
+      await appShell.expectDashboard();
+      // El menú de usuario muestra el nombre del usuario autenticado
+      await expect(appShell.userMenuButton).toBeVisible();
+    });
+
+    test('TC-AUTH-014 - Iniciar sesión presionando Enter', async ({ loginPage, appShell }) => {
+      await loginPage.emailInput.fill(adminUser.email);
+      await loginPage.passwordInput.fill(adminUser.password);
+      await loginPage.passwordInput.press('Enter');
+
+      await appShell.expectDashboard();
+    });
+
+    test('TC-AUTH-011 - Login con espacios al inicio y final del correo', async ({
+      loginPage,
+      appShell,
+    }) => {
+      // Hoy pasa porque el input es type="email" y el navegador recorta los
+      // espacios; el schema de zod no hace .trim().
+      await loginPage.login(`   ${adminUser.email}   `, adminUser.password);
+
+      await appShell.expectDashboard();
+    });
+
+    test(
+      'TC-AUTH-012 - Login con correo en mayúsculas',
+      {
+        annotation: {
+          type: 'comportamiento-actual',
+          description: 'El login distingue mayúsculas en el correo. Confirmar si es intencional.',
+        },
+      },
+      async ({ loginPage }) => {
+        await loginPage.login(adminUser.email.toUpperCase(), adminUser.password);
+
+        await expect(loginPage.error(INVALID_CREDENTIALS)).toBeVisible();
+        await loginPage.expectLoaded();
+      },
+    );
   });
 
-});
-
-test('TC-AUTH-003 - Contraseña obligatoria', async ({ page }) => {
-
-  // Paso 1: acceder al Login
-  await page.goto('/login');
-
-  // Paso 2: ingresar un correo con formato válido
-  await page
-    .getByRole('textbox', { name: 'Correo electrónico' })
-    .fill('usuario@prueba.com');
-
-  // Paso 3: dejar la contraseña vacía
-
-  // Paso 4: intentar iniciar sesión
-  await page
-    .getByRole('button', { name: 'Ingresar' })
-    .click();
-
-  // Resultado esperado:
-  // Se muestra la validación de contraseña obligatoria
-  await expect(
-    page.getByText('Ingresa tu contraseña')
-  ).toBeVisible();
-
-  // El usuario permanece en Login
-  await expect(page).toHaveURL(/\/login/);
-
-});
-
-test('TC-AUTH-004 - Formato de correo electrónico inválido', async ({ page }) => {
-
-  // Paso 1: acceder al Login
-  await page.goto('/login');
-
-  // Paso 2: ingresar un correo con formato inválido
-  await page
-    .getByRole('textbox', { name: 'Correo electrónico' })
-    .fill('SDAD');
-
-  // Paso 3: ingresar una contraseña
-  await page
-    .getByRole('textbox', { name: 'Contraseña' })
-    .fill('Password123');
-
-  // Paso 4: intentar iniciar sesión
-  await page
-    .getByRole('button', { name: 'Ingresar' })
-    .click();
-
-  // Resultado esperado:
-  // Se muestra la validación de formato de correo
-  await expect(
-    page.getByText('Ingresa un correo válido')
-  ).toBeVisible();
-
-  // El usuario debe permanecer en Login
-  await expect(page).toHaveURL(/\/login/);
-
-});
-
-test('TC-AUTH-005 - Credenciales incorrectas', async ({ page }) => {
-
-  // Paso 1: acceder al Login
-  await page.goto('/login');
-
-  // Paso 2: ingresar un correo con formato válido pero inexistente
-  await page
-    .getByRole('textbox', { name: 'Correo electrónico' })
-    .fill('usuario.inexistente@prueba.com');
-
-  // Paso 3: ingresar una contraseña
-  await page
-    .getByRole('textbox', { name: 'Contraseña' })
-    .fill('Password123');
-
-  // Paso 4: intentar iniciar sesión
-  await page
-    .getByRole('button', { name: 'Ingresar' })
-    .click();
-
-  // Resultado esperado:
-  // El sistema rechaza las credenciales
-  await expect(
-    page.getByText('Correo o contraseña incorrectos.')
-  ).toBeVisible();
-
-  // El usuario permanece en Login
-  await expect(page).toHaveURL(/\/login/);
-
-});
-
-test('TC-AUTH-006 - Inicio de sesión exitoso', async ({ page }) => {
-
-  // Paso 1: acceder al Login
-  await page.goto('/login');
-
-  // Paso 2: ingresar credenciales válidas
-  await page
-    .getByRole('textbox', { name: 'Correo electrónico' })
-    .fill('admin@goldenbites.local');
-
-  await page
-    .getByRole('textbox', { name: 'Contraseña' })
-    .fill('ChangeMe123!');
-
-  // Paso 3: iniciar sesión
-  await page
-    .getByRole('button', { name: 'Ingresar' })
-    .click();
-
-  // Resultado esperado 1:
-  // El usuario abandona la pantalla de Login
-  await expect(page).toHaveURL('/');
-
-  // Resultado esperado 2:
-  // Se carga correctamente el área autenticada
-  await expect(
-    page.getByRole('heading', { name: 'Centro de operaciones' })
-  ).toBeVisible();
-
-  // Resultado esperado 3:
-  // Se muestra el usuario autenticado
-  await expect(
-    page.getByText('Admin Golden Bites', { exact: true })
-  ).toBeVisible();
-
-});
-
-test('TC-AUTH-007 - Cerrar sesión', async ({ page }) => {
-
-  // Paso 1: iniciar sesión
-  await page.goto('/login');
-
-  await page
-    .getByRole('textbox', { name: 'Correo electrónico' })
-    .fill('admin@goldenbites.local');
-
-  await page
-    .getByRole('textbox', { name: 'Contraseña' })
-    .fill('ChangeMe123!');
-
-  await page
-    .getByRole('button', { name: 'Ingresar' })
-    .click();
-
-  // Confirmar que el login fue exitoso
-  await expect(
-    page.getByRole('heading', { name: 'Centro de operaciones' })
-  ).toBeVisible();
-
-  // Paso 2: abrir menú del usuario
-  await page
-    .getByText('Admin Golden Bites', { exact: true })
-    .click();
-
-  // Paso 3: cerrar sesión
-  await page
-    .getByText('Cerrar sesión', { exact: true })
-    .click();
-
-  // Resultado esperado:
-  // El usuario vuelve al Login
-  await expect(page).toHaveURL(/\/login/);
-
-  await expect(
-    page.getByRole('button', { name: 'Ingresar' })
-  ).toBeVisible();
-
-});
-
-test('TC-AUTH-008 - Impedir acceso después de cerrar sesión', async ({ page }) => {
-
-  // Paso 1: iniciar sesión
-  await page.goto('/login');
-
-  await page
-    .getByRole('textbox', { name: 'Correo electrónico' })
-    .fill('admin@goldenbites.local');
-
-  await page
-    .getByRole('textbox', { name: 'Contraseña' })
-    .fill('ChangeMe123!');
-
-  await page
-    .getByRole('button', { name: 'Ingresar' })
-    .click();
-
-  await expect(
-    page.getByRole('heading', { name: 'Centro de operaciones' })
-  ).toBeVisible();
-
-  // Paso 2: cerrar sesión
-  await page
-    .getByText('Admin Golden Bites', { exact: true })
-    .click();
-
-  await page
-    .getByText('Cerrar sesión', { exact: true })
-    .click();
-
-  await expect(page).toHaveURL(/\/login/);
-
-  // Paso 3: intentar acceder nuevamente a una ruta protegida
-  await page.goto('/');
-
-  // Resultado esperado:
-  // El sistema no permite acceder sin una sesión válida
-  // y redirecciona nuevamente al Login
-  await expect(page).toHaveURL(/\/login/);
-
-  await expect(
-    page.getByRole('button', { name: 'Ingresar' })
-  ).toBeVisible();
-
-});
-
-test('TC-AUTH-009 - Impedir acceso directo sin autenticación', async ({ page }) => {
-
-  // Precondición:
-  // Playwright inicia este test en un contexto nuevo sin sesión autenticada
-
-  // Paso 1: intentar acceder directamente al área protegida
-  await page.goto('/');
-
-  // Resultado esperado:
-  // El sistema redirecciona al Login
-  await expect(page).toHaveURL(/\/login/);
-
-  // Confirmar que realmente cargó la pantalla de Login
-  await expect(
-    page.getByRole('textbox', { name: 'Correo electrónico' })
-  ).toBeVisible();
-
-  await expect(
-    page.getByRole('button', { name: 'Ingresar' })
-  ).toBeVisible();
-
-});
-
-test('TC-AUTH-010 - Correo y contraseña obligatorios', async ({ page }) => {
-
-  // Paso 1: acceder al Login
-  await page.goto('/login');
-
-  // Paso 2: no ingresar correo ni contraseña
-
-  // Paso 3: intentar iniciar sesión
-  await page
-    .getByRole('button', { name: 'Ingresar' })
-    .click();
-
-  // Resultado esperado:
-  // Se muestran ambas validaciones
-  await expect(
-    page.getByText('Ingresa tu correo')
-  ).toBeVisible();
-
-  await expect(
-    page.getByText('Ingresa tu contraseña')
-  ).toBeVisible();
-
-  // El usuario permanece en Login
-  await expect(page).toHaveURL(/\/login/);
-
-});
-
-test('TC-AUTH-011 - Login con espacios al inicio y final del correo', async ({ page }) => {
-
-  // Paso 1: acceder al Login
-  await page.goto('/login');
-
-  // Paso 2: ingresar correo válido con espacios
-  await page
-    .getByRole('textbox', { name: 'Correo electrónico' })
-    .fill('   admin@goldenbites.local   ');
-
-  // Paso 3: ingresar contraseña válida
-  await page
-    .getByRole('textbox', { name: 'Contraseña' })
-    .fill('ChangeMe123!');
-
-  // Paso 4: iniciar sesión
-  await page
-    .getByRole('button', { name: 'Ingresar' })
-    .click();
-
-  // Resultado esperado:
-  // Los espacios no impiden la autenticación
-  await expect(page).toHaveURL('/');
-
-  await expect(
-    page.getByRole('heading', { name: 'Centro de operaciones' })
-  ).toBeVisible();
-
-});
-
-test('TC-AUTH-012 - Login con correo en mayúsculas', async ({ page }) => {
-
-  // Paso 1: acceder al Login
-  await page.goto('/login');
-
-  // Paso 2: ingresar el correo existente completamente en mayúsculas
-  await page
-    .getByRole('textbox', { name: 'Correo electrónico' })
-    .fill('ADMIN@GOLDENBITES.LOCAL');
-
-  // Paso 3: ingresar la contraseña válida
-  await page
-    .getByRole('textbox', { name: 'Contraseña' })
-    .fill('ChangeMe123!');
-
-  // Paso 4: intentar iniciar sesión
-  await page
-    .getByRole('button', { name: 'Ingresar' })
-    .click();
-
-  // Resultado esperado según comportamiento actual:
-  // Las credenciales son rechazadas
-  await expect(
-    page.getByText('Correo o contraseña incorrectos.')
-  ).toBeVisible();
-
-  // El usuario permanece en Login
-  await expect(page).toHaveURL(/\/login/);
-
-});
-
-test('TC-AUTH-013 - Contraseña incorrecta para usuario existente', async ({ page }) => {
-
-  // Paso 1: acceder al Login
-  await page.goto('/login');
-
-  // Paso 2: ingresar un correo existente
-  await page
-    .getByRole('textbox', { name: 'Correo electrónico' })
-    .fill('admin@goldenbites.local');
-
-  // Paso 3: ingresar una contraseña incorrecta
-  await page
-    .getByRole('textbox', { name: 'Contraseña' })
-    .fill('PasswordIncorrecto123!');
-
-  // Paso 4: intentar iniciar sesión
-  await page
-    .getByRole('button', { name: 'Ingresar' })
-    .click();
-
-  // Resultado esperado:
-  // El sistema rechaza las credenciales sin revelar
-  // si el correo corresponde a una cuenta existente
-  await expect(
-    page.getByText('Correo o contraseña incorrectos.')
-  ).toBeVisible();
-
-  // El usuario permanece en Login
-  await expect(page).toHaveURL(/\/login/);
-
-});
-
-test('TC-AUTH-014 - Iniciar sesión presionando Enter', async ({ page }) => {
-
-  // Paso 1: acceder al Login
-  await page.goto('/login');
-
-  // Paso 2: ingresar credenciales válidas
-  await page
-    .getByRole('textbox', { name: 'Correo electrónico' })
-    .fill('admin@goldenbites.local');
-
-  const passwordInput = page.getByRole('textbox', {
-    name: 'Contraseña'
+  test.describe('Sesión', () => {
+    test.beforeEach(async ({ loginPage, appShell }) => {
+      await test.step('Iniciar sesión como admin', async () => {
+        await loginPage.goto();
+        await loginPage.login(adminUser.email, adminUser.password);
+        await appShell.expectDashboard();
+      });
+    });
+
+    test('TC-AUTH-007 - Cerrar sesión', async ({ loginPage, appShell }) => {
+      await appShell.logout();
+
+      await loginPage.expectLoaded();
+    });
+
+    test(
+      'TC-AUTH-030 - Aviso "Sesión cerrada" después del logout',
+      {
+        annotation: {
+          type: 'bug-conocido',
+          description:
+            'El aviso está programado en UserMenu pero no se muestra: el componente se desmonta antes del callback de mutate().',
+        },
+      },
+      async ({ page, appShell }) => {
+        // Cuando se corrija, este test empezará a "fallar" como aviso: quitar test.fail
+        test.fail();
+
+        await appShell.logout();
+
+        await expect(page.getByText('Sesión cerrada', { exact: true })).toBeVisible();
+      },
+    );
+
+    test('TC-AUTH-008 - Impedir acceso después de cerrar sesión', async ({
+      page,
+      loginPage,
+      appShell,
+    }) => {
+      await appShell.logout();
+      await loginPage.expectLoaded();
+
+      await page.goto('/');
+
+      await loginPage.expectLoaded();
+    });
+
+    test('TC-AUTH-018 - Impedir volver al área autenticada después de logout', async ({
+      page,
+      loginPage,
+      appShell,
+    }) => {
+      // Login y logout navegan con replace: sin esta página intermedia el
+      // historial no tendría ninguna entrada autenticada a la cual volver.
+      await page.goto('/mi-perfil');
+      await appShell.logout();
+      await loginPage.expectLoaded();
+
+      // Vuelve a "/" (el dashboard)
+      await page.goBack();
+
+      await loginPage.expectLoaded();
+      await expect(appShell.dashboardHeading).toBeHidden();
+    });
+
+    test('TC-AUTH-016 - Mantener sesión después de refrescar la página', async ({
+      page,
+      appShell,
+    }) => {
+      await page.reload();
+
+      await appShell.expectDashboard();
+      // El menú de usuario muestra el nombre del usuario autenticado
+      await expect(appShell.userMenuButton).toBeVisible();
+    });
+
+    test(
+      'TC-AUTH-017 - Acceder a Login con sesión activa',
+      {
+        annotation: {
+          type: 'comportamiento-actual',
+          description: 'Con sesión activa /login se muestra en vez de redirigir al dashboard.',
+        },
+      },
+      async ({ loginPage }) => {
+        await loginPage.goto();
+
+        await loginPage.expectLoaded();
+      },
+    );
   });
 
-  await passwordInput.fill('ChangeMe123!');
+  test('TC-AUTH-009 - Impedir acceso directo sin autenticación', async ({ page, loginPage }) => {
+    await page.goto('/');
 
-  // Paso 3: enviar el formulario mediante teclado
-  await passwordInput.press('Enter');
-
-  // Resultado esperado:
-  // El usuario inicia sesión sin necesidad de hacer clic en "Ingresar"
-  await expect(page).toHaveURL('/');
-
-  await expect(
-    page.getByRole('heading', { name: 'Centro de operaciones' })
-  ).toBeVisible();
-
-});
-
-test('TC-AUTH-015 - Campo contraseña enmascarado', async ({ page }) => {
-
-  // Paso 1: acceder al Login
-  await page.goto('/login');
-
-  // Paso 2: localizar el campo contraseña
-  const passwordInput = page.getByRole('textbox', {
-    name: 'Contraseña'
+    await loginPage.expectLoaded();
   });
-
-  // Resultado esperado:
-  // El campo utiliza un input de tipo password
-  await expect(passwordInput).toHaveAttribute('type', 'password');
-
-  // Paso 3: ingresar una contraseña
-  await passwordInput.fill('Password123');
-
-  // El valor existe en el campo pero continúa siendo de tipo password
-  await expect(passwordInput).toHaveValue('Password123');
-  await expect(passwordInput).toHaveAttribute('type', 'password');
-
-});
-
-test('TC-AUTH-016 - Mantener sesión después de refrescar la página', async ({ page }) => {
-
-  // Paso 1: iniciar sesión
-  await page.goto('/login');
-
-  await page
-    .getByRole('textbox', { name: 'Correo electrónico' })
-    .fill('admin@goldenbites.local');
-
-  await page
-    .getByRole('textbox', { name: 'Contraseña' })
-    .fill('ChangeMe123!');
-
-  await page
-    .getByRole('button', { name: 'Ingresar' })
-    .click();
-
-  // Confirmar autenticación
-  await expect(page).toHaveURL('/');
-
-  await expect(
-    page.getByRole('heading', { name: 'Centro de operaciones' })
-  ).toBeVisible();
-
-  // Paso 2: refrescar la aplicación
-  await page.reload();
-
-  // Resultado esperado:
-  // La sesión continúa activa
-  await expect(page).toHaveURL('/');
-
-  await expect(
-    page.getByRole('heading', { name: 'Centro de operaciones' })
-  ).toBeVisible();
-
-  // Confirmar que sigue siendo el mismo usuario autenticado
-  await expect(
-    page.getByText('Admin Golden Bites', { exact: true })
-  ).toBeVisible();
-
-});
-
-test('TC-AUTH-017 - Acceder a Login con sesión activa', async ({ page }) => {
-
-  // Paso 1: iniciar sesión
-  await page.goto('/login');
-
-  await page
-    .getByRole('textbox', { name: 'Correo electrónico' })
-    .fill('admin@goldenbites.local');
-
-  await page
-    .getByRole('textbox', { name: 'Contraseña' })
-    .fill('ChangeMe123!');
-
-  await page
-    .getByRole('button', { name: 'Ingresar' })
-    .click();
-
-  await expect(page).toHaveURL('/');
-
-  await expect(
-    page.getByRole('heading', { name: 'Centro de operaciones' })
-  ).toBeVisible();
-
-  // Paso 2: navegar manualmente a Login manteniendo la sesión
-  await page.goto('/login');
-
-  // Comportamiento actual:
-  // La aplicación permite mostrar Login aunque exista una sesión activa
-  await expect(page).toHaveURL(/\/login/);
-
-  await expect(
-    page.getByRole('textbox', { name: 'Correo electrónico' })
-  ).toBeVisible();
-
-  await expect(
-    page.getByRole('button', { name: 'Ingresar' })
-  ).toBeVisible();
-
-});
-
-test('TC-AUTH-018 - Impedir volver al área autenticada después de logout', async ({ page }) => {
-
-  // Paso 1: iniciar sesión
-  await page.goto('/login');
-
-  await page
-    .getByRole('textbox', { name: 'Correo electrónico' })
-    .fill('admin@goldenbites.local');
-
-  await page
-    .getByRole('textbox', { name: 'Contraseña' })
-    .fill('ChangeMe123!');
-
-  await page
-    .getByRole('button', { name: 'Ingresar' })
-    .click();
-
-  await expect(page).toHaveURL('/');
-
-  await expect(
-    page.getByRole('heading', { name: 'Centro de operaciones' })
-  ).toBeVisible();
-
-  // Paso 2: cerrar sesión
-  await page
-    .getByText('Admin Golden Bites', { exact: true })
-    .click();
-
-  await page
-    .getByText('Cerrar sesión', { exact: true })
-    .click();
-
-  await expect(page).toHaveURL(/\/login/);
-
-  // Paso 3: intentar regresar mediante el historial
-  await page.goBack();
-
-  // Resultado esperado:
-  // El historial no debe restaurar contenido autenticado
-  await expect(
-    page.getByRole('heading', { name: 'Centro de operaciones' })
-  ).not.toBeVisible();
-
 });
