@@ -92,7 +92,7 @@ La primera suite de regresión automatizada corresponde al módulo de autenticac
 tests/
   auth.setup.ts          # inicia sesión una vez y guarda la sesión (storageState)
   fixtures.ts            # `test` extendido con los Page Objects
-  pages/                 # Page Objects (LoginPage, AppShell, ForcePasswordChangePage)
+  pages/                 # Page Objects (Login, AppShell, cambio de contraseña, sede, Dashboard)
   support/               # variables de entorno, rutas de sesión y mocks de la API
   auth/
     login.spec.ts                  # formulario, credenciales y sesión
@@ -101,6 +101,8 @@ tests/
     force-password-change.spec.ts  # cambio de contraseña obligatorio
     permissions.spec.ts            # menú, rutas y API según el rol
     branch-selection.spec.ts       # elegir sede después del login (simulado: la base local tiene una sede)
+  dashboard/
+    dashboard.spec.ts              # Centro de operaciones: indicadores, navegación, alertas y errores
 ```
 
 El seed solo trae usuarios administradores. Para probar permisos, la suite crea por API (con el admin) un cajero (`CASHIER`) y un cocinero (`KITCHEN`) de prueba la primera vez que corre; si ya existen, los reutiliza. Sus credenciales están en `.env.e2e`. También crea un repartidor (`COURIER`).
