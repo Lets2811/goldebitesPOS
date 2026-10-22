@@ -1,3 +1,4 @@
+import { useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useLocation, useNavigate } from 'react-router-dom';
@@ -17,11 +18,25 @@ import { FORCE_PASSWORD_CHANGE_PATH } from '../components/protected-route';
 import EnvironmentChip from '../../../components/common/EnvironmentChip';
 import { KIOSK_PATHS } from '../../../routes/kioskConfig';
 import MidasCredit from '../../../components/common/MidasCredit';
+import ServerPickerDialog from '../components/ServerPickerDialog';
+import { env } from '../../../config/env';
 
 export default function LoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const login = useLogin();
+
+  // Phone apps: three quick taps on the Midas Tech logo pick the server (for testing).
+  const [serverPickerOpen, setServerPickerOpen] = useState(false);
+  const markTaps = useRef<number[]>([]);
+  const onMarkTap = () => {
+    const now = Date.now();
+    markTaps.current = [...markTaps.current.filter((at) => now - at < 1_500), now];
+    if (markTaps.current.length >= 3) {
+      markTaps.current = [];
+      setServerPickerOpen(true);
+    }
+  };
 
   const {
     register,
@@ -112,7 +127,10 @@ export default function LoginPage() {
           </Button>
         </Stack>
       </Paper>
-      <MidasCredit />
+      <MidasCredit onMarkTap={env.phoneApp ? onMarkTap : undefined} />
+      {env.phoneApp && (
+        <ServerPickerDialog open={serverPickerOpen} onClose={() => setServerPickerOpen(false)} />
+      )}
     </Box>
   );
 }

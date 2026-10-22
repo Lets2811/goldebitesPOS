@@ -92,6 +92,13 @@ fi
 touch .env.tura.production
 grep -q '^TURA_ADMIN_KEY=' .env.tura.production || echo "TURA_ADMIN_KEY=$(rand_hex 24)" >> .env.tura.production
 grep -q '^ANTHROPIC_API_KEY=.' .env.tura.production || echo "  WARNING: .env.tura.production has no ANTHROPIC_API_KEY (TURA will not answer)" >&2
+# The Admin asks TURA for its costs (Costos de IA) with TURA's admin key: the
+# same value in both files, copied from TURA's (the one that is generated).
+tura_key=$(grep '^TURA_ADMIN_KEY=' .env.tura.production | tail -1)
+if [ -n "$tura_key" ] && ! grep -qxF "$tura_key" .env.admin.production; then
+  (umask 077; sed -i '/^TURA_ADMIN_KEY=/d' .env.admin.production; echo "$tura_key" >> .env.admin.production)
+  echo "  gave POS-ADMIN TURA's admin key"
+fi
 SECRETS
 
 step "Making sure the network shared with staging exists"

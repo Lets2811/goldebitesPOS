@@ -17,9 +17,12 @@ const SLOGAN = 'Donde las ideas se vuelven';
  */
 export default function MidasCredit({
   variant = 'full',
+  onMarkTap,
   sx,
 }: {
   variant?: 'full' | 'inline' | 'mark';
+  /** A tap on the mark; nothing shows that it can be tapped (see LoginPage). */
+  onMarkTap?: () => void;
   sx?: SxProps<Theme>;
 }) {
   const year = new Date().getFullYear();
@@ -28,7 +31,15 @@ export default function MidasCredit({
       component="img"
       src={midasTechMark}
       alt="Midas Tech"
-      sx={{ height: variant === 'full' ? 28 : 18, width: 'auto', display: 'block' }}
+      onClick={onMarkTap}
+      draggable={false}
+      sx={{
+        height: variant === 'full' ? 28 : 18,
+        width: 'auto',
+        display: 'block',
+        userSelect: 'none',
+        WebkitTapHighlightColor: 'transparent',
+      }}
     />
   );
 

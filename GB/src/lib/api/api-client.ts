@@ -58,6 +58,33 @@ async function refreshAccessToken(): Promise<string | null> {
   }
 }
 
+/**
+ * The API gives the files it serves (product photos, logos) as paths on its
+ * own server ("/api/v1/public/product-images/..."). The web app lives on that
+ * same server; the phone app does not (it runs inside the phone, see
+ * capacitor.config.ts), so there those paths get the API's server in front.
+ */
+const apiOrigin = /^https?:\/\//.test(env.apiBaseUrl) ? new URL(env.apiBaseUrl).origin : null;
+
+function withApiOrigin(value: unknown): unknown {
+  if (typeof value === 'string') return value.startsWith('/api/') ? apiOrigin + value : value;
+  if (Array.isArray(value)) return value.map(withApiOrigin);
+  // Plain JSON objects only: a downloaded file (Blob) is passed as it came.
+  if (value && Object.getPrototypeOf(value) === Object.prototype) {
+    return Object.fromEntries(
+      Object.entries(value).map(([key, entry]) => [key, withApiOrigin(entry)]),
+    );
+  }
+  return value;
+}
+
+if (apiOrigin) {
+  apiClient.interceptors.response.use((response) => {
+    response.data = withApiOrigin(response.data);
+    return response;
+  });
+}
+
 apiClient.interceptors.response.use(
   (response) => response,
   async (error: AxiosError) => {

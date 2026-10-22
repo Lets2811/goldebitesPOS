@@ -9,7 +9,19 @@ import Divider from '@mui/material/Divider';
 import Drawer from '@mui/material/Drawer';
 import IconButton from '@mui/material/IconButton';
 import Tooltip from '@mui/material/Tooltip';
-import { ArrowLeft, BookOpen, ClipboardList, LogOut, MapPin, Plus, Share2, X } from 'lucide-react';
+import useMediaQuery from '@mui/material/useMediaQuery';
+import { useTheme } from '@mui/material/styles';
+import {
+  ArrowLeft,
+  BookOpen,
+  ChevronRight,
+  ClipboardList,
+  LogOut,
+  MapPin,
+  Plus,
+  Share2,
+  X,
+} from 'lucide-react';
 import { useSnackbar } from 'notistack';
 import { useRequiredOptionCheck } from '../../../modules/option-groups/hooks/use-required-option-check';
 import { useNavigate } from 'react-router-dom';
@@ -36,9 +48,18 @@ import ActiveTablesGrid from '../components/ActiveTablesGrid';
 import TableHelpAlerts from '../../orders/components/TableHelpAlerts';
 import PublicMenuBrowser from '../../public-menu/components/PublicMenuBrowser';
 import PublicMenuLinkDialog from '../../products/components/PublicMenuLinkDialog';
+import { env } from '../../../config/env';
+import { formatCOP } from '../../../utils/format';
 
 /** 'showMenu' es la carta tal como la ve el cliente, para mostrársela en la tablet; 'menu' es el inicio del mesero. */
 type Screen = 'menu' | 'order' | 'tables' | 'showMenu';
+
+/**
+ * On a phone the products and the order do not fit side by side: the new
+ * order is two steps, first the products, then the order (table, total,
+ * "Enviar a cocina").
+ */
+type PhoneStep = 'products' | 'cart';
 
 export default function WaiterKioskPage() {
   const { enqueueSnackbar, closeSnackbar } = useSnackbar();
@@ -63,8 +84,14 @@ export default function WaiterKioskPage() {
   const [myOrdersOpen, setMyOrdersOpen] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [shareMenuOpen, setShareMenuOpen] = useState(false);
+  const isPhone = useMediaQuery(useTheme().breakpoints.down('sm'));
+  const [phoneStep, setPhoneStep] = useState<PhoneStep>('products');
+  const cartUnits = cart.reduce((sum, line) => sum + line.quantity, 0);
+  const cartTotal = cart.reduce((sum, line) => sum + line.unitPrice * line.quantity, 0);
 
   useEffect(() => {
+    // The phone app already fills the screen: nothing to enter or leave.
+    if (env.isWaiterApp) return;
     const requestFullscreen = () => {
       if (!document.fullscreenElement) {
         document.documentElement.requestFullscreen().catch(() => {});
@@ -132,6 +159,7 @@ export default function WaiterKioskPage() {
     setOrderType('DINE_IN');
     setCustomerName('');
     setOrderNotes('');
+    setPhoneStep('products');
     setScreen('order');
   }
 
@@ -366,54 +394,97 @@ export default function WaiterKioskPage() {
 
       {screen === 'order' && (
         <Stack direction="row" sx={{ flex: 1, overflow: 'hidden' }}>
-          <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-            <Box sx={{ px: 1.5, py: 1 }}>
-              <Button startIcon={<ArrowLeft size={16} />} onClick={() => setScreen('menu')}>
-                Volver
-              </Button>
+          {(!isPhone || phoneStep === 'products') && (
+            <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+              <Box sx={{ px: 1.5, py: 1 }}>
+                <Button startIcon={<ArrowLeft size={16} />} onClick={() => setScreen('menu')}>
+                  Volver
+                </Button>
+              </Box>
+              <CategoryTabs value={categoryId} onChange={setCategoryId} />
+              <Box sx={{ flex: 1, overflowY: 'auto' }}>
+                <ProductGrid categoryId={categoryId} onSelect={addToCart} />
+              </Box>
+              {isPhone && (
+                <Box sx={{ p: 1.5, borderTop: '1px solid', borderColor: 'divider' }}>
+                  <Button
+                    variant="contained"
+                    fullWidth
+                    size="large"
+                    endIcon={<ChevronRight size={20} />}
+                    onClick={() => setPhoneStep('cart')}
+                    sx={{
+                      py: 1.5,
+                      fontWeight: 800,
+                      textTransform: 'none',
+                      justifyContent: 'space-between',
+                    }}
+                  >
+                    {cartUnits === 0
+                      ? 'Ver pedido'
+                      : `Ver pedido · ${cartUnits} ${cartUnits === 1 ? 'producto' : 'productos'} · ${formatCOP(cartTotal)}`}
+                  </Button>
+                </Box>
+              )}
             </Box>
-            <CategoryTabs value={categoryId} onChange={setCategoryId} />
-            <Box sx={{ flex: 1, overflowY: 'auto' }}>
-              <ProductGrid categoryId={categoryId} onSelect={addToCart} />
-            </Box>
-          </Box>
+          )}
 
-          <Box
-            sx={{
-              width: 380,
-              flexShrink: 0,
-              borderLeft: '1px solid',
-              borderColor: 'divider',
-              display: 'flex',
-              flexDirection: 'column',
-              overflow: 'hidden',
-            }}
-          >
-            <CartPanel
-              cart={cart}
-              onIncrement={increment}
-              onDecrement={decrement}
-              onRemove={remove}
-              onToggleOption={toggleOption}
-              tableNumber={tableNumber}
-              onTableNumberChange={setTableNumber}
-              tableCount={branch?.tableCount}
-              occupiedTables={occupiedTables}
-              orderType={orderType}
-              onOrderTypeChange={setOrderType}
-              customerName={customerName}
-              onCustomerNameChange={setCustomerName}
-              orderNotes={orderNotes}
-              onOrderNotesChange={setOrderNotes}
-              onSubmit={handleSubmit}
-              submitting={createOrder.isPending}
-            />
-          </Box>
+          {(!isPhone || phoneStep === 'cart') && (
+            <Box
+              sx={{
+                width: isPhone ? '100%' : 380,
+                flexShrink: 0,
+                borderLeft: isPhone ? 'none' : '1px solid',
+                borderColor: 'divider',
+                display: 'flex',
+                flexDirection: 'column',
+                overflow: 'hidden',
+              }}
+            >
+              {isPhone && (
+                <Box sx={{ px: 1.5, pt: 1 }}>
+                  <Button
+                    startIcon={<ArrowLeft size={16} />}
+                    onClick={() => setPhoneStep('products')}
+                  >
+                    Seguir agregando
+                  </Button>
+                </Box>
+              )}
+              <CartPanel
+                cart={cart}
+                onIncrement={increment}
+                onDecrement={decrement}
+                onRemove={remove}
+                onToggleOption={toggleOption}
+                tableNumber={tableNumber}
+                onTableNumberChange={setTableNumber}
+                tableCount={branch?.tableCount}
+                occupiedTables={occupiedTables}
+                orderType={orderType}
+                onOrderTypeChange={setOrderType}
+                customerName={customerName}
+                onCustomerNameChange={setCustomerName}
+                orderNotes={orderNotes}
+                onOrderNotesChange={setOrderNotes}
+                onSubmit={handleSubmit}
+                submitting={createOrder.isPending}
+              />
+            </Box>
+          )}
         </Stack>
       )}
 
       <Drawer anchor="right" open={myOrdersOpen} onClose={() => setMyOrdersOpen(false)}>
-        <Box sx={{ width: 360, height: '100%', display: 'flex', flexDirection: 'column' }}>
+        <Box
+          sx={{
+            width: 360,
+            maxWidth: '100vw',
+            height: '100%',
+            display: 'flex',
+            flexDirection: 'column',
+          }}
+        >
           <Stack
             direction="row"
             sx={{ alignItems: 'center', justifyContent: 'space-between', p: 2 }}

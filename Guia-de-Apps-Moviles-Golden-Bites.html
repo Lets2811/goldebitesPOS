@@ -1,0 +1,302 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Guía de las apps móviles — Golden Bites</title>
+<style>
+  @page { size: A4; margin: 20mm 18mm; }
+  * { box-sizing: border-box; }
+  body {
+    font-family: -apple-system, "Helvetica Neue", Arial, sans-serif;
+    color: #1a1a1a;
+    font-size: 10.5pt;
+    line-height: 1.55;
+  }
+  h1 { font-size: 20pt; margin: 0 0 4pt; color: #0f172a; }
+  .subtitle { color: #64748b; font-size: 10pt; margin-bottom: 18pt; }
+  h2 {
+    font-size: 13pt;
+    margin: 20pt 0 8pt;
+    padding-bottom: 4pt;
+    border-bottom: 1.5pt solid #e2e8f0;
+    color: #0f172a;
+    page-break-after: avoid;
+  }
+  h3 { font-size: 11pt; margin: 12pt 0 4pt; color: #0f172a; page-break-after: avoid; }
+  p { margin: 6pt 0; }
+  code {
+    font-family: "SF Mono", Menlo, Consolas, monospace;
+    background: #f1f5f9;
+    padding: 1pt 4pt;
+    border-radius: 3pt;
+    font-size: 9.3pt;
+    color: #b91c1c;
+  }
+  pre {
+    background: #0f172a;
+    color: #e2e8f0;
+    padding: 10pt 12pt;
+    border-radius: 6pt;
+    font-size: 9pt;
+    line-height: 1.5;
+    overflow-x: auto;
+    page-break-inside: avoid;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+  pre code { background: none; color: inherit; padding: 0; }
+  .comment { color: #94a3b8; }
+  ul, ol { margin: 6pt 0; padding-left: 20pt; }
+  li { margin: 3pt 0; }
+  table { border-collapse: collapse; width: 100%; margin: 8pt 0; font-size: 9.5pt; }
+  th, td { border: 1pt solid #e2e8f0; padding: 5pt 8pt; text-align: left; vertical-align: top; }
+  th { background: #f8fafc; font-weight: 600; }
+  .box {
+    border: 1pt solid #e2e8f0;
+    border-left: 3pt solid #64748b;
+    background: #f8fafc;
+    padding: 8pt 12pt;
+    border-radius: 4pt;
+    margin: 10pt 0;
+    page-break-inside: avoid;
+  }
+  .box.warn { border-left-color: #d97706; background: #fffbeb; }
+  .box.danger { border-left-color: #dc2626; background: #fef2f2; }
+  .box strong { display: block; margin-bottom: 3pt; }
+  .step {
+    display: flex;
+    gap: 10pt;
+    margin: 10pt 0;
+    page-break-inside: avoid;
+  }
+  .step-num {
+    flex: 0 0 20pt;
+    height: 20pt;
+    border-radius: 50%;
+    background: #0f172a;
+    color: white;
+    font-size: 10pt;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .step-body { flex: 1; padding-top: 1pt; }
+  .step-body h3 { margin-top: 0; }
+  .meta-table td:first-child { font-weight: 600; width: 32%; color: #475569; }
+  .toc { margin: 14pt 0 4pt; }
+  .toc a { color: #1a1a1a; text-decoration: none; }
+  .footer-note { color: #94a3b8; font-size: 8.5pt; margin-top: 24pt; }
+  .section-break { page-break-before: always; }
+</style>
+</head>
+<body>
+
+<h1>Guía de las apps móviles — Golden Bites</h1>
+<div class="subtitle">Cómo probar las apps de Mesero y Domicilios en Android y cómo sacar nuevas versiones de prueba · Actualizado 2026-10-22</div>
+
+<h2>1. Qué hay</h2>
+<p>Las dos apps son el mismo POS, empaquetado para el celular. Cada una trae solo su parte: el inicio de sesión y la pantalla de mesero o la de domiciliario. La versión web sigue igual y funciona como siempre.</p>
+<table>
+  <tr><th>App</th><th>Nombre en el celular</th><th>Qué agrega frente a la web</th><th>Carpeta del proyecto Android</th></tr>
+  <tr><td>Mesero</td><td>GB Mesero</td><td>Abre directo en la pantalla de mesero. En el celular, «Pedido nuevo» va en dos pasos (productos → pedido).</td><td><code>GB/android</code></td></tr>
+  <tr><td>Domiciliario</td><td>GB Domicilios</td><td>Comparte la ubicación <strong>también con el teléfono bloqueado</strong> y recibe las notificaciones del celular (domicilios, mensajes, llamadas).</td><td><code>GB/android-domiciliario</code></td></tr>
+</table>
+<p>Los instaladores (archivos <code>.apk</code>) quedan en <code>GB/apks/</code>. El nombre dice la app, a qué servidor se conecta y la versión, por ejemplo <code>GB-Domicilios-staging-v1.0.4.apk</code>.</p>
+
+<h2>2. Antes de empezar (una sola vez)</h2>
+<div class="step">
+  <div class="step-num">1</div>
+  <div class="step-body">
+    <h3>En el computador</h3>
+    <p>Android Studio ya está instalado; es lo que se usa para armar las apps. No hay que abrirlo: los comandos de esta guía lo usan por debajo.</p>
+  </div>
+</div>
+<div class="step">
+  <div class="step-num">2</div>
+  <div class="step-body">
+    <h3>En el celular Android de prueba</h3>
+    <p>La primera vez que abras un <code>.apk</code>, Android pregunta si permites instalar apps «de origen desconocido» desde la app con la que lo abriste (WhatsApp, Drive, Archivos…). Di que sí. Solo pasa una vez por cada app.</p>
+  </div>
+</div>
+<div class="step">
+  <div class="step-num">3</div>
+  <div class="step-body">
+    <h3>En el servidor de staging (para probar contra staging)</h3>
+    <ul>
+      <li>Desplegar los cambios de las apps (a staging, y a producción para usarlas allá). Incluye la migración <code>098_push_native_tokens.sql</code>. El servidor ya acepta las apps por sí solo; no hay que tocar <code>CORS_ORIGIN</code>.</li>
+      <li>Para que suenen las notificaciones del domiciliario con la app cerrada: configurar Firebase (sección 8).</li>
+      <li>Para el mapa dentro de la app del domiciliario: en Google Cloud, agregar <code>http://localhost/*</code> a los sitios permitidos de la llave de Google Maps.</li>
+    </ul>
+  </div>
+</div>
+
+<h2>3. Probar contra staging (lo normal)</h2>
+<p>Así se prueba como lo vería alguien de verdad: el celular usa staging por internet, sin depender de tu computador. Sirve para mandarle la app a otra persona.</p>
+<div class="step">
+  <div class="step-num">1</div>
+  <div class="step-body">
+    <h3>Generar el instalador</h3>
+    <p>En una terminal, dentro de la carpeta <code>GB</code>:</p>
+<pre><code>npm run apk:mesero          <span class="comment"># app de mesero</span>
+npm run apk:domiciliario    <span class="comment"># app del domiciliario</span></code></pre>
+    <p>Tarda alrededor de un minuto. Al final dice <code>Listo:</code> y la ruta del archivo en <code>GB/apks/</code>.</p>
+  </div>
+</div>
+<div class="step">
+  <div class="step-num">2</div>
+  <div class="step-body">
+    <h3>Pasarlo al celular</h3>
+    <p>Por WhatsApp (a ti mismo), Google Drive, correo o cable USB. En el celular, toca el archivo y luego «Instalar».</p>
+  </div>
+</div>
+<div class="step">
+  <div class="step-num">3</div>
+  <div class="step-body">
+    <h3>Entrar</h3>
+    <p>Con un usuario de staging: un mesero en la app de mesero y un domiciliario en la de domicilios. Si entras con un usuario que no corresponde, la app lo dice y ofrece «Cambiar de usuario».</p>
+  </div>
+</div>
+<div class="box warn">
+  <strong>Las pantallas van dentro de la app</strong>
+  Desplegar la web a staging <em>no</em> cambia las pantallas de una app ya instalada. Para ver un cambio de pantallas hay que generar e instalar un APK nuevo (sección 7). Los cambios del servidor (GB-BE) sí aplican de inmediato.
+</div>
+
+<h2>4. Cambiar de servidor desde la app (función oculta)</h2>
+<p>Cualquier APK puede conectarse a cualquier servidor sin generar otro:</p>
+<ol>
+  <li>En la pantalla de inicio de sesión, toca <strong>3 veces seguidas el logo de Midas Tech</strong>.</li>
+  <li>Se abre «Servidor de la app». Elige <strong>Local</strong>, <strong>Staging</strong> o <strong>Producción</strong> y toca «Conectar».</li>
+  <li>La app se reinicia en ese servidor. La sesión se cierra, porque cada servidor tiene sus propios usuarios. La elección queda guardada en ese celular hasta que la cambies.</li>
+</ol>
+<p>Arriba del inicio de sesión se ve a dónde está conectada: <strong>STAGING</strong> (naranja), <strong>LOCAL</strong> (azul) o nada, si es producción. Los APK nuevos arrancan en staging.</p>
+<div class="box">
+  <strong>«Local» = el servidor de tu computador</strong>
+  Trae llena la dirección de tu computador en el Wi-Fi, por ejemplo <code>http://192.168.80.31:3000/api/v1</code>; se puede editar. Necesita GB-BE corriendo (<code>npm run start:dev</code> en <code>GB-BE</code>) y el celular en el mismo Wi-Fi. La primera vez, Windows puede pedir permiso para que «Node.js» use la red: marca «Redes privadas». Las pantallas son las que trae el APK. Para ver tus cambios de pantallas al instante, usa la sección 5.
+</div>
+<div class="box warn">
+  <strong>Producción son datos reales</strong>
+  Un pedido o un domicilio hecho desde la app conectada a producción es real. Úsalo solo para verificar algo puntual.
+</div>
+
+<h2>5. Probar contra tu computador con cambios al instante (mientras desarrollas)</h2>
+<p>El celular carga las pantallas directamente desde tu computador. Cada cambio que guardas se ve en el celular sin generar otro APK. Usa tu base de datos local.</p>
+<div class="step">
+  <div class="step-num">1</div>
+  <div class="step-body">
+    <h3>Encender el POS local</h3>
+    <p>Dos terminales, y déjalas abiertas:</p>
+<pre><code><span class="comment"># Terminal 1, en GB-BE: el servidor</span>
+npm run start:dev
+
+<span class="comment"># Terminal 2, en GB: las pantallas de la app que vas a probar</span>
+npm run dev:mesero          <span class="comment"># o: npm run dev:domiciliario</span></code></pre>
+  </div>
+</div>
+<div class="step">
+  <div class="step-num">2</div>
+  <div class="step-body">
+    <h3>Generar el instalador «local» (una vez)</h3>
+<pre><code>npm run apk:mesero:local    <span class="comment"># o: npm run apk:domiciliario:local</span></code></pre>
+    <p>Al final dice a qué dirección se conecta, por ejemplo <code>http://192.168.80.31:5176</code>. Es la de tu computador en el Wi-Fi. Si cambias de red o tu computador cambia de dirección, genera este APK otra vez.</p>
+  </div>
+</div>
+<div class="step">
+  <div class="step-num">3</div>
+  <div class="step-body">
+    <h3>Instalar y abrir</h3>
+    <p>El celular tiene que estar en <strong>el mismo Wi-Fi</strong> que el computador. La primera vez, Windows puede preguntar si permites que «Node.js» use la red: marca «Redes privadas» y acepta. La primera carga tarda unos segundos (pantalla negra); después es rápida.</p>
+  </div>
+</div>
+<div class="box">
+  <strong>Usuarios locales para probar</strong>
+  Mesero: <code>admin@goldenbites.local</code> / <code>ChangeMe123!</code>. Domiciliario: <code>domiciliario.prueba@goldenbites.local</code> / <code>GoldenBites2026!</code>.
+</div>
+
+<h2>6. Probar sin celular: el emulador</h2>
+<ol>
+  <li>Abre Android Studio → <em>Device Manager</em> (ícono de celular a la derecha) → ▶ en «Medium Phone».</li>
+  <li>Cuando el celular virtual encienda, <strong>arrastra el archivo <code>.apk</code></strong> encima de la ventana para instalarlo.</li>
+  <li>En el emulador, tu computador no se llama <code>localhost</code> sino <code>10.0.2.2</code>. Los APK «local» usan la dirección de Wi-Fi y también funcionan ahí.</li>
+  <li>Para simular que el domiciliario se mueve: en la barra lateral del emulador, «⋯» (Extended controls) → <em>Location</em>. Ahí eliges un punto o una ruta.</li>
+</ol>
+
+<h2 class="section-break">7. Sacar una actualización</h2>
+<table>
+  <tr><th>Qué cambió</th><th>Qué hacer</th></tr>
+  <tr><td>Solo el servidor (GB-BE): reglas, cálculos, datos</td><td>Desplegar. Las apps instaladas lo usan de una vez; no hace falta APK nuevo.</td></tr>
+  <tr><td>Pantallas (GB): textos, botones, flujos</td><td>Generar un APK nuevo (<code>npm run apk:mesero</code> / <code>npm run apk:domiciliario</code>) e instalarlo encima.</td></tr>
+  <tr><td>Algo de Android: permisos, ícono, nombre, plugins nativos</td><td>Igual: APK nuevo. Si agregas un plugin nativo, va en <code>includePlugins</code> de <code>GB/capacitor.config.ts</code>.</td></tr>
+</table>
+<p><strong>Cada APK sube la versión solo</strong> (1.0.4 → 1.0.5…). Por eso se instala encima del anterior sin desinstalar y sin perder la sesión. Para ver qué versión tiene un celular: Ajustes → Apps → GB Mesero (o GB Domicilios) → al final, «Versión». El número queda guardado en <code>versionCode</code>/<code>versionName</code> de <code>app/build.gradle</code> de cada app; guárdalo en git junto con el cambio.</p>
+<div class="box warn">
+  <strong>Genera los APK siempre desde el mismo computador</strong>
+  Los APK de prueba se firman con una llave que Android Studio crea en cada computador (<code>~/.android/debug.keystore</code>). Un APK hecho en otro computador no se instala encima de uno hecho en este: hay que desinstalar la app primero, y eso cierra la sesión. Para la tienda se usará una llave propia (sección 11).
+</div>
+
+<h3>Abrir el proyecto en Android Studio (opcional)</h3>
+<pre><code>npm run mesero:open          <span class="comment"># o: npm run domiciliario:open</span></code></pre>
+<p>Sirve para ver errores nativos («Logcat») o probar en un celular conectado por cable. No es necesario para el día a día.</p>
+
+<h2>8. Notificaciones del domiciliario (Firebase)</h2>
+<p>Sin Firebase la app del domiciliario funciona, pero solo avisa mientras está abierta. Para que suene con la app cerrada o el teléfono bloqueado:</p>
+<ol>
+  <li>En <code>console.firebase.google.com</code>, crea un proyecto (gratis).</li>
+  <li>Agrega una «app Android» con el nombre de paquete <code>net.goldenbites.domiciliario</code>. Descarga <code>google-services.json</code> y ponlo en <code>GB/android-domiciliario/app/</code>. Después genera un APK nuevo.</li>
+  <li>En Configuración del proyecto → Cuentas de servicio → «Generar nueva clave privada»: descarga el archivo. Es <strong>secreto</strong>. Su contenido, en base64 y en una sola línea, va en <code>FCM_SERVICE_ACCOUNT</code> del <code>.env</code> del servidor (staging y producción). Ver <code>deploy/env.production.example</code>.</li>
+  <li>En la app, el domiciliario toca «Activar» en el aviso de notificaciones y acepta el permiso.</li>
+</ol>
+
+<h2>9. Qué probar en cada app</h2>
+<h3>Mesero</h3>
+<ul>
+  <li>Entrar; ver Pedido nuevo, Mesas activas y Mostrar menú.</li>
+  <li>Pedido nuevo: agregar productos (barra «Ver pedido · N productos · $»), elegir mesa, «Enviar a cocina». Debe aparecer en cocina.</li>
+  <li>Mis pedidos, agregar productos a una mesa, fotos de los productos.</li>
+  <li>Cerrar y abrir la app: debe seguir con la sesión iniciada.</li>
+</ul>
+<h3>Domiciliario</h3>
+<ul>
+  <li>Asignarle un domicilio desde el POS: debe aparecer en Pendientes, sonar y pedir el permiso de ubicación.</li>
+  <li>Con el permiso dado: arriba dice «Compartiendo ubicación, también con el teléfono bloqueado», y Android muestra el aviso «Compartiendo tu ubicación».</li>
+  <li><strong>Bloquear el teléfono y moverse</strong>: en el POS (y en la página de seguimiento del cliente) el domiciliario debe seguir moviéndose en el mapa.</li>
+  <li>Mi ruta actual: mapa, chat con el cliente y el restaurante, «Llamar al restaurante».</li>
+  <li>Con Firebase: llamar al domiciliario y escribirle desde el seguimiento del cliente con la app cerrada. Debe sonar, y al tocar la notificación debe abrir la app.</li>
+  <li>Entregar el domicilio: la ubicación deja de compartirse cuando ya no tiene domicilios.</li>
+</ul>
+
+<h2>10. Problemas comunes</h2>
+<table>
+  <tr><th>Qué pasa</th><th>Qué revisar</th></tr>
+  <tr><td>«No fue posible conectar con el servidor»</td><td>Mira a qué servidor está conectada (la etiqueta arriba del inicio de sesión). Staging o producción: que tengan desplegados los cambios de las apps y que el celular tenga internet. Local: que GB-BE esté corriendo, la dirección sea la de tu computador, mismo Wi-Fi y el permiso de red de Windows. APK «local» (sección 5): además, que <code>npm run dev:…</code> esté corriendo.</td></tr>
+  <tr><td>«App no instalada» o «conflicto con un paquete existente»</td><td>El APK se hizo en otro computador, o es más viejo que el instalado. Desinstala la app y vuelve a instalar.</td></tr>
+  <tr><td>Pantalla negra al abrir (APK local)</td><td>La primera carga desde tu computador tarda; espera unos segundos. Si sigue negra, revisa que <code>npm run dev:…</code> esté corriendo.</td></tr>
+  <tr><td>El mapa no carga en la app del domiciliario</td><td>Llave de Google Maps sin <code>http://localhost/*</code> en los sitios permitidos.</td></tr>
+  <tr><td>No aparece el aviso para activar notificaciones</td><td>El servidor no tiene Firebase (<code>FCM_SERVICE_ACCOUNT</code> vacío). Es lo esperado hasta configurarlo.</td></tr>
+  <tr><td>«Sin permiso de ubicación»</td><td>Tocar ese aviso rojo abre los Ajustes de la app: Permisos → Ubicación → «Permitir mientras se usa la app» y «Ubicación precisa».</td></tr>
+  <tr><td>La ubicación se corta con el teléfono bloqueado</td><td>Algunas marcas (Xiaomi, Huawei, Samsung) cierran apps para ahorrar batería. En Ajustes → Batería de la app, elige «Sin restricciones».</td></tr>
+</table>
+
+<h2>11. Siguiente paso: repartir a más personas y publicar</h2>
+<ul>
+  <li><strong>Prueba interna de Google Play:</strong> hasta 100 personas reciben la app y sus actualizaciones solas desde la tienda, sin pasar archivos. Requiere la cuenta de Google Play (USD 25) y una llave de firma propia, que se crea una vez y se guarda para siempre.</li>
+  <li><strong>Publicar:</strong> además, la política de privacidad y, para la app del domiciliario, el formulario de Google sobre ubicación en segundo plano (con un video corto).</li>
+  <li><strong>iPhone:</strong> después de Android. Requiere la cuenta de Apple Developer (USD 99/año) y un Mac o un servicio en la nube para compilar.</li>
+</ul>
+
+<h2>Datos de referencia</h2>
+<table class="meta-table">
+  <tr><td>Identificador Mesero</td><td><code>net.goldenbites.mesero</code></td></tr>
+  <tr><td>Identificador Domiciliario</td><td><code>net.goldenbites.domiciliario</code></td></tr>
+  <tr><td>Servidor al instalar</td><td>Staging (<code>https://staging.goldenbites.net/api/v1</code>); se cambia con los 3 toques al logo</td></tr>
+  <tr><td>Producción</td><td><code>https://goldenbites.net/api/v1</code></td></tr>
+  <tr><td>Dirección de las apps en el celular</td><td><code>http://localhost</code>; el servidor la permite en <code>GB-BE/src/config/cors-origins.ts</code></td></tr>
+  <tr><td>Puertos en modo local</td><td>Mesero <code>5176</code> · Domiciliario <code>5177</code></td></tr>
+  <tr><td>Configuración de las apps</td><td><code>GB/capacitor.config.ts</code></td></tr>
+  <tr><td>Script que arma los APK</td><td><code>GB/scripts/build-apk.mjs</code></td></tr>
+</table>
+
+<p class="footer-note">Golden Bites · Desarrollado por Midas Tech · Donde las ideas se vuelven oro</p>
+
+</body>
+</html>

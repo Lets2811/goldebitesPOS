@@ -7,6 +7,7 @@ import compression from 'compression';
 import helmet from 'helmet';
 import { AppModule } from './app.module';
 import { AppConfig } from './config/app.config';
+import { corsOrigins } from './config/cors-origins';
 
 async function bootstrap(): Promise<void> {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
@@ -23,8 +24,8 @@ async function bootstrap(): Promise<void> {
   app.use(helmet());
   app.use(compression());
   app.enableCors({
-    origin:
-      appConfig.corsOrigin === '*' ? true : appConfig.corsOrigin.split(','),
+    // CORS_ORIGIN, plus the installed phone apps (see cors-origins.ts).
+    origin: corsOrigins(appConfig.corsOrigin),
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],

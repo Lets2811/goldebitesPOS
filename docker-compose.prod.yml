@@ -89,7 +89,7 @@ services:
       PORT: 3200
       CORS_ORIGIN: https://admin.goldenbites.net
       POS_INTERNAL_URL: http://backend:3000/api/v1/internal
-      # TURA_ADMIN_KEY goes in the env file, with the same value as TURA's.
+      # TURA_ADMIN_KEY comes in the env file: the deploy script copies TURA's there.
       TURA_API_URL: http://tura-api:3100
       DB_HOST: postgres
     depends_on:

@@ -139,6 +139,14 @@ ADMINENV
   )
 fi
 
+# The Admin asks TURA for its costs (Costos de IA) with TURA's admin key: the
+# same value in both files, copied from TURA's (the one that is generated).
+TURA_KEY_LINE=$(grep '^TURA_ADMIN_KEY=' "$TURA_ENV_FILE" | tail -1)
+if [ -n "$TURA_KEY_LINE" ] && ! grep -qxF "$TURA_KEY_LINE" "$ADMIN_ENV_FILE"; then
+  (umask 077; sed -i '/^TURA_ADMIN_KEY=/d' "$ADMIN_ENV_FILE"; echo "$TURA_KEY_LINE" >> "$ADMIN_ENV_FILE")
+  echo "==> [staging] Gave POS-ADMIN TURA's admin key"
+fi
+
 cp "$ENV_FILE" src/.env.staging
 cp "$TURA_ENV_FILE" src/.env.tura.staging
 cp "$ADMIN_ENV_FILE" src/.env.admin.staging

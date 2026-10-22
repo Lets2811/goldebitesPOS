@@ -1,6 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as webpush from 'web-push';
+import { cert, initializeApp, type App } from 'firebase-admin/app';
+import { getMessaging, type Message } from 'firebase-admin/messaging';
 import { PushNotificationsRepository } from './push-notifications.repository';
 
 /** What the phone shows; the service worker (GB/public/sw.js) reads it. */
@@ -15,22 +17,74 @@ export interface PushMessage {
   requireInteraction?: boolean;
 }
 
+export type NativePlatform = 'android' | 'ios';
+
+/** Firebase's answers for a token that will never work again: it is forgotten. */
+const DEAD_TOKEN_CODES = new Set([
+  'messaging/registration-token-not-registered',
+  'messaging/invalid-registration-token',
+  'messaging/invalid-argument',
+]);
+
+/**
+ * The Android notification channel of a message: how the phone rings. The
+ * app creates them (GB/src/lib/native/native-push.ts) with the same ids.
+ */
+export function androidChannelFor(message: PushMessage): string {
+  if (message.tag.startsWith('call-')) return 'calls';
+  return message.requireInteraction ? 'deliveries' : 'messages';
+}
+
+/** What Firebase delivers to one phone of the installed app. */
+export function toNativeMessage(token: string, message: PushMessage): Message {
+  return {
+    token,
+    notification: { title: message.title, body: message.body },
+    // Read by the app when the notification is tapped.
+    data: { url: message.url, tag: message.tag },
+    android: {
+      priority: 'high',
+      ttl: 300_000,
+      collapseKey: message.tag.slice(0, 64),
+      notification: {
+        channelId: androidChannelFor(message),
+        tag: message.tag,
+        sound: 'default',
+        defaultVibrateTimings: true,
+      },
+    },
+    apns: {
+      headers: {
+        'apns-priority': '10',
+        'apns-collapse-id': message.tag.slice(0, 64),
+      },
+      payload: { aps: { sound: 'default', threadId: message.tag } },
+    },
+  };
+}
+
 export interface PushSubscriptionInput {
   endpoint: string;
   keys: { p256dh: string; auth: string };
 }
 
 /**
- * Web Push to users' phones (couriers): it arrives with the phone locked or
- * the app closed. On Android any Chrome tab can subscribe; on iPhone only the
- * app added to the home screen (iOS 16.4+). Without VAPID keys configured
- * push is off and sending is a no-op: the apps still alert while open.
+ * Notifications to users' phones (couriers): they arrive with the phone
+ * locked or the app closed.
+ * - Web Push, for the web app: on Android any Chrome tab can subscribe; on
+ *   iPhone only the app added to the home screen (iOS 16.4+). Off without
+ *   VAPID keys.
+ * - Firebase Cloud Messaging, for the installed phone app (Android/iPhone).
+ *   Off without FCM_SERVICE_ACCOUNT.
+ * Off, sending is a no-op: the apps still alert while open.
  */
 @Injectable()
 export class PushNotificationsService {
   private readonly logger = new Logger(PushNotificationsService.name);
   private readonly publicKey: string;
   private readonly enabled: boolean;
+  /** Firebase, for the installed phone apps; null when not configured. */
+  private readonly firebase: App | null;
 
   constructor(
     private readonly repository: PushNotificationsRepository,
@@ -45,13 +99,66 @@ export class PushNotificationsService {
     if (this.enabled) {
       webpush.setVapidDetails(subject, this.publicKey, privateKey);
     }
+    this.firebase = this.startFirebase(
+      configService.get<string>('FCM_SERVICE_ACCOUNT') ?? '',
+    );
   }
 
-  getPublicKey(): { enabled: boolean; publicKey: string } {
+  private startFirebase(serviceAccountBase64: string): App | null {
+    if (!serviceAccountBase64) return null;
+    try {
+      const serviceAccount = JSON.parse(
+        Buffer.from(serviceAccountBase64, 'base64').toString('utf8'),
+      ) as { project_id: string; client_email: string; private_key: string };
+      return initializeApp(
+        {
+          credential: cert({
+            projectId: serviceAccount.project_id,
+            clientEmail: serviceAccount.client_email,
+            privateKey: serviceAccount.private_key,
+          }),
+        },
+        'golden-bites-push',
+      );
+    } catch (error) {
+      this.logger.error(
+        'FCM_SERVICE_ACCOUNT is not a valid service account (base64 JSON): push to the phone apps is off',
+        error instanceof Error ? error.stack : undefined,
+      );
+      return null;
+    }
+  }
+
+  /** `nativeEnabled`: whether the installed phone apps can register for push. */
+  getPublicKey(): {
+    enabled: boolean;
+    publicKey: string;
+    nativeEnabled: boolean;
+  } {
     return {
       enabled: this.enabled,
       publicKey: this.enabled ? this.publicKey : '',
+      nativeEnabled: this.firebase !== null,
     };
+  }
+
+  /** The installed app on this phone receives this user's notifications. */
+  async registerNativeToken(
+    userId: string,
+    businessId: string,
+    token: string,
+    platform: NativePlatform,
+  ): Promise<void> {
+    await this.repository.upsertNativeToken({
+      userId,
+      businessId,
+      token,
+      platform,
+    });
+  }
+
+  async unregisterNativeToken(userId: string, token: string): Promise<void> {
+    await this.repository.removeNativeToken(userId, token);
   }
 
   async subscribe(
@@ -75,10 +182,58 @@ export class PushNotificationsService {
   }
 
   /**
-   * Sends to every device of the user. Never throws: a notification must not
-   * break what triggered it. Returns how many devices accepted it.
+   * Sends to every device of the user, browsers and installed apps. Never
+   * throws: a notification must not break what triggered it. Returns how many
+   * devices accepted it.
    */
   async sendToUser(userId: string, message: PushMessage): Promise<number> {
+    const [web, native] = await Promise.all([
+      this.sendWeb(userId, message),
+      this.sendNative(userId, message),
+    ]);
+    return web + native;
+  }
+
+  private async sendNative(
+    userId: string,
+    message: PushMessage,
+  ): Promise<number> {
+    if (!this.firebase) return 0;
+    try {
+      const tokens = await this.repository.findNativeTokensForUser(userId);
+      if (tokens.length === 0) return 0;
+      const result = await getMessaging(this.firebase).sendEach(
+        tokens.map((row) => toNativeMessage(row.token, message)),
+      );
+      await Promise.all(
+        result.responses.map(async (response, index) => {
+          const row = tokens[index];
+          if (response.success) {
+            await this.repository.touchNativeToken(row.id);
+            return;
+          }
+          const code = response.error?.code ?? '';
+          // The app was uninstalled or the token expired: forget it.
+          if (DEAD_TOKEN_CODES.has(code)) {
+            await this.repository.removeNativeTokenById(row.id);
+          } else {
+            this.logger.warn(
+              `Push to the phone app failed (${code || 'unknown'})`,
+            );
+          }
+        }),
+      );
+      return result.successCount;
+    } catch (error) {
+      this.logger.error(
+        'Could not send push to the phone apps',
+        error instanceof Error ? error.stack : undefined,
+      );
+      return 0;
+    }
+  }
+
+  private async sendWeb(userId: string, message: PushMessage): Promise<number> {
     if (!this.enabled) return 0;
     try {
       const subscriptions = await this.repository.findForUser(userId);

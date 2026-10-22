@@ -24,6 +24,9 @@ import CourierBalanceScreen from './CourierBalanceScreen';
 import CourierHistoryScreen from './CourierHistoryScreen';
 import CourierPendingScreen from './CourierPendingScreen';
 import CourierRouteScreen from './CourierRouteScreen';
+import { isNativeApp } from '../../../lib/native/platform';
+import { forgetNativePush } from '../../../lib/native/native-push';
+import { openNativeAppSettings } from '../../../lib/native/native-location';
 
 type Screen = 'home' | 'route' | 'pending' | 'history' | 'balance';
 
@@ -66,11 +69,32 @@ const PUSH_HINTS: Partial<Record<PushState, { severity: 'info' | 'warning'; text
   },
 };
 
+// The installed app: its own words (no browser to point at, and it asks from a tap).
+if (isNativeApp) {
+  PUSH_HINTS.off = {
+    severity: 'info',
+    text: 'Activa las notificaciones para que tu teléfono suene con domicilios, mensajes y llamadas, aunque esté bloqueado.',
+    action: true,
+  };
+  PUSH_HINTS.denied = {
+    severity: 'warning',
+    text: 'Las notificaciones están bloqueadas: actívalas en Ajustes → Apps → GB Domicilios → Notificaciones, o no te llegarán los avisos.',
+  };
+}
+
 const LOCATION_LABELS: Record<LocationStatus, { text: string; color: string } | null> = {
   off: null,
   waiting: { text: 'Buscando tu ubicación…', color: 'warning.main' },
-  on: { text: 'Compartiendo ubicación', color: 'success.main' },
-  denied: { text: 'Sin permiso de ubicación: actívalo en el navegador', color: 'error.main' },
+  on: {
+    text: isNativeApp ? 'Compartiendo ubicación, también con el teléfono bloqueado' : 'Compartiendo ubicación',
+    color: 'success.main',
+  },
+  denied: {
+    text: isNativeApp
+      ? 'Sin permiso de ubicación: toca aquí y permítela en Ajustes'
+      : 'Sin permiso de ubicación: actívalo en el navegador',
+    color: 'error.main',
+  },
   unavailable: { text: 'No se pudo obtener tu ubicación', color: 'error.main' },
 };
 
@@ -212,7 +236,12 @@ export default function CourierAppPage() {
           size="small"
           color="inherit"
           startIcon={<LogOut size={16} />}
-          onClick={() => logout.mutate(undefined, { onSettled: () => navigate('/login', { replace: true }) })}
+          onClick={() => {
+            // The installed app: this phone stops ringing for this courier (before the session ends).
+            void (isNativeApp ? forgetNativePush() : Promise.resolve()).finally(() =>
+              logout.mutate(undefined, { onSettled: () => navigate('/login', { replace: true }) }),
+            );
+          }}
         >
           Salir
         </Button>
@@ -264,6 +293,7 @@ export default function CourierAppPage() {
       {location && (
         <Typography
           variant="caption"
+          onClick={isNativeApp && tracking.status === 'denied' ? () => void openNativeAppSettings() : undefined}
           sx={{ px: 2, py: 0.5, color: location.color, borderBottom: 1, borderColor: 'divider' }}
         >
           ● {location.text}

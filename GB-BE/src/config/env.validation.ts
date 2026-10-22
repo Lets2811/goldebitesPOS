@@ -139,6 +139,13 @@ class EnvironmentVariables {
   @IsString()
   @IsOptional()
   VAPID_SUBJECT: string = 'mailto:soporte@goldenbites.net';
+
+  /** Push to the installed phone apps (the courier's app), through Firebase
+   *  Cloud Messaging: the Firebase project's service account JSON, encoded in
+   *  base64 (one line). Empty disables it (the apps still alert while open). */
+  @IsString()
+  @IsOptional()
+  FCM_SERVICE_ACCOUNT: string = '';
 }
 
 export function validate(config: Record<string, unknown>) {

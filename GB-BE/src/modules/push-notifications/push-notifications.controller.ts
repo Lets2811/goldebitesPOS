@@ -16,6 +16,7 @@ import {
 } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import {
+  IsIn,
   IsNotEmpty,
   IsString,
   IsUrl,
@@ -25,7 +26,10 @@ import {
 import { CurrentBusiness } from '../../common/decorators/current-business.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { RawResponse } from '../../common/decorators/raw-response.decorator';
-import { PushNotificationsService } from './push-notifications.service';
+import {
+  PushNotificationsService,
+  type NativePlatform,
+} from './push-notifications.service';
 
 class PushKeysDto {
   @ApiProperty()
@@ -59,6 +63,26 @@ class PushEndpointDto {
   @IsNotEmpty()
   @MaxLength(1000)
   endpoint: string;
+}
+
+class NativeTokenDto {
+  @ApiProperty({ description: "This phone's Firebase Cloud Messaging token" })
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(500)
+  token: string;
+
+  @ApiProperty({ enum: ['android', 'ios'] })
+  @IsIn(['android', 'ios'])
+  platform: NativePlatform;
+}
+
+class NativeTokenRemovalDto {
+  @ApiProperty()
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(500)
+  token: string;
 }
 
 /**
@@ -106,5 +130,35 @@ export class PushNotificationsController {
     @Body() dto: PushEndpointDto,
   ) {
     await this.pushService.unsubscribe(userId, dto.endpoint);
+  }
+
+  @Post('native-tokens')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @RawResponse()
+  @ApiOperation({
+    summary: 'Receive push notifications in the installed app on this phone',
+  })
+  async registerNativeToken(
+    @CurrentUser('userId') userId: string,
+    @CurrentBusiness() businessId: string,
+    @Body() dto: NativeTokenDto,
+  ) {
+    await this.pushService.registerNativeToken(
+      userId,
+      businessId,
+      dto.token,
+      dto.platform,
+    );
+  }
+
+  @Delete('native-tokens')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @RawResponse()
+  @ApiOperation({ summary: 'Stop push notifications in the app on this phone' })
+  async unregisterNativeToken(
+    @CurrentUser('userId') userId: string,
+    @Body() dto: NativeTokenRemovalDto,
+  ) {
+    await this.pushService.unregisterNativeToken(userId, dto.token);
   }
 }

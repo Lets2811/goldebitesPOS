@@ -1,6 +1,14 @@
 import { useCallback, useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { apiClient } from '../../../lib/api/api-client';
 import type { ApiResponse } from '../../../lib/api/api-types';
+import { isNativeApp } from '../../../lib/native/platform';
+import {
+  nativePushPermission,
+  onNativeNotificationTapped,
+  registerNativePush,
+  requestNativePushPermission,
+} from '../../../lib/native/native-push';
 
 /**
  * - unsupported: this browser cannot receive push at all.
@@ -13,6 +21,13 @@ import type { ApiResponse } from '../../../lib/api/api-types';
 export type PushState = 'loading' | 'unsupported' | 'needs-install' | 'server-off' | 'off' | 'denied' | 'on';
 
 const COURIER_MANIFEST = '/manifest-domiciliario.webmanifest';
+
+interface PushSettings {
+  enabled: boolean;
+  publicKey: string;
+  /** Whether the installed phone app can receive push (the server has Firebase). */
+  nativeEnabled?: boolean;
+}
 
 const isIos = () =>
   /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
@@ -35,12 +50,61 @@ async function saveSubscription(subscription: PushSubscription): Promise<void> {
 }
 
 /**
+ * The installed phone app: the phone's own notifications (Firebase). Asks
+ * for the permission from a tap, keeps this phone's token saved on the
+ * server, and a tapped notification opens where it leads.
+ */
+function useNativeCourierPush(): { state: PushState; enable: () => Promise<void> } {
+  const [state, setState] = useState<PushState>('loading');
+  const navigate = useNavigate();
+
+  useEffect(() => onNativeNotificationTapped((url) => navigate(url)), [navigate]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const done = (next: PushState) => {
+      if (!cancelled) setState(next);
+    };
+    (async () => {
+      const { data } = await apiClient.get<ApiResponse<PushSettings>>('/push/public-key');
+      if (!data.data.nativeEnabled) {
+        done('server-off');
+        return;
+      }
+      const permission = await nativePushPermission();
+      if (permission === 'granted') {
+        // Saved again on every opening: the token may change, or another courier used this phone.
+        await registerNativePush();
+        done('on');
+        return;
+      }
+      done(permission === 'denied' ? 'denied' : 'off');
+    })().catch(() => done('server-off'));
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const enable = useCallback(async () => {
+    const permission = await requestNativePushPermission();
+    if (permission !== 'granted') {
+      setState(permission === 'denied' ? 'denied' : 'off');
+      return;
+    }
+    await registerNativePush();
+    setState('on');
+  }, []);
+
+  return { state, enable };
+}
+
+/**
  * The courier app as an installable web app with push notifications: it
  * swaps in the courier's manifest (so "Add to home screen" opens
  * /domiciliario), registers the service worker (GB/public/sw.js) and keeps
  * this device's push subscription saved on the server.
  */
-export function useCourierPush(): { state: PushState; enable: () => Promise<void> } {
+function useWebCourierPush(): { state: PushState; enable: () => Promise<void> } {
   const [state, setState] = useState<PushState>('loading');
   const [publicKey, setPublicKey] = useState('');
 
@@ -70,7 +134,7 @@ export function useCourierPush(): { state: PushState; enable: () => Promise<void
         done('needs-install');
         return;
       }
-      const { data } = await apiClient.get<ApiResponse<{ enabled: boolean; publicKey: string }>>('/push/public-key');
+      const { data } = await apiClient.get<ApiResponse<PushSettings>>('/push/public-key');
       if (!data.data.enabled) {
         done('server-off');
         return;
@@ -116,3 +180,9 @@ export function useCourierPush(): { state: PushState; enable: () => Promise<void
 
   return { state, enable };
 }
+
+/**
+ * The courier's notifications with the app closed or the phone locked: the
+ * phone's own in the installed app, Web Push in the browser.
+ */
+export const useCourierPush = isNativeApp ? useNativeCourierPush : useWebCourierPush;

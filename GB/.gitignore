@@ -27,3 +27,9 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# The phone apps' builds (see capacitor.config.ts)
+dist-mesero
+dist-domiciliario
+# The waiter app installer, built locally
+*.apk

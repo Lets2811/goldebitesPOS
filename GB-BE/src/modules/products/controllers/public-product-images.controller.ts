@@ -33,6 +33,9 @@ export class PublicProductImagesController {
       'Content-Type': image.mimeType,
       // The URL carries ?v=<when it was uploaded>: a new photo is a new URL.
       'Cache-Control': 'public, max-age=31536000, immutable',
+      // Shown by pages of other origins too: the phone apps run at
+      // https://localhost (helmet's default allows only this site's own).
+      'Cross-Origin-Resource-Policy': 'cross-origin',
     });
   }
 }
