@@ -104,21 +104,22 @@ test.describe('DASHBOARD - Cajero', () => {
   test.use({ storageState: CASHIER_STORAGE_STATE });
 
   test(
-    'TC-DASH-007 - Indicador de insumos sin permiso de inventario',
+    'TC-DASH-007 - Ocultar el indicador de insumos sin permiso de inventario',
     {
       annotation: {
-        type: 'comportamiento-actual',
+        type: 'bug-conocido',
         description:
-          'El cajero no tiene inventory.read, pero la tarjeta "Insumos con stock bajo" es clickeable y lleva a "No tienes acceso". Confirmar si es lo esperado.',
+          'El cajero no tiene inventory.read, pero ve la tarjeta "Insumos con stock bajo" y al tocarla cae en "No tienes acceso". No debería mostrarse.',
       },
     },
-    async ({ dashboardPage, appShell }) => {
+    async ({ dashboardPage }) => {
+      // Cuando se corrija, este test empezará a "fallar" como aviso: quitar test.fail
+      test.fail();
+
       await dashboardPage.goto();
       await dashboardPage.expectLoaded();
 
-      await dashboardPage.indicatorButton('Insumos con stock bajo').click();
-
-      await appShell.expectForbidden();
+      await expect(dashboardPage.indicator('Insumos con stock bajo')).toBeHidden();
     },
   );
 });
