@@ -493,4 +493,47 @@ export class OrdersRepository implements IOrdersRepository {
     );
     return result.rows;
   }
+
+  /**
+   * What customers ordered in a range, paid or not: every order not
+   * cancelled, by when it was taken. The products by units, the most ordered
+   * first, and how many orders there were.
+   */
+  async getMostOrdered(
+    businessId: string,
+    branchId: string | undefined,
+    dateFrom: string,
+    dateTo: string,
+    limit: number,
+  ): Promise<{ order_count: string; product_ids: string[] | null }> {
+    const params: unknown[] = [businessId, dateFrom, dateTo];
+    let branchCondition = '';
+    if (branchId) {
+      params.push(branchId);
+      branchCondition = ` AND o.branch_id = $${params.length}`;
+    }
+    params.push(limit);
+    const result = await this.db.query<{
+      order_count: string;
+      product_ids: string[] | null;
+    }>(
+      `WITH taken AS (
+         SELECT o.id FROM orders o
+         WHERE o.business_id = $1 AND o.status <> 'CANCELLED'
+           AND o.created_at >= $2 AND o.created_at <= $3${branchCondition}
+       ),
+       ranked AS (
+         SELECT oi.product_id, SUM(oi.quantity) AS units
+         FROM taken JOIN order_items oi ON oi.order_id = taken.id
+         WHERE oi.product_id IS NOT NULL
+         GROUP BY oi.product_id
+         ORDER BY units DESC, oi.product_id
+         LIMIT $${params.length}
+       )
+       SELECT (SELECT COUNT(*) FROM taken)::text AS order_count,
+              (SELECT array_agg(product_id ORDER BY units DESC, product_id) FROM ranked) AS product_ids`,
+      params,
+    );
+    return result.rows[0];
+  }
 }

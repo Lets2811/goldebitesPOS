@@ -24,6 +24,7 @@ import { ORDER_STATUS_LABELS, ORDER_STATUS_TONE } from '../../../modules/orders/
 import type { OrderStatus } from '../../../modules/orders/types/order.types';
 import { formatCOP } from '../../../utils/format';
 import { brand } from '../../../theme/palette';
+import MidasCredit from '../../../components/common/MidasCredit';
 import ComboBuilderView from './ComboBuilderView';
 import ProductDetailDialog from './ProductDetailDialog';
 import PublicCartDrawer from './PublicCartDrawer';
@@ -302,6 +303,7 @@ export default function PublicMenuBrowser({
             </Stack>
           </>
         )}
+        <MidasCredit sx={{ mt: 6, mb: itemCount > 0 ? 10 : 2 }} />
       </Box>
 
       {!readOnly && !inCombo && itemCount > 0 && (

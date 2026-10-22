@@ -5,6 +5,7 @@ import { getLink, getLinks, redeemLink, signOut, subscribe, switchLink } from '.
 import { dismissInstall, install, useInstallOption } from './install';
 import { parseCode } from './onboarding';
 import { navigate } from './route';
+import midasTechMark from './assets/midas-tech.png';
 
 const signOutWarning = (businessName: string) =>
   `¿Cerrar sesión en ${businessName}? Para volver a entrar necesitarás un QR o un código nuevo del POS.`;
@@ -178,6 +179,15 @@ export function HomeScreen() {
             </span>
           </button>
         </nav>
+
+        <footer className="credit">
+          <img src={midasTechMark} alt="Midas Tech" className="credit__mark" />
+          <p>
+            © {new Date().getFullYear()} Midas Tech
+            <br />
+            Donde las ideas se vuelven <strong>oro</strong>
+          </p>
+        </footer>
       </main>
     </div>
   );

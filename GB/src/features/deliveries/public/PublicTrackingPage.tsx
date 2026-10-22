@@ -30,6 +30,7 @@ import DeliveryMap from '../components/DeliveryMap';
 import PublicDeliveryDetail from './PublicDeliveryDetail';
 import { straightDistance } from '../geo';
 import { TRACKING_PATH } from '../share-tracking';
+import MidasCredit from '../../../components/common/MidasCredit';
 
 const CODE_PATTERN = /^[A-Z0-9]{6}$/;
 
@@ -303,6 +304,7 @@ export default function PublicTrackingPage() {
             <CodeForm />
           </Card>
         )}
+        <MidasCredit sx={{ mt: 2 }} />
       </Box>
     </Box>
   );

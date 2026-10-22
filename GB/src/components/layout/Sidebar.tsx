@@ -34,6 +34,7 @@ import { useCurrentBusiness } from '../../modules/businesses/hooks/use-current-b
 import { brand } from '../../theme/palette';
 import { useHrSections } from '../../features/hr/hooks/use-hr-sections';
 import SidebarItem from './SidebarItem';
+import MidasCredit from '../common/MidasCredit';
 
 export const SIDEBAR_WIDTH_EXPANDED = 264;
 export const SIDEBAR_WIDTH_COLLAPSED = 76;
@@ -263,6 +264,7 @@ function SidebarContent({
           })}
         </List>
       </Box>
+      <MidasCredit compact={collapsed} sx={{ px: 1.5, pt: 1.5 }} />
       <Stack sx={{ alignItems: collapsed ? 'center' : 'flex-end', p: 1.25 }}>
         <Tooltip title={collapsed ? 'Expandir menú' : 'Colapsar menú'} placement="right">
           <IconButton

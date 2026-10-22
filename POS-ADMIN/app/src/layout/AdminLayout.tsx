@@ -13,6 +13,7 @@ import Typography from '@mui/material/Typography';
 import { ChevronDown, Crown } from 'lucide-react';
 import { Navigate, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import EnvironmentChip from '../shared/components/common/EnvironmentChip';
+import MidasCredit from '../shared/components/common/MidasCredit';
 import { brand } from '../shared/theme/palette';
 import { adminLogout } from '../auth/admin-auth.api';
 import { useAdminAuthStore } from '../auth/admin-auth.store';
@@ -107,6 +108,7 @@ export default function AdminLayout() {
       </AppBar>
       <Box component="main" sx={{ p: { xs: 2, sm: 3 }, maxWidth: 1600, mx: 'auto' }}>
         <Outlet />
+        <MidasCredit sx={{ mt: 6, mb: 1 }} />
       </Box>
     </Box>
   );

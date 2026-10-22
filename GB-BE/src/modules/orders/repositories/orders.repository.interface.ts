@@ -114,6 +114,13 @@ export interface IOrdersRepository {
     dateTo: string,
     timezone: string,
   ): Promise<DailySalesRow[]>;
+  getMostOrdered(
+    businessId: string,
+    branchId: string | undefined,
+    dateFrom: string,
+    dateTo: string,
+    limit: number,
+  ): Promise<{ order_count: string; product_ids: string[] | null }>;
   getTopProducts(
     businessId: string,
     branchId: string | undefined,

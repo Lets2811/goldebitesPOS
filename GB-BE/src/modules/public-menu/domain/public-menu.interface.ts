@@ -48,9 +48,10 @@ export interface PublicMenu {
   /** The business's active option groups, in display order, each with its active options. */
   optionGroups: PublicMenuOptionGroup[];
   /**
-   * "Lo más pedido": the branch's best-selling products of the menu, first
-   * the most sold. TODAY once the day has enough sales; until then RECENT
-   * (yesterday's). Null when the business turned it off or there is nothing
+   * "Lo más pedido": the branch's most ordered products of the menu (orders
+   * taken, paid or not), the most ordered first. TODAY once the day has
+   * enough orders; until then RECENT (yesterday's), or today's few when
+   * yesterday had none. Null when the business turned it off or there is nothing
    * to show. Only ids of products in `categories`: what can be ordered now.
    */
   topSellers: PublicMenuTopSellers | null;

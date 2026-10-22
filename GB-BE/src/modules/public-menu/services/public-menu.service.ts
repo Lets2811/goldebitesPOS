@@ -29,9 +29,9 @@ export const DEFAULT_BUILDER_DESCRIPTION =
 
 /** How many best sellers the menu shows. */
 const TOP_SELLERS_SHOWN = 5;
-/** Below this many sales today, the day says too little: yesterday's are shown. */
-const TOP_SELLERS_MIN_TODAY_SALES = 5;
-/** Every customer opening the menu would count the day's sales again: it is kept this long. */
+/** Below this many orders today, the day says too little: yesterday's are shown. */
+const TOP_SELLERS_MIN_TODAY_ORDERS = 5;
+/** Every customer opening the menu would count the day's orders again: it is kept this long. */
 const TOP_SELLERS_CACHE_MS = 60_000;
 
 @Injectable()
@@ -161,11 +161,13 @@ export class PublicMenuService {
   }
 
   /**
-   * The branch's best sellers on the menu: today's once the day has enough
-   * sales, yesterday's until then, and today's few if yesterday had none (a
-   * day the place was closed). Sales are what Analytics counts (paid
-   * orders), by units. Only products that can be ordered now count: one that
-   * ran out, was hidden or is only for "Arma tu combo" is skipped.
+   * The branch's most ordered products on the menu: today's once the day has
+   * enough orders, yesterday's until then, and today's few if yesterday had
+   * none (a day the place was closed). What counts is what customers ordered,
+   * paid or not (orders not cancelled, by when they were taken), by units:
+   * many places charge at the end. Only products that can be ordered now
+   * count: one that ran out, was hidden or is only for "Arma tu combo" is
+   * skipped.
    */
   private async topSellers(
     businessId: string,
@@ -202,40 +204,33 @@ export class PublicMenuService {
     const yesterdayRange = businessDayRange(yesterday, yesterday, timezone);
     // More than shown: some may not be orderable right now.
     const depth = TOP_SELLERS_SHOWN * 3;
-    const [todaySummary, todayTop, yesterdayTop] = await Promise.all([
-      this.ordersService.getSalesSummary(
-        businessId,
-        branchId,
-        todayRange.dateFrom,
-        todayRange.dateTo,
-      ),
-      this.ordersService.getTopProducts(
+    const [todayOrdered, yesterdayOrdered] = await Promise.all([
+      this.ordersService.getMostOrdered(
         businessId,
         branchId,
         todayRange.dateFrom,
         todayRange.dateTo,
         depth,
-        'quantity',
       ),
-      this.ordersService.getTopProducts(
+      this.ordersService.getMostOrdered(
         businessId,
         branchId,
         yesterdayRange.dateFrom,
         yesterdayRange.dateTo,
         depth,
-        'quantity',
       ),
     ]);
-    const ids = (top: { productId: string | null }[]) =>
-      top.flatMap((product) => (product.productId ? [product.productId] : []));
     const todayRanking = {
       period: 'TODAY' as const,
-      productIds: ids(todayTop),
+      productIds: todayOrdered.productIds,
     };
     const value: { period: 'TODAY' | 'RECENT'; productIds: string[] }[] =
-      todaySummary.orderCount >= TOP_SELLERS_MIN_TODAY_SALES
+      todayOrdered.orderCount >= TOP_SELLERS_MIN_TODAY_ORDERS
         ? [todayRanking]
-        : [{ period: 'RECENT', productIds: ids(yesterdayTop) }, todayRanking];
+        : [
+            { period: 'RECENT', productIds: yesterdayOrdered.productIds },
+            todayRanking,
+          ];
     this.topSellersCache.set(key, { at: Date.now(), value });
     return value;
   }

@@ -302,6 +302,13 @@ export interface TopProduct {
 
 export type TopProductsOrder = 'revenue' | 'quantity';
 
+/** The products most ordered in a range (orders taken, paid or not), and how many orders there were. */
+export interface MostOrdered {
+  orderCount: number;
+  /** Product ids, the most ordered first. */
+  productIds: string[];
+}
+
 export interface TopProductRow {
   product_id: string | null;
 

@@ -33,6 +33,7 @@ describe('OrdersService', () => {
     getSalesSummary: jest.Mock;
     getSalesByDay: jest.Mock;
     getTopProducts: jest.Mock;
+    getMostOrdered: jest.Mock;
   };
   let branchesService: { findOne: jest.Mock };
   let productsService: { getOwnedOrFail: jest.Mock };
@@ -141,6 +142,7 @@ describe('OrdersService', () => {
         .mockResolvedValue({ order_count: '0', total_amount: null }),
       getSalesByDay: jest.fn().mockResolvedValue([]),
       getTopProducts: jest.fn().mockResolvedValue([]),
+      getMostOrdered: jest.fn(),
     };
     branchesService = {
       findOne: jest

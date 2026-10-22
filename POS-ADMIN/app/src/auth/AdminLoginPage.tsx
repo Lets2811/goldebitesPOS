@@ -13,6 +13,7 @@ import { normalizeApiError } from '../shared/lib/api/api-error';
 import { brand } from '../shared/theme/palette';
 import { useAdminLogin } from './admin-auth.api';
 import { useAdminAuthStore } from './admin-auth.store';
+import MidasCredit from '../shared/components/common/MidasCredit';
 
 /** Sign-in of the Admin app: Golden Bites team accounts only (not restaurant users). */
 export default function AdminLoginPage() {
@@ -33,7 +34,18 @@ export default function AdminLoginPage() {
   }
 
   return (
-    <Box sx={{ minHeight: '100vh', display: 'grid', placeItems: 'center', p: 2, bgcolor: 'background.default' }}>
+    <Box
+      sx={{
+        minHeight: '100vh',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 2,
+        p: 2,
+        bgcolor: 'background.default',
+      }}
+    >
       <Paper component="form" onSubmit={submit} sx={{ p: 4, width: '100%', maxWidth: 400 }}>
         <Stack spacing={2.5}>
           <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center' }}>
@@ -78,6 +90,7 @@ export default function AdminLoginPage() {
           </Typography>
         </Stack>
       </Paper>
+      <MidasCredit />
     </Box>
   );
 }

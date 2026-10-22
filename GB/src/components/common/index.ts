@@ -19,3 +19,4 @@ export { default as FormDrawer } from './FormDrawer';
 export { default as DetailDrawer } from './DetailDrawer';
 export { default as Breadcrumbs } from './Breadcrumbs';
 export type { BreadcrumbItem } from './Breadcrumbs';
+export { default as MidasCredit } from './MidasCredit';

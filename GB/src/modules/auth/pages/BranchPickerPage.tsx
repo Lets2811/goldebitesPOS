@@ -10,6 +10,7 @@ import { useCurrentBusiness } from '../../businesses/hooks/use-current-business'
 import { brand } from '../../../theme/palette';
 import { useLogout } from '../hooks/use-logout';
 import { useAuthStore } from '../store/auth.store';
+import MidasCredit from '../../../components/common/MidasCredit';
 
 /**
  * Right after signing in, someone who may work at every branch picks which
@@ -27,6 +28,8 @@ export default function BranchPickerPage() {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
+        flexDirection: 'column',
+        gap: 2,
         bgcolor: brand.black,
         px: 2,
         py: 4,
@@ -58,6 +61,7 @@ export default function BranchPickerPage() {
           </Button>
         </Stack>
       </Paper>
+      <MidasCredit />
     </Box>
   );
 }

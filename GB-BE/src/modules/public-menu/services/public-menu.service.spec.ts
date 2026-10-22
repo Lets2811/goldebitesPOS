@@ -12,7 +12,7 @@ describe('PublicMenuService', () => {
     isActiveBranch: jest.Mock;
     firstActiveBranchId: jest.Mock;
   };
-  let ordersService: { getSalesSummary: jest.Mock; getTopProducts: jest.Mock };
+  let ordersService: { getMostOrdered: jest.Mock };
   let service: PublicMenuService;
 
   const businessId = 'business-1';
@@ -111,10 +111,9 @@ describe('PublicMenuService', () => {
     };
     branchMenuService = { forBranch: jest.fn().mockResolvedValue(new Map()) };
     ordersService = {
-      getSalesSummary: jest
+      getMostOrdered: jest
         .fn()
-        .mockResolvedValue({ orderCount: 0, totalAmount: 0 }),
-      getTopProducts: jest.fn().mockResolvedValue([]),
+        .mockResolvedValue({ orderCount: 0, productIds: [] }),
     };
     branchesService = {
       isActiveBranch: jest.fn().mockResolvedValue(true),
@@ -380,13 +379,10 @@ describe('PublicMenuService', () => {
   });
 
   describe('"Lo más pedido"', () => {
-    const top = (...ids: (string | null)[]) =>
-      ids.map((productId) => ({
-        productId,
-        productName: '',
-        quantitySold: 1,
-        revenue: 0,
-      }));
+    const ordered = (orderCount: number, ...productIds: string[]) => ({
+      orderCount,
+      productIds,
+    });
 
     function turnedOn() {
       businessesService.findById.mockResolvedValue({
@@ -401,19 +397,15 @@ describe('PublicMenuService', () => {
       const menu = await service.getMenu(businessId);
 
       expect(menu.topSellers).toBeNull();
-      expect(ordersService.getTopProducts).not.toHaveBeenCalled();
+      expect(ordersService.getMostOrdered).not.toHaveBeenCalled();
     });
 
-    it("shows today's best sellers once the day has enough sales, only what can be ordered", async () => {
+    it("shows today's most ordered once the day has enough orders, only what can be ordered", async () => {
       turnedOn();
-      ordersService.getSalesSummary.mockResolvedValue({
-        orderCount: 12,
-        totalAmount: 0,
-      });
-      // p9 is not on the menu (sold out, hidden or only for combos); a deleted product has no id.
-      ordersService.getTopProducts
-        .mockResolvedValueOnce(top('p3', 'p9', null, 'p1'))
-        .mockResolvedValueOnce(top('p2'));
+      // p9 is not on the menu (sold out, hidden or only for combos).
+      ordersService.getMostOrdered
+        .mockResolvedValueOnce(ordered(12, 'p3', 'p9', 'p1'))
+        .mockResolvedValueOnce(ordered(30, 'p2'));
 
       const menu = await service.getMenu(businessId, 'branch-1');
 
@@ -421,25 +413,20 @@ describe('PublicMenuService', () => {
         period: 'TODAY',
         productIds: ['p3', 'p1'],
       });
-      expect(ordersService.getTopProducts).toHaveBeenCalledWith(
+      expect(ordersService.getMostOrdered).toHaveBeenCalledWith(
         businessId,
         'branch-1',
         expect.any(String),
         expect.any(String),
         expect.any(Number),
-        'quantity',
       );
     });
 
-    it("shows yesterday's while today has few sales", async () => {
+    it("shows yesterday's while today has few orders", async () => {
       turnedOn();
-      ordersService.getSalesSummary.mockResolvedValue({
-        orderCount: 2,
-        totalAmount: 0,
-      });
-      ordersService.getTopProducts
-        .mockResolvedValueOnce(top('p3'))
-        .mockResolvedValueOnce(top('p2', 'p1'));
+      ordersService.getMostOrdered
+        .mockResolvedValueOnce(ordered(2, 'p3'))
+        .mockResolvedValueOnce(ordered(20, 'p2', 'p1'));
 
       const menu = await service.getMenu(businessId, 'branch-1');
 
@@ -449,38 +436,34 @@ describe('PublicMenuService', () => {
       });
     });
 
-    it("shows today's few when yesterday sold nothing (a day the place was closed)", async () => {
+    it("shows today's few when yesterday had no orders (a day the place was closed)", async () => {
       turnedOn();
-      ordersService.getSalesSummary.mockResolvedValue({
-        orderCount: 1,
-        totalAmount: 0,
-      });
-      ordersService.getTopProducts
-        .mockResolvedValueOnce(top('p1'))
-        .mockResolvedValueOnce(top());
+      ordersService.getMostOrdered
+        .mockResolvedValueOnce(ordered(1, 'p1'))
+        .mockResolvedValueOnce(ordered(0));
 
       const menu = await service.getMenu(businessId, 'branch-1');
 
       expect(menu.topSellers).toEqual({ period: 'TODAY', productIds: ['p1'] });
     });
 
-    it('shows nothing when no orderable product sold', async () => {
+    it('shows nothing when no orderable product was ordered', async () => {
       turnedOn();
-      ordersService.getTopProducts.mockResolvedValue(top('p9'));
+      ordersService.getMostOrdered.mockResolvedValue(ordered(3, 'p9'));
 
       const menu = await service.getMenu(businessId, 'branch-1');
 
       expect(menu.topSellers).toBeNull();
     });
 
-    it('counts the sales once a minute, not on every opening', async () => {
+    it('counts the orders once a minute, not on every opening', async () => {
       turnedOn();
-      ordersService.getTopProducts.mockResolvedValue(top('p1'));
+      ordersService.getMostOrdered.mockResolvedValue(ordered(1, 'p1'));
 
       await service.getMenu(businessId, 'branch-1');
       await service.getMenu(businessId, 'branch-1');
 
-      expect(ordersService.getSalesSummary).toHaveBeenCalledTimes(1);
+      expect(ordersService.getMostOrdered).toHaveBeenCalledTimes(2);
     });
   });
 });

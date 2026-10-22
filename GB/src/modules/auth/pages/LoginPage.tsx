@@ -16,6 +16,7 @@ import { brand } from '../../../theme/palette';
 import { FORCE_PASSWORD_CHANGE_PATH } from '../components/protected-route';
 import EnvironmentChip from '../../../components/common/EnvironmentChip';
 import { KIOSK_PATHS } from '../../../routes/kioskConfig';
+import MidasCredit from '../../../components/common/MidasCredit';
 
 export default function LoginPage() {
   const navigate = useNavigate();
@@ -59,6 +60,8 @@ export default function LoginPage() {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
+        flexDirection: 'column',
+        gap: 2,
         bgcolor: brand.black,
         px: 2,
       }}
@@ -109,6 +112,7 @@ export default function LoginPage() {
           </Button>
         </Stack>
       </Paper>
+      <MidasCredit />
     </Box>
   );
 }

@@ -1,5 +1,6 @@
 import { MessageCircle } from 'lucide-react';
 import { InstagramIcon, FacebookIcon } from './SocialIcons';
+import midasTechMark from '../assets/midas-tech.png';
 
 const SOCIALS = [
   { icon: InstagramIcon, href: '#', label: 'Instagram' },
@@ -46,6 +47,15 @@ export default function Footer() {
         <div className="mt-10 flex flex-col items-center justify-between gap-3 border-t border-black-border pt-6 text-xs text-bone-muted sm:flex-row">
           <p>© {new Date().getFullYear()} Golden Bites. Todos los derechos reservados.</p>
           <p>Bogotá, Colombia</p>
+        </div>
+
+        <div className="mt-6 flex flex-col items-center gap-1.5 text-center text-xs text-bone-muted">
+          <img src={midasTechMark} alt="Midas Tech" className="h-7 w-auto" />
+          <p>
+            Desarrollado por Midas Tech
+            <br />
+            Donde las ideas se vuelven <span className="font-semibold text-gold">oro</span>
+          </p>
         </div>
       </div>
     </footer>

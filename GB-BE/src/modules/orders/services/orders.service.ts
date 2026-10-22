@@ -31,6 +31,7 @@ import {
   SalesSummary,
   TopProduct,
   TopProductsOrder,
+  MostOrdered,
 } from '../domain/order.interface';
 import {
   CreateOrderData,
@@ -291,6 +292,27 @@ export class OrdersService {
       quantitySold: parseFloat(row.quantity_sold),
       revenue: parseFloat(row.revenue),
     }));
+  }
+
+  /** The products most ordered in a range, paid or not (orders not cancelled, by when they were taken). */
+  async getMostOrdered(
+    businessId: string,
+    branchId: string | undefined,
+    dateFrom: string,
+    dateTo: string,
+    limit: number,
+  ): Promise<MostOrdered> {
+    const row = await this.ordersRepository.getMostOrdered(
+      businessId,
+      branchId,
+      dateFrom,
+      dateTo,
+      limit,
+    );
+    return {
+      orderCount: parseInt(row.order_count, 10),
+      productIds: row.product_ids ?? [],
+    };
   }
 
   /** Adds items to an existing order without touching the ones already there — a running tab. */

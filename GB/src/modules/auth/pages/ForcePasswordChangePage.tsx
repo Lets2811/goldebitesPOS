@@ -18,6 +18,7 @@ import {
 } from '../schemas/change-password.schema';
 import { normalizeApiError } from '../../../lib/api/api-error';
 import { brand } from '../../../theme/palette';
+import MidasCredit from '../../../components/common/MidasCredit';
 
 /**
  * Reached automatically (see ProtectedRoute) whenever the session's
@@ -62,6 +63,8 @@ export default function ForcePasswordChangePage() {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
+        flexDirection: 'column',
+        gap: 2,
         bgcolor: brand.black,
         px: 2,
       }}
@@ -127,6 +130,7 @@ export default function ForcePasswordChangePage() {
           </Typography>
         </Stack>
       </Paper>
+      <MidasCredit />
     </Box>
   );
 }

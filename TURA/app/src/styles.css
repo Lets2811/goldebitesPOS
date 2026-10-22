@@ -649,3 +649,29 @@ button {
   align-items: center;
   margin-top: 12px;
 }
+
+/* Who builds TURA: one discreet line at the foot of the menu. */
+.credit {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.75rem;
+  line-height: 1.4;
+  letter-spacing: 0.02em;
+  text-align: center;
+  color: var(--gray);
+}
+
+.credit p {
+  margin: 0;
+}
+
+.credit__mark {
+  height: 28px;
+  width: auto;
+}
+
+.credit strong {
+  color: var(--gold);
+}
