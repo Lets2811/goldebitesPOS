@@ -23,8 +23,8 @@ const APPS = {
     appName: 'GB Mesero',
     webDir: 'dist-mesero',
     android: { path: 'android' },
-    // Nothing native beyond the app itself.
-    includePlugins: [],
+    // Notifications: a table asking for help.
+    includePlugins: ['@capacitor/push-notifications'],
   },
   domiciliario: {
     appId: 'net.goldenbites.domiciliario',

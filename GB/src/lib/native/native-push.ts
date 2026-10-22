@@ -1,42 +1,55 @@
 import type { PluginListenerHandle } from '@capacitor/core';
 import { PushNotifications, type Channel } from '@capacitor/push-notifications';
 import { apiClient } from '../api/api-client';
+import { env, type PhoneApp } from '../../config/env';
 import { nativePlatform } from './platform';
 
 /** This phone's Firebase token, to stop the notifications on signing out. */
 const TOKEN_KEY = 'gb-native-push-token';
 
 /**
- * How the phone rings for each kind of notification (Android). The ids are
- * the ones the server sends with (GB-BE push-notifications.service.ts,
+ * How the phone rings for each kind of notification (Android), per app. The
+ * ids are the ones the server sends with (GB-BE push-notifications.service.ts,
  * androidChannelFor). Importance 5: sound and on top of the screen.
  */
-const CHANNELS: Channel[] = [
-  {
-    id: 'calls',
-    name: 'Llamadas',
-    description: 'Cuando el restaurante o el cliente te llama',
-    importance: 5,
-    visibility: 1,
-    vibration: true,
-  },
-  {
-    id: 'deliveries',
-    name: 'Domicilios asignados',
-    description: 'Cuando te asignan un domicilio',
-    importance: 5,
-    visibility: 1,
-    vibration: true,
-  },
-  {
-    id: 'messages',
-    name: 'Mensajes',
-    description: 'El chat con el cliente y el restaurante',
-    importance: 4,
-    visibility: 1,
-    vibration: true,
-  },
-];
+const CHANNELS: Record<PhoneApp, Channel[]> = {
+  waiter: [
+    {
+      id: 'tables',
+      name: 'Mesas que piden ayuda',
+      description: 'Cuando una mesa llama al mesero desde su menú',
+      importance: 5,
+      visibility: 1,
+      vibration: true,
+    },
+  ],
+  courier: [
+    {
+      id: 'calls',
+      name: 'Llamadas',
+      description: 'Cuando el restaurante o el cliente te llama',
+      importance: 5,
+      visibility: 1,
+      vibration: true,
+    },
+    {
+      id: 'deliveries',
+      name: 'Domicilios asignados',
+      description: 'Cuando te asignan un domicilio',
+      importance: 5,
+      visibility: 1,
+      vibration: true,
+    },
+    {
+      id: 'messages',
+      name: 'Mensajes',
+      description: 'El chat con el cliente y el restaurante',
+      importance: 4,
+      visibility: 1,
+      vibration: true,
+    },
+  ],
+};
 
 export type NativePushPermission = 'granted' | 'denied' | 'prompt';
 
@@ -85,7 +98,8 @@ export async function registerNativePush(): Promise<void> {
   const platform = nativePlatform();
   if (!platform) return;
   if (platform === 'android') {
-    await Promise.all(CHANNELS.map((channel) => PushNotifications.createChannel(channel)));
+    const channels = env.phoneApp ? CHANNELS[env.phoneApp] : [];
+    await Promise.all(channels.map((channel) => PushNotifications.createChannel(channel)));
   }
   const token = await nextToken();
   await apiClient.post('/push/native-tokens', { token, platform });

@@ -4,6 +4,7 @@ import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import Button from '@mui/material/Button';
 import ButtonBase from '@mui/material/ButtonBase';
+import Alert from '@mui/material/Alert';
 import Badge from '@mui/material/Badge';
 import Divider from '@mui/material/Divider';
 import Drawer from '@mui/material/Drawer';
@@ -49,7 +50,32 @@ import TableHelpAlerts from '../../orders/components/TableHelpAlerts';
 import PublicMenuBrowser from '../../public-menu/components/PublicMenuBrowser';
 import PublicMenuLinkDialog from '../../products/components/PublicMenuLinkDialog';
 import { env } from '../../../config/env';
+import { isNativeApp } from '../../../lib/native/platform';
+import { forgetNativePush } from '../../../lib/native/native-push';
+import { useNativePush, type NativePushState } from '../../../lib/native/use-native-push';
 import { formatCOP } from '../../../utils/format';
+
+/** The waiter's app: how to get its phone to ring when a table calls; nothing when on or not possible. */
+const PUSH_HINTS: Partial<
+  Record<NativePushState, { severity: 'info' | 'warning'; text: string; action?: boolean }>
+> = {
+  off: {
+    severity: 'info',
+    text: 'Activa las notificaciones para que tu teléfono suene cuando una mesa pida ayuda, aunque esté bloqueado.',
+    action: true,
+  },
+  denied: {
+    severity: 'warning',
+    text: 'Las notificaciones están bloqueadas: actívalas en Ajustes → Apps → GB Mesero → Notificaciones.',
+  },
+};
+
+/** The web app has no notifications of its own here: nothing to ask for. */
+const useNoPush = (): { state: NativePushState; enable: () => Promise<void> } => ({
+  state: 'server-off',
+  enable: async () => {},
+});
+const useWaiterPush = isNativeApp ? useNativePush : useNoPush;
 
 /** 'showMenu' es la carta tal como la ve el cliente, para mostrársela en la tablet; 'menu' es el inicio del mesero. */
 type Screen = 'menu' | 'order' | 'tables' | 'showMenu';
@@ -84,6 +110,9 @@ export default function WaiterKioskPage() {
   const [myOrdersOpen, setMyOrdersOpen] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [shareMenuOpen, setShareMenuOpen] = useState(false);
+  const push = useWaiterPush();
+  const [enablingPush, setEnablingPush] = useState(false);
+  const pushHint = PUSH_HINTS[push.state];
   const isPhone = useMediaQuery(useTheme().breakpoints.down('sm'));
   const [phoneStep, setPhoneStep] = useState<PhoneStep>('products');
   const cartUnits = cart.reduce((sum, line) => sum + line.quantity, 0);
@@ -255,14 +284,50 @@ export default function WaiterKioskPage() {
             size="small"
             color="inherit"
             startIcon={<LogOut size={16} />}
-            onClick={() =>
-              logout.mutate(undefined, { onSettled: () => navigate('/login', { replace: true }) })
-            }
+            onClick={() => {
+              // The installed app: this phone stops ringing for this user (before the session ends).
+              void (isNativeApp ? forgetNativePush() : Promise.resolve()).finally(() =>
+                logout.mutate(undefined, {
+                  onSettled: () => navigate('/login', { replace: true }),
+                }),
+              );
+            }}
           >
             Salir
           </Button>
         </Stack>
       </Stack>
+
+      {pushHint && (
+        <Alert
+          severity={pushHint.severity}
+          sx={{ borderRadius: 0 }}
+          action={
+            pushHint.action ? (
+              <Button
+                color="inherit"
+                size="small"
+                loading={enablingPush}
+                onClick={() => {
+                  setEnablingPush(true);
+                  push
+                    .enable()
+                    .catch(() =>
+                      enqueueSnackbar('No se pudieron activar las notificaciones', {
+                        variant: 'error',
+                      }),
+                    )
+                    .finally(() => setEnablingPush(false));
+                }}
+              >
+                Activar
+              </Button>
+            ) : undefined
+          }
+        >
+          {pushHint.text}
+        </Alert>
+      )}
 
       {/* Las mesas que piden ayuda se ven y suenan en cualquier pantalla del mesero. */}
       <TableHelpAlerts branchId={branchId} tableNames={tableNames} sx={{ px: 2, pt: 1.5 }} />
