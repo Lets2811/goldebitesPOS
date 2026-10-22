@@ -264,18 +264,34 @@ function SidebarContent({
           })}
         </List>
       </Box>
-      <MidasCredit compact={collapsed} sx={{ px: 1.5, pt: 1.5 }} />
-      <Stack sx={{ alignItems: collapsed ? 'center' : 'flex-end', p: 1.25 }}>
-        <Tooltip title={collapsed ? 'Expandir menú' : 'Colapsar menú'} placement="right">
-          <IconButton
-            size="small"
-            onClick={toggleCollapsed}
-            sx={{ color: 'text.secondary', display: { xs: 'none', md: 'inline-flex' } }}
-          >
-            {collapsed ? <ChevronsRight size={18} /> : <ChevronsLeft size={18} />}
-          </IconButton>
-        </Tooltip>
-      </Stack>
+      {/* The credit centered, the arrow at its right; one above the other when collapsed. */}
+      <Box
+        sx={{
+          display: 'grid',
+          gridTemplateColumns: collapsed ? '1fr' : '1fr auto 1fr',
+          justifyItems: collapsed ? 'center' : undefined,
+          alignItems: 'center',
+          gap: collapsed ? 0.75 : 0,
+          px: 1.25,
+          py: 1,
+          borderTop: '1px solid',
+          borderColor: 'divider',
+        }}
+      >
+        {!collapsed && <Box />}
+        <MidasCredit variant={collapsed ? 'mark' : 'inline'} />
+        <Stack sx={{ alignItems: collapsed ? 'center' : 'flex-end' }}>
+          <Tooltip title={collapsed ? 'Expandir menú' : 'Colapsar menú'} placement="right">
+            <IconButton
+              size="small"
+              onClick={toggleCollapsed}
+              sx={{ color: 'text.secondary', display: { xs: 'none', md: 'inline-flex' } }}
+            >
+              {collapsed ? <ChevronsRight size={18} /> : <ChevronsLeft size={18} />}
+            </IconButton>
+          </Tooltip>
+        </Stack>
+      </Box>
     </Box>
   );
 }

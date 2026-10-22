@@ -108,7 +108,7 @@ export default function AdminLayout() {
       </AppBar>
       <Box component="main" sx={{ p: { xs: 2, sm: 3 }, maxWidth: 1600, mx: 'auto' }}>
         <Outlet />
-        <MidasCredit sx={{ mt: 6, mb: 1 }} />
+        <MidasCredit variant="inline" sx={{ mt: 6, mb: 1 }} />
       </Box>
     </Box>
   );
